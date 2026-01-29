@@ -13,19 +13,127 @@
     authentication, credentials management and token refreshing
     for the Netskrafl/Explo backend.
 
+    Credentials can be provided via (checked in order):
+    1. Metadata service (automatic on GAE, Cloud Run, GKE)
+    2. GOOGLE_APPLICATION_CREDENTIALS - path to JSON file (existing standard)
+    3. GOOGLE_CREDENTIALS_BASE64 - base64-encoded JSON (for Docker/K8s secrets)
+    4. GOOGLE_CREDENTIALS_JSON - raw JSON string (for CI/CD systems)
+
 """
 
 from typing import Any, cast, Self
 
 import os
+import base64
+import json
 import time
 import logging
 import threading
+import tempfile
+import atexit
 
 import google.auth
 from google.auth.credentials import Credentials
 import google.auth.transport.requests
 from google.auth.exceptions import RefreshError, DefaultCredentialsError
+
+
+# Track temp credentials file for cleanup
+_temp_credentials_file: str | None = None
+
+
+def _setup_credentials_from_env() -> None:
+    """Set up Google Cloud credentials from environment variables.
+
+    This function checks for credentials in environment variables and,
+    if found, writes them to a temporary file and sets
+    GOOGLE_APPLICATION_CREDENTIALS to point to it.
+
+    Supports two formats:
+    - GOOGLE_CREDENTIALS_BASE64: base64-encoded service account JSON
+    - GOOGLE_CREDENTIALS_JSON: raw service account JSON string
+
+    This enables passing credentials without mounting files, which is
+    useful for Docker, Kubernetes secrets, and CI/CD systems.
+    """
+    global _temp_credentials_file
+
+    # Skip if GOOGLE_APPLICATION_CREDENTIALS is already set
+    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return
+
+    credentials_json: str | None = None
+    source: str = ""
+
+    # Check for base64-encoded credentials
+    base64_creds = os.environ.get("GOOGLE_CREDENTIALS_BASE64", "").strip()
+    if base64_creds:
+        try:
+            credentials_json = base64.b64decode(base64_creds).decode("utf-8")
+            source = "GOOGLE_CREDENTIALS_BASE64"
+        except Exception as e:
+            logging.error(f"Failed to decode GOOGLE_CREDENTIALS_BASE64: {e}")
+            return
+
+    # Check for raw JSON credentials
+    if not credentials_json:
+        raw_creds = os.environ.get("GOOGLE_CREDENTIALS_JSON", "").strip()
+        if raw_creds:
+            credentials_json = raw_creds
+            source = "GOOGLE_CREDENTIALS_JSON"
+
+    if not credentials_json:
+        return
+
+    # Validate JSON structure
+    try:
+        creds_dict = json.loads(credentials_json)
+        if "type" not in creds_dict:
+            logging.error(f"Invalid credentials from {source}: missing 'type' field")
+            return
+    except json.JSONDecodeError as e:
+        logging.error(f"Invalid JSON in {source}: {e}")
+        return
+
+    # Write to a secure temporary file
+    try:
+        # Create temp file that won't be automatically deleted
+        fd, temp_path = tempfile.mkstemp(
+            prefix="gcp_credentials_",
+            suffix=".json",
+        )
+        with os.fdopen(fd, "w") as f:
+            f.write(credentials_json)
+
+        # Set restrictive permissions (owner read/write only)
+        os.chmod(temp_path, 0o600)
+
+        # Set the environment variable
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_path
+        _temp_credentials_file = temp_path
+
+        logging.info(f"Configured credentials from {source}")
+
+    except Exception as e:
+        logging.error(f"Failed to write credentials from {source}: {e}")
+
+
+def _cleanup_temp_credentials() -> None:
+    """Remove temporary credentials file on exit."""
+    global _temp_credentials_file
+    if _temp_credentials_file and os.path.exists(_temp_credentials_file):
+        try:
+            os.unlink(_temp_credentials_file)
+        except Exception:
+            pass  # Best effort cleanup
+
+
+# Set up credentials from environment variables at module load time
+# This runs before any Google Cloud clients are initialized
+_setup_credentials_from_env()
+
+# Register cleanup handler
+atexit.register(_cleanup_temp_credentials)
 
 
 # Google Cloud project ID
@@ -108,8 +216,11 @@ class CloudAuthManager:
                             "Failed to obtain or refresh Google Cloud credentials."
                         )
                         logging.error(
-                            "Please make sure you are logged in with "
-                            "'gcloud auth application-default login'."
+                            "Options to provide credentials:\n"
+                            "  1. Run 'gcloud auth application-default login'\n"
+                            "  2. Set GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json\n"
+                            "  3. Set GOOGLE_CREDENTIALS_BASE64=<base64-encoded-json>\n"
+                            "  4. Set GOOGLE_CREDENTIALS_JSON=<raw-json-string>"
                         )
                     logging.error(f"Failed to refresh credentials: {e}")
                     # Re-raise to let caller handle the error

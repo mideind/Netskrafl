@@ -41,8 +41,11 @@ from flask.typing import ResponseReturnValue
 from werkzeug.wrappers import Response as WerkzeugResponse
 from flask.wrappers import Response
 from logging.config import dictConfig
-from secret_manager import SecretManager
+
+# Import authmanager first to ensure credentials are set up
+# before any Google Cloud libraries are imported (via secret_manager)
 from authmanager import running_local
+from secret_manager import SecretManager
 
 
 T = TypeVar('T')

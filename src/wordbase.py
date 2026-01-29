@@ -141,6 +141,14 @@ class Wordbase:
         return ([], []) if dawg is None else dawg.two_letter_words()
 
     @staticmethod
+    def is_initialized() -> bool:
+        """Check if all expected dictionaries have been loaded.
+        Used by health check endpoints to determine readiness."""
+        with Wordbase._lock:
+            # Check that we have loaded the expected number of dictionaries
+            return len(Wordbase._dawg) == len(_DAWGS)
+
+    @staticmethod
     def warmup() -> bool:
         """Called from GAE instance initialization; add warmup code here if needed"""
         return True

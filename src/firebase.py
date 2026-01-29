@@ -33,6 +33,7 @@ from typing import (
     cast,
 )
 
+import os
 import threading
 import logging
 from datetime import UTC, datetime, timedelta
@@ -82,10 +83,43 @@ _PUSH_NOTIFICATION_CUTOFF = 14  # Days
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
 
+# Optional secret token for authenticating cron requests from external schedulers
+# (e.g., when running in Docker/Kubernetes instead of GAE)
+CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
+
 # Create a blueprint for the connect module, which is used to
 # update the Redis cache from Firebase presence information
 # using a cron job that calls /connect/update
 connect_blueprint = connect = Blueprint("connect", __name__, url_prefix="/connect")
+
+
+def is_cron_request() -> bool:
+    """Check if the current request is from an authorized scheduler.
+
+    Supports multiple authentication methods for different deployment environments:
+    - GAE Task Queue (X-AppEngine-QueueName header)
+    - GAE Cron (X-Appengine-Cron header)
+    - Cloud Scheduler (HTTP_X_CLOUDSCHEDULER)
+    - External scheduler with secret token (X-Cron-Secret header)
+    - Local development (always allowed)
+    """
+    # Local development: always allow
+    if running_local:
+        return True
+    headers = request.headers
+    # GAE Task Queue
+    if headers.get("X-AppEngine-QueueName", ""):
+        return True
+    # GAE Cron
+    if headers.get("X-Appengine-Cron", "") == "true":
+        return True
+    # Cloud Scheduler
+    if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true":
+        return True
+    # External scheduler with secret token (for Docker/Kubernetes deployments)
+    if CRON_SECRET and headers.get("X-Cron-Secret", "") == CRON_SECRET:
+        return True
+    return False
 
 
 def init_firebase_app():
@@ -421,14 +455,7 @@ def push_to_user(
 def update() -> ResponseType:
     """Update the Redis cache from Firebase presence information.
     This method is invoked from a cron job that fetches /connect/update."""
-    # Check that we are actually being called internally by
-    # a GAE cron job or a cloud scheduler
-    headers = request.headers
-    task_queue = headers.get("X-AppEngine-QueueName", "") != ""
-    cron_job = headers.get("X-Appengine-Cron", "") == "true"
-    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    if not any((running_local, task_queue, cloud_scheduler, cron_job)):
-        # Not called internally, by a cron job or a cloud scheduler
+    if not is_cron_request():
         return "Error", 403  # Forbidden
     try:
         # Get the list of all connected users from Firebase,

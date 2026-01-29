@@ -1,21 +1,21 @@
 """
 
-    Cache - Redis cache wrapper for the Netskrafl application
+Cache - Redis cache wrapper for the Netskrafl application
 
-    Copyright © 2025 Miðeind ehf.
-    Author: Vilhjálmur Þorsteinsson
+Copyright © 2026 Miðeind ehf.
+Author: Vilhjálmur Þorsteinsson
 
-    This module wraps Redis caching in a thin wrapper object,
-    roughly emulating memcache.
+This module wraps Redis caching in a thin wrapper object,
+roughly emulating memcache.
 
-    This module is necessitated by the move from the Standard environment
-    (Python 2 based) to the Flexible environment (Python 3 based) of the
-    Google App Engine. The Flexible environment no longer supports the
-    memcache module which was integral to the Standard environment. Thus,
-    a move to Memorystore/Redis was needed.
+This module is necessitated by the move from the legacy Standard environment
+(Python 2 based) to the current Standard environment (Python 3 based) of
+Google App Engine. The Python 3 Standard environment no longer supports the
+memcache module which was integral to the Python 2 environment. Thus,
+a move to Memorystore/Redis was needed.
 
-    Since Redis only supports numeric and string value types, we need to
-    employ some shenanigans to JSON-encode and decode composite Python objects.
+Since Redis only supports numeric and string value types, we need to
+employ some shenanigans to JSON-encode and decode composite Python objects.
 
 """
 
@@ -140,18 +140,50 @@ def _loads(j: Optional[str]) -> Any:
 
 class RedisWrapper:
     """Wrapper class around the Redis client,
-    making it appear as a simplified memcache instance"""
+    making it appear as a simplified memcache instance.
+
+    Connection can be configured via:
+    - REDIS_URL environment variable (preferred, supports TLS and auth):
+        redis://localhost:6379           - Local/Docker
+        redis://10.128.0.3:6379          - Memorystore (GCP)
+        redis://:password@host:6379      - With authentication
+        rediss://host:6379               - TLS enabled (note double 's')
+    - REDISHOST and REDISPORT environment variables (legacy, backward compatible)
+    - Constructor parameters (for testing)
+    """
 
     def __init__(
-        self, redis_host: Optional[str] = None, redis_port: Optional[int] = None
+        self,
+        redis_host: Optional[str] = None,
+        redis_port: Optional[int] = None,
+        redis_url: Optional[str] = None,
     ) -> None:
-        redis_host = redis_host or os.environ.get("REDISHOST", "localhost")
-        redis_port = redis_port or int(os.environ.get("REDISPORT", 6379))
-        assert redis_host is not None
-        # Create a Redis client instance
-        self._client = redis.Redis(
-            host=redis_host, port=redis_port, retry_on_timeout=True
-        )
+        # Check for URL-based configuration first (preferred)
+        redis_url = redis_url or os.environ.get("REDIS_URL")
+
+        if redis_url:
+            # URL contains everything: host, port, password, TLS, database
+            # Examples:
+            #   redis://localhost:6379
+            #   rediss://:password@host:6379  (TLS + auth)
+            self._client = redis.Redis.from_url(
+                redis_url,
+                retry_on_timeout=True,
+                decode_responses=False,
+            )
+            # Log the connection type (without exposing credentials)
+            scheme = redis_url.split("://")[0] if "://" in redis_url else "redis"
+            logging.info(f"Redis connection via URL ({scheme}://...)")
+        else:
+            # Fallback: Legacy host/port configuration (backward compatible)
+            redis_host = redis_host or os.environ.get("REDISHOST", "localhost")
+            redis_port = redis_port or int(os.environ.get("REDISPORT", 6379))
+            assert redis_host is not None
+            # Create a Redis client instance
+            self._client = redis.Redis(
+                host=redis_host, port=redis_port, retry_on_timeout=True
+            )
+            logging.info(f"Redis connection via host:port ({redis_host}:{redis_port})")
 
     def get_redis_client(self) -> redis.Redis[bytes]:
         """Return the underlying Redis client instance"""
@@ -207,12 +239,11 @@ class RedisWrapper:
     ) -> Any:
         """Add multiple key-value pairs to the cache, within the given namespace,
         with an optional expiry time in seconds"""
-        keyfunc: Callable[[str], str]
-        if namespace:
+
+        def keyfunc(k: str) -> str:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
-            keyfunc = lambda k: namespace + "|" + k
-        else:
-            keyfunc = lambda k: k
+            return namespace + "|" + k if namespace else k
+
         mapping = {keyfunc(k): _dumps(v) for k, v in mapping.items()}
         return self._call_with_retry(self._client.mset, None, mapping, ex=time)
 
@@ -268,7 +299,7 @@ class RedisWrapper:
                 if time:
                     pipe.expire(key, time)
             # Execute the pipeline (transaction)
-            return self._call_with_retry(pipe.execute, None) != None
+            return self._call_with_retry(pipe.execute, None) is not None
         except redis.exceptions.RedisError as e:
             logging.error(f"Redis error in init_set(): {repr(e)}")
         return False
@@ -288,7 +319,10 @@ class RedisWrapper:
             # Redis doesn't have namespaces, so we prepend the namespace id to the key
             key = namespace + "|" + key
         result: Optional[List[int]] = self._call_with_retry(
-            self._client.smismember, None, key, elements  # type: ignore
+            self._client.smismember,
+            None,
+            key,
+            elements,  # type: ignore
         )
         if result is None:
             # The key is not found: no elements are present in the set
@@ -309,10 +343,17 @@ class RedisWrapper:
 
 # Create a global singleton wrapper instance with default parameters,
 # emulating a part of the memcache API.
+#
+# Connection priority:
+# 1. REDIS_URL environment variable (if set) - supports TLS, auth, etc.
+# 2. REDISHOST/REDISPORT environment variables
+# 3. Defaults: localhost:6379
+#
+# For local development server, we default to 127.0.0.1 unless REDIS_URL
+# is explicitly set (e.g., for Docker Compose with a Redis service).
+#
+# The local Redis may be tunneled via: ssh -fNL 6379:localhost:6379 user@host
 
-# If we're running on a local development server, connect to a
-# local Redis server (which may of course be tunneled through SSH,
-# via ssh -fNL 6379:localhost:6379 user@my.redis.host)
 if os.environ.get("SERVER_SOFTWARE", "").startswith("Development"):
     memcache = RedisWrapper(redis_host="127.0.0.1")
 else:

@@ -82,9 +82,15 @@ from skraflstats import stats_blueprint
 from riddle import riddle_blueprint
 
 
-# App Engine version (e.g., "n20260128"), used for cache busting in production.
-# Format is nYYYYMMDD with optional suffix (a, b, c, ...) for multiple same-day deploys.
-GAE_VERSION: str = "" if running_local else os.environ.get("GAE_VERSION", "")
+# App version used for cache busting in production.
+# Priority: GAE_VERSION (App Engine) > APP_VERSION (Docker/Cloud Run) > empty
+# GAE_VERSION format is nYYYYMMDD with optional suffix (a, b, c, ...) for same-day deploys.
+# APP_VERSION can be set to git commit hash, build timestamp, or image tag.
+APP_VERSION: str = (
+    ""
+    if running_local
+    else os.environ.get("GAE_VERSION", "") or os.environ.get("APP_VERSION", "")
+)
 GAE_INSTANCE: str = "" if running_local else os.environ.get("GAE_INSTANCE", "")
 
 # Only check port availability when running locally
@@ -223,7 +229,7 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
 @app.url_defaults
 def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None:
     """Add a ?v=XXX parameter to URLs for static .js and .css files.
-    In production, XXX is the GAE_VERSION (deployment version).
+    In production, XXX is APP_VERSION (from GAE_VERSION or APP_VERSION env var).
     In local development, XXX is the file's mtime for instant refresh."""
 
     if "static" == endpoint or endpoint.endswith(".static"):
@@ -233,9 +239,9 @@ def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None
             # Add underscores in front of the param name until it is unique
             while param_name in values:
                 param_name = "_" + param_name
-            if GAE_VERSION:
+            if APP_VERSION:
                 # Production: use deployment version for cache busting
-                values[param_name] = GAE_VERSION
+                values[param_name] = APP_VERSION
             else:
                 # Local development: use file mtime for instant refresh
                 static_folder = web_blueprint.static_folder or "."
@@ -246,8 +252,8 @@ def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None
 @app.route("/_ah/start")
 def start() -> ResponseType:
     """App Engine is starting a fresh instance"""
-    version = GAE_VERSION or "N/A"
-    instance = GAE_INSTANCE or "N/A"
+    version = APP_VERSION or "N/A"
+    instance = GAE_INSTANCE or os.environ.get("HOSTNAME", "N/A")
     logging.info(f"Start: project {PROJECT_ID}, version {version}, instance {instance}")
     return "", 200
 
@@ -257,7 +263,7 @@ def warmup() -> ResponseType:
     """App Engine is starting a fresh instance - warm it up
     by loading all vocabularies"""
     ok = Wordbase.warmup()
-    instance = GAE_INSTANCE or "N/A"
+    instance = GAE_INSTANCE or os.environ.get("HOSTNAME", "N/A")
     logging.info(f"Warmup, instance {instance}, ok is {ok}")
     return "", 200
 
@@ -266,13 +272,41 @@ def warmup() -> ResponseType:
 def stop() -> ResponseType:
     """App Engine is shutting down an instance"""
     try:
-        instance = GAE_INSTANCE or "N/A"
+        instance = GAE_INSTANCE or os.environ.get("HOSTNAME", "N/A")
         logging.info(f"Stop: instance {instance}")
     except Exception:
         # The logging module may not be functional at this point,
         # as the server is being shut down
         pass
     return "", 200
+
+
+# Health check endpoints for Kubernetes/Cloud Run deployments
+# These complement the GAE-specific /_ah/* handlers above
+
+
+@app.route("/health/live")
+def health_live() -> ResponseType:
+    """Liveness probe - is the process running and responsive?
+    Used by Kubernetes/Cloud Run to determine if container should be restarted."""
+    return "OK", 200
+
+
+@app.route("/health/ready")
+def health_ready() -> ResponseType:
+    """Readiness probe - is the app ready to serve traffic?
+    Checks that vocabularies are loaded and Redis is reachable."""
+    # Check that vocabularies are loaded
+    if not Wordbase.is_initialized():
+        return "Warming up - vocabularies not loaded", 503
+    # Check Redis connectivity
+    try:
+        from cache import memcache
+        memcache.get_redis_client().ping()
+    except Exception as e:
+        logging.warning(f"Health check: Redis unavailable - {repr(e)}")
+        return "Redis unavailable", 503
+    return "OK", 200
 
 
 @app.errorhandler(500)

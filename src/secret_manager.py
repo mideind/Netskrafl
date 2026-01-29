@@ -22,10 +22,12 @@ import logging
 import requests
 import base64
 
+# Import authmanager first to ensure credentials are set up
+# before any Google Cloud libraries are imported
+from authmanager import auth_manager
+
 from google.cloud import secretmanager  # type: ignore
 from google.api_core.exceptions import GoogleAPICallError, DeadlineExceeded
-
-from authmanager import auth_manager
 
 
 # We cannot use the variable from config.py here, as that would create a circular import
