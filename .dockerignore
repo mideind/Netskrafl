@@ -31,11 +31,11 @@ package*.json
 Gruntfile.js
 .tscache/
 
-# TypeScript source (compiled JS is in static/built/)
-static/src/*.ts
+# TypeScript source - needed for frontend-builder stage
+# static/src/*.ts
 
-# LESS source files (compiled CSS is included)
-static/*.less
+# LESS source files - needed for frontend-builder stage
+# static/*.less
 
 # Test files
 test/
