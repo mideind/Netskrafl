@@ -48,6 +48,8 @@ from config import (
     PROJECT_ID,
     FIREBASE_DB_URL,
     running_local,
+    ON_GAE,
+    ON_GCP,
     ResponseType,
     ttl_cache,
 )
@@ -97,9 +99,9 @@ def is_cron_request() -> bool:
     """Check if the current request is from an authorized scheduler.
 
     Supports multiple authentication methods for different deployment environments:
-    - GAE Task Queue (X-AppEngine-QueueName header)
-    - GAE Cron (X-Appengine-Cron header)
-    - Cloud Scheduler (HTTP_X_CLOUDSCHEDULER)
+    - GAE Task Queue (X-AppEngine-QueueName header) - only on GAE
+    - GAE Cron (X-Appengine-Cron header) - only on GAE
+    - Cloud Scheduler (HTTP_X_CLOUDSCHEDULER) - only on GCP (GAE or Cloud Run)
     - External scheduler with secret token (X-Cron-Secret header)
     - Local development (always allowed)
     """
@@ -107,14 +109,18 @@ def is_cron_request() -> bool:
     if running_local:
         return True
     headers = request.headers
-    # GAE Task Queue
-    if headers.get("X-AppEngine-QueueName", ""):
-        return True
-    # GAE Cron
-    if headers.get("X-Appengine-Cron", "") == "true":
-        return True
-    # Cloud Scheduler
-    if request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true":
+    # GAE-specific headers: only trust these when running on GAE
+    # (these headers can be spoofed on non-GAE platforms)
+    if ON_GAE:
+        # GAE Task Queue
+        if headers.get("X-AppEngine-QueueName", ""):
+            return True
+        # GAE Cron
+        if headers.get("X-Appengine-Cron", "") == "true":
+            return True
+    # Cloud Scheduler: only trust on GCP (GAE or Cloud Run)
+    # (this header can be spoofed on non-GCP platforms)
+    if ON_GCP and request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true":
         return True
     # External scheduler with secret token (for Docker/Kubernetes deployments)
     if CRON_SECRET and headers.get("X-Cron-Secret", "") == CRON_SECRET:

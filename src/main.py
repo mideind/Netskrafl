@@ -51,6 +51,7 @@ from config import (
     ResponseType,
     DEFAULT_LOCALE,
     running_local,
+    ON_GAE,
     host,
     port,
     PROJECT_ID,
@@ -93,8 +94,6 @@ APP_VERSION: str = (
 )
 GAE_INSTANCE: str = "" if running_local else os.environ.get("GAE_INSTANCE", "")
 
-# Detect if running on Google App Engine (vs Docker/DO/Cloud Run)
-on_gae: bool = bool(os.environ.get("GAE_APPLICATION") or os.environ.get("GAE_SERVICE"))
 
 # Configure logging based on environment
 if running_local:
@@ -104,7 +103,7 @@ if running_local:
     # Disable Werkzeug's default request logging to avoid duplicate logs,
     # since we are logging web requests ourselves
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
-elif on_gae:
+elif ON_GAE:
     # Google App Engine: use Google Cloud Logging
     import google.cloud.logging
 
@@ -138,7 +137,7 @@ app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]
 # When running behind a reverse proxy (Digital Ocean, Cloud Run, etc.),
 # trust the X-Forwarded-* headers to get correct scheme (https) and host.
 # GAE handles this automatically, so we only apply ProxyFix elsewhere.
-if not running_local and not on_gae:
+if not running_local and not ON_GAE:
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(  # type: ignore[assignment]
         app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
