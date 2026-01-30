@@ -55,6 +55,7 @@ Favicon.psd
 !requirements.txt
 *.bat
 *.sh
+!docker-entrypoint.sh
 deploy-*.sh
 run-*.sh
 setup-*.sh

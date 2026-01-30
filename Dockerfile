@@ -117,10 +117,17 @@ FROM python:3.11-slim
 # Create non-root user first (before any file operations)
 RUN useradd --create-home --shell /bin/bash --uid 1000 appuser
 
-# Install runtime dependencies (curl for health checks)
+# Install runtime dependencies (curl for health checks and cron jobs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install supercronic for container-friendly cron scheduling
+# TARGETARCH is set automatically by Docker (amd64, arm64, etc.)
+ARG TARGETARCH
+ARG SUPERCRONIC_VERSION=v0.2.33
+RUN curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
+    -o /usr/local/bin/supercronic && chmod +x /usr/local/bin/supercronic
 
 WORKDIR /app
 
@@ -140,6 +147,11 @@ COPY --link --chown=appuser:appuser --from=frontend-builder /app/static/built/ .
 # Copy DAWG files from downloader stage
 COPY --link --chown=appuser:appuser --from=dawg-downloader /dawg/*.bin.dawg ./resources/
 
+# Copy crontab and entrypoint script
+COPY --link --chown=appuser:appuser crontab ./crontab
+COPY --link --chown=appuser:appuser docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 # Switch to non-root user
 USER appuser
 
@@ -158,16 +170,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
 # Expose port
 EXPOSE ${PORT}
 
-# Start application with gunicorn
-# Settings match app-netskrafl.yaml: 3 workers, 6 threads each, gthread worker class
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:8080", \
-     "--workers", "3", \
-     "--threads", "6", \
-     "--worker-class", "gthread", \
-     "--keep-alive", "10", \
-     "--timeout", "30", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "--capture-output", \
-     "main:app"]
+# Start application via entrypoint script
+# The script starts supercronic (if CRON_SECRET is set) and gunicorn
+CMD ["./docker-entrypoint.sh"]
