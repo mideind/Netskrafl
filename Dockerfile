@@ -166,6 +166,7 @@ USER appuser
 
 # Environment variables (defaults, override at runtime)
 ENV PORT=8080 \
+    TZ=UTC \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src:/home/appuser/.local/lib/python3.11/site-packages \

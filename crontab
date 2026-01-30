@@ -3,6 +3,9 @@
 #
 # Note: CRON_SECRET environment variable must be set for authentication
 
+# Explicitly set timezone to UTC (supercronic respects this)
+CRON_TZ=UTC
+
 # Online presence sync - every 2 minutes
 # Syncs Firebase presence data to Redis cache
 */2 * * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/connect/update
