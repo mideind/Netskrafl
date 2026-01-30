@@ -151,7 +151,7 @@ The Dockerfile downloads these during build, eliminating the need to commit bina
 | `REDIS_URL` | Yes | Redis connection URL (supports `rediss://` for TLS) |
 | `APP_VERSION` | No | Version string for cache busting |
 | `RUNNING_LOCAL` | No | Set `true` for local dev mode |
-| `CRON_SECRET` | No | Secret token for external cron schedulers |
+| `CRON_SECRET` | No | Enables cron: installs supercronic at build, starts it at runtime |
 
 *Or `GOOGLE_APPLICATION_CREDENTIALS` (file path) or `GOOGLE_CREDENTIALS_JSON` (raw JSON)
 
@@ -256,7 +256,7 @@ Cloud Run deployment would reuse existing GCP infrastructure:
 
 ### Cron Job Setup
 
-Cron jobs are now built into the Docker image using **supercronic** (a container-friendly cron implementation):
+Cron jobs use **supercronic** (a container-friendly cron implementation), controlled by `CRON_SECRET`:
 
 | Job | Endpoint | Schedule | Auth |
 |-----|----------|----------|------|
@@ -264,11 +264,20 @@ Cron jobs are now built into the Docker image using **supercronic** (a container
 | Stats | `/stats/run` | Daily 03:00 UTC | `X-Cron-Secret` header |
 | Ratings | `/stats/ratings` | Daily 03:45 UTC | `X-Cron-Secret` header |
 
+**How `CRON_SECRET` works:**
+
+| Phase | CRON_SECRET set | CRON_SECRET not set |
+|-------|-----------------|---------------------|
+| Build | Supercronic installed | Supercronic skipped |
+| Runtime | Supercronic starts | Cron disabled |
+
 **Configuration:**
-- Set `CRON_SECRET` environment variable (required for cron to start)
-- Supercronic runs alongside gunicorn via `docker-entrypoint.sh`
-- Jobs call localhost endpoints with the `X-Cron-Secret` header
-- Architecture-aware binary (supports amd64, arm64)
+- Set `CRON_SECRET` as an environment variable visible to both build and runtime
+- On Digital Ocean: Add to App-level environment variables (applies to both)
+- On Cloud Run: Don't set `CRON_SECRET` (use Cloud Scheduler instead)
+- Jobs authenticate via `X-Cron-Secret` header to localhost endpoints
+- All times are UTC (`TZ=UTC` and `CRON_TZ=UTC` set explicitly)
+- Architecture-aware binary (supports amd64, arm64) with SHA1 verification
 
 ---
 
