@@ -41,7 +41,7 @@ import logging
 
 from datetime import datetime, timedelta, timezone
 
-from flask import g, request
+from flask import g, request, send_from_directory
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
 
@@ -307,6 +307,37 @@ def health_ready() -> ResponseType:
         logging.warning(f"Health check: Redis unavailable - {repr(e)}")
         return "Redis unavailable", 503
     return "OK", 200
+
+
+# Root-level static files that GAE serves via handlers in app.yaml
+# In Docker/Cloud Run deployments, Flask serves these directly
+_ROOT_STATIC_FILES: frozenset[str] = frozenset({
+    "robots.txt",
+    "favicon.ico",
+    "favicon-32x32.png",
+    "favicon-16x16.png",
+    "browserconfig.xml",
+    "mstile-150x150.png",
+    "netskrafl.webmanifest",
+    "safari-pinned-tab.svg",
+    "touch-icon-ipad.png",
+    "touch-icon-ipad-retina.png",
+    "touch-icon-iphone-retina.png",
+})
+
+
+@app.route("/<filename>")
+def root_static_files(filename: str) -> ResponseType:
+    """Serve root-level static files (favicon, robots.txt, etc.)
+    This mirrors GAE's static file handlers from app.yaml for Docker deployments.
+    Uses <filename> (not <path:filename>) to only match single path segments."""
+    # Handle alias: apple-touch-icon.png -> touch-icon-ipad-retina.png
+    if filename == "apple-touch-icon.png":
+        filename = "touch-icon-ipad-retina.png"
+    if filename in _ROOT_STATIC_FILES:
+        return send_from_directory(STATIC_FOLDER, filename, max_age=86400)
+    # Not a known root static file - return 404
+    return "Not found", 404
 
 
 @app.errorhandler(500)
