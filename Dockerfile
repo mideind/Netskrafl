@@ -14,8 +14,10 @@
 # Generate them with: python utils/dawgbuilder.py all
 # Or mount them as a volume at runtime.
 
+# syntax=docker/dockerfile:1.7
+
 # =============================================================================
-# Stage 1: Builder - install dependencies
+# Stage 1: Builder - install dependencies with cache optimization
 # =============================================================================
 FROM python:3.11-slim AS builder
 
@@ -27,9 +29,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies to user site-packages
+# Install Python dependencies with pip cache mount for faster rebuilds
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --user -r requirements.txt
 
 # =============================================================================
 # Stage 2: Runtime - minimal production image
@@ -44,15 +47,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash appuser
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /home/appuser/.local
+# Copy installed packages from builder (--link for better caching)
+COPY --link --from=builder /root/.local /home/appuser/.local
 ENV PATH=/home/appuser/.local/bin:$PATH
 
-# Copy application code
-COPY src/ ./src/
-COPY static/ ./static/
-COPY templates/ ./templates/
-COPY resources/*.bin.dawg ./resources/
+# Copy application code (--link creates independent layers)
+COPY --link src/ ./src/
+COPY --link static/ ./static/
+COPY --link templates/ ./templates/
+COPY --link resources/*.bin.dawg ./resources/
 
 # Set ownership to non-root user
 RUN chown -R appuser:appuser /app
@@ -61,13 +64,14 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Environment variables (defaults, override at runtime)
-ENV PORT=8080
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app/src
+ENV PORT=8080 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src
 
-# Health check using the new /health/live endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+# Health check using the /health/live endpoint
+# start_interval: check frequently during startup for faster ready signal
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --start-interval=5s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health/live || exit 1
 
 # Expose port
