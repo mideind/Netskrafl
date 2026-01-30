@@ -135,6 +135,15 @@ app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
 # into each request
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]
 
+# When running behind a reverse proxy (Digital Ocean, Cloud Run, etc.),
+# trust the X-Forwarded-* headers to get correct scheme (https) and host.
+# GAE handles this automatically, so we only apply ProxyFix elsewhere.
+if not running_local and not on_gae:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(  # type: ignore[assignment]
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
+
 # Initialize Cross-Origin Resource Sharing (CORS)
 init_cors(app)
 
