@@ -1,0 +1,89 @@
+# .dockerignore - Files to exclude from Docker build context
+#
+# This speeds up builds and keeps sensitive files out of the image.
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*.pyo
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+venv/
+v311/
+*.egg-info/
+
+# Node.js (not needed in runtime)
+node_modules/
+package*.json
+Gruntfile.js
+.tscache/
+
+# TypeScript source (compiled JS is in static/built/)
+static/src/*.ts
+
+# LESS source files (compiled CSS is included)
+static/*.less
+
+# Test files
+test/
+htmlcov/
+.coverage
+.tox/
+
+# Documentation and metadata
+*.md
+doc/
+*.psd
+*.ai
+Favicon.psd
+
+# Deployment scripts and configs (GAE-specific)
+*.yaml
+!requirements.txt
+*.bat
+*.sh
+deploy-*.sh
+run-*.sh
+setup-*.sh
+
+# Development utilities
+utils/
+
+# Raw word lists and intermediate DAWG files (only .bin.dawg needed)
+resources/*.txt
+resources/*.tsv
+resources/*.csv
+resources/*.text.dawg
+resources/*.dawg.pickle
+resources/bin/
+
+# Credential files (should never be in image!)
+resources/*.json
+resources/*.p8
+resources/secret_key.bin
+credentials/
+
+# Temporary and backup files
+*.log
+*.tmp
+*.bak
+*~
+.DS_Store
+Thumbs.db
+
+# Claude AI config
+.claude/
+CLAUDE.md
