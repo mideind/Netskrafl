@@ -10,11 +10,12 @@
 #     -e GOOGLE_CREDENTIALS_BASE64=$(base64 -w0 credentials.json) \
 #     netskrafl
 #
-# Note: DAWG vocabulary files (resources/*.bin.dawg) must exist before building.
-# Generate them with: python utils/dawgbuilder.py all
-# Or mount them as a volume at runtime.
-
-# syntax=docker/dockerfile:1.7
+# DAWG vocabulary files are downloaded from Digital Ocean Spaces during build.
+# To use a different source, override DAWG_BASE_URL:
+#   docker build --build-arg DAWG_BASE_URL=https://your-cdn.com/dawg -t netskrafl .
+#
+# To upload new DAWG files after building them locally:
+#   python utils/dawgbuilder.py all --upload
 
 # =============================================================================
 # Stage 1: Get uv binary from official image
@@ -43,7 +44,47 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system --target /app/packages -r requirements.txt
 
 # =============================================================================
-# Stage 3: Runtime - minimal production image
+# Stage 3: Download DAWG vocabulary files from CDN
+# =============================================================================
+FROM python:3.11-slim AS dawg-downloader
+
+# Default CDN URL for DAWG files (Digital Ocean Spaces)
+ARG DAWG_BASE_URL=https://netskrafl-cdn.ams3.digitaloceanspaces.com/dawg
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /dawg
+
+# List of all DAWG files to download
+# These are the vocabulary files for different languages and robot difficulty levels
+RUN for dawg in \
+    algeng.bin.dawg \
+    amlodi.bin.dawg \
+    midlungur.bin.dawg \
+    nsf2023.aml.bin.dawg \
+    nsf2023.bin.dawg \
+    nsf2023.mid.bin.dawg \
+    nynorsk2024.aml.bin.dawg \
+    nynorsk2024.bin.dawg \
+    nynorsk2024.mid.bin.dawg \
+    ordalisti.bin.dawg \
+    osps37.aml.bin.dawg \
+    osps37.bin.dawg \
+    osps37.mid.bin.dawg \
+    otcwl2014.aml.bin.dawg \
+    otcwl2014.bin.dawg \
+    otcwl2014.mid.bin.dawg \
+    sowpods.aml.bin.dawg \
+    sowpods.bin.dawg \
+    sowpods.mid.bin.dawg \
+    twl06.bin.dawg; do \
+        echo "Downloading $dawg..." && \
+        curl -fsSL "${DAWG_BASE_URL}/${dawg}" -o "${dawg}" || exit 1; \
+    done
+
+# =============================================================================
+# Stage 4: Runtime - minimal production image
 # =============================================================================
 FROM python:3.11-slim
 
@@ -64,7 +105,9 @@ COPY --link --chown=appuser:appuser --from=builder /app/packages /home/appuser/.
 COPY --link --chown=appuser:appuser src/ ./src/
 COPY --link --chown=appuser:appuser static/ ./static/
 COPY --link --chown=appuser:appuser templates/ ./templates/
-COPY --link --chown=appuser:appuser resources/*.bin.dawg ./resources/
+
+# Copy DAWG files from downloader stage
+COPY --link --chown=appuser:appuser --from=dawg-downloader /dawg/*.bin.dawg ./resources/
 
 # Switch to non-root user
 USER appuser
