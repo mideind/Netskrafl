@@ -4,12 +4,14 @@
 
 set -e
 
-# Start supercronic in the background if CRON_SECRET is set
-if [ -n "$CRON_SECRET" ]; then
+# Start supercronic in the background if CRON_SECRET is set and supercronic is installed
+if [ -n "$CRON_SECRET" ] && command -v supercronic >/dev/null 2>&1; then
     echo "Starting supercronic scheduler..."
     supercronic /app/crontab &
+elif [ -n "$CRON_SECRET" ]; then
+    echo "Warning: CRON_SECRET set but supercronic not installed, skipping cron scheduler"
 else
-    echo "Warning: CRON_SECRET not set, skipping cron scheduler"
+    echo "CRON_SECRET not set, skipping cron scheduler"
 fi
 
 # Start gunicorn in the foreground

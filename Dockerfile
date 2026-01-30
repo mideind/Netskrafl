@@ -122,21 +122,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install supercronic for container-friendly cron scheduling
+# Optional: Install supercronic for container-friendly cron scheduling
+# Only installed if CRON_SECRET is set at build time (same var used at runtime)
 # TARGETARCH is set by BuildKit; default to amd64 for platforms that don't set it
 # SHA1 checksums from https://github.com/aptible/supercronic/releases/tag/v0.2.42
+ARG CRON_SECRET
 ARG TARGETARCH=amd64
 RUN set -e; \
-    SUPERCRONIC_VERSION=v0.2.42; \
-    case "${TARGETARCH}" in \
-      amd64) SUPERCRONIC_SHA1=b444932b81583b7860849f59fdb921217572ece2 ;; \
-      arm64) SUPERCRONIC_SHA1=5193ea5292dda3ad949d0623e178e420c26bfad2 ;; \
-      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
-    esac; \
-    curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
-      -o /usr/local/bin/supercronic \
-    && echo "${SUPERCRONIC_SHA1}  /usr/local/bin/supercronic" | sha1sum -c - \
-    && chmod +x /usr/local/bin/supercronic
+    if [ -n "${CRON_SECRET}" ]; then \
+      SUPERCRONIC_VERSION=v0.2.42; \
+      case "${TARGETARCH}" in \
+        amd64) SUPERCRONIC_SHA1=b444932b81583b7860849f59fdb921217572ece2 ;; \
+        arm64) SUPERCRONIC_SHA1=5193ea5292dda3ad949d0623e178e420c26bfad2 ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+      esac; \
+      curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
+        -o /usr/local/bin/supercronic \
+      && echo "${SUPERCRONIC_SHA1}  /usr/local/bin/supercronic" | sha1sum -c - \
+      && chmod +x /usr/local/bin/supercronic; \
+    else \
+      echo "Skipping supercronic installation (CRON_SECRET not set)"; \
+    fi
 
 WORKDIR /app
 
