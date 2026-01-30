@@ -77,8 +77,8 @@ ENV PORT=8080 \
     PATH=/home/appuser/.local/lib/python3.11/site-packages/bin:$PATH
 
 # Health check using the /health/live endpoint
-# start_interval: check frequently during startup for faster ready signal
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --start-interval=5s --retries=3 \
+# Note: --start-interval removed for compatibility with older Docker versions (e.g., Digital Ocean)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health/live || exit 1
 
 # Expose port
