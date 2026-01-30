@@ -51,7 +51,7 @@ The current deployment uses:
 | `/_ah/stop` handler | `main.py` | ✅ Kept | Works as-is |
 | VPC Access Connector | `app.yaml` | ✅ N/A | Use platform networking |
 | Static file handlers | `app.yaml` | ✅ Migrated | Flask serves root-level files |
-| Cron jobs | `cron.yaml` | 🔶 Ready | `is_cron_request()` supports external schedulers |
+| Cron jobs | `cron.yaml` | ✅ Migrated | supercronic built into container |
 | Google Cloud Logging | `main.py` | ✅ Migrated | Platform-aware (GAE→GCP, Docker→stderr) |
 
 ---
@@ -256,13 +256,19 @@ Cloud Run deployment would reuse existing GCP infrastructure:
 
 ### Cron Job Setup
 
-Cron endpoints are ready but external schedulers need configuration:
+Cron jobs are now built into the Docker image using **supercronic** (a container-friendly cron implementation):
 
 | Job | Endpoint | Schedule | Auth |
 |-----|----------|----------|------|
-| Stats | `/stats/run` | Daily 03:00 | `X-Cron-Secret` header |
-| Ratings | `/stats/ratings` | Daily 03:45 | `X-Cron-Secret` header |
 | Online sync | `/connect/update` | Every 2 min | `X-Cron-Secret` header |
+| Stats | `/stats/run` | Daily 03:00 UTC | `X-Cron-Secret` header |
+| Ratings | `/stats/ratings` | Daily 03:45 UTC | `X-Cron-Secret` header |
+
+**Configuration:**
+- Set `CRON_SECRET` environment variable (required for cron to start)
+- Supercronic runs alongside gunicorn via `docker-entrypoint.sh`
+- Jobs call localhost endpoints with the `X-Cron-Secret` header
+- Architecture-aware binary (supports amd64, arm64)
 
 ---
 
@@ -287,6 +293,7 @@ The Netskrafl/Explo backend has been successfully dockerized and deployed on Dig
 3. **Supports multiple credential methods** for flexibility across platforms
 4. **Provides platform-aware logging** (GCP on GAE, stderr elsewhere)
 5. **Includes health endpoints** for container orchestration
+6. **Built-in cron scheduling** via supercronic (no external scheduler needed)
 
 The codebase now supports deployment on GAE (original), Digital Ocean (tested), and is ready for Cloud Run or Kubernetes with minimal additional work.
 
@@ -294,13 +301,16 @@ The codebase now supports deployment on GAE (original), Digital Ocean (tested), 
 
 | File | Change |
 |------|--------|
-| `Dockerfile` | Created - 5-stage build |
+| `Dockerfile` | Created - 5-stage build with supercronic |
 | `docker-compose.yml` | Created - local dev environment |
+| `docker-entrypoint.sh` | Created - starts supercronic + gunicorn |
+| `crontab` | Created - cron job definitions |
 | `.dockerignore` | Created - excludes unnecessary files |
 | `nginx.conf` | Created - load balancer config |
 | `src/main.py` | Health endpoints, platform-aware logging, cache busting |
+| `src/config.py` | Added `ON_GAE` and `ON_GCP` detection |
 | `src/cache.py` | REDIS_URL support |
 | `src/authmanager.py` | Credential handling from env vars |
-| `src/firebase.py` | `is_cron_request()` with CRON_SECRET |
+| `src/firebase.py` | `is_cron_request()` with platform-aware auth |
 | `src/wordbase.py` | `is_initialized()` for readiness probe |
 | `utils/dawgbuilder.py` | `--upload` flag for DO Spaces |

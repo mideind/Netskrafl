@@ -124,10 +124,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install supercronic for container-friendly cron scheduling
 # TARGETARCH is set automatically by Docker (amd64, arm64, etc.)
+# SHA1 checksums from https://github.com/aptible/supercronic/releases/tag/v0.2.42
 ARG TARGETARCH
-ARG SUPERCRONIC_VERSION=v0.2.33
-RUN curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
-    -o /usr/local/bin/supercronic && chmod +x /usr/local/bin/supercronic
+RUN set -e; \
+    SUPERCRONIC_VERSION=v0.2.42; \
+    case "${TARGETARCH}" in \
+      amd64) SUPERCRONIC_SHA1=b444932b81583b7860849f59fdb921217572ece2 ;; \
+      arm64) SUPERCRONIC_SHA1=5193ea5292dda3ad949d0623e178e420c26bfad2 ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
+      -o /usr/local/bin/supercronic \
+    && echo "${SUPERCRONIC_SHA1}  /usr/local/bin/supercronic" | sha1sum -c - \
+    && chmod +x /usr/local/bin/supercronic
 
 WORKDIR /app
 
