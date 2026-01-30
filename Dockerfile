@@ -84,7 +84,33 @@ RUN for dawg in \
     done
 
 # =============================================================================
-# Stage 4: Runtime - minimal production image
+# Stage 4: Build frontend assets (CSS and JS)
+# TEMPORARY: This stage can be removed once the web UI is fully migrated
+# to the separate React client (netskrafl-react).
+# =============================================================================
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Install build tools globally (smaller than full npm install)
+RUN npm install -g less typescript uglify-js
+
+# Copy frontend source files
+COPY static/ ./static/
+
+# Build CSS from LESS
+RUN lessc static/skrafl-explo.less static/skrafl-explo.css && \
+    lessc static/skrafl-curry.less static/skrafl-curry.css
+
+# Build JS: TypeScript → JS, concatenate legacy JS, minify
+RUN cd static && tsc && \
+    mkdir -p built && \
+    cat js/*.js > built/netskrafl.js && \
+    uglifyjs built/explo.js -o built/explo.min.js --source-map && \
+    uglifyjs built/netskrafl.js -o built/netskrafl.min.js --source-map
+
+# =============================================================================
+# Stage 5: Runtime - minimal production image
 # =============================================================================
 FROM python:3.11-slim
 
@@ -105,6 +131,11 @@ COPY --link --chown=appuser:appuser --from=builder /app/packages /home/appuser/.
 COPY --link --chown=appuser:appuser src/ ./src/
 COPY --link --chown=appuser:appuser static/ ./static/
 COPY --link --chown=appuser:appuser templates/ ./templates/
+
+# Copy built frontend assets (CSS and JS) from frontend-builder stage
+# These overwrite the source files with compiled versions
+COPY --link --chown=appuser:appuser --from=frontend-builder /app/static/*.css ./static/
+COPY --link --chown=appuser:appuser --from=frontend-builder /app/static/built/ ./static/built/
 
 # Copy DAWG files from downloader stage
 COPY --link --chown=appuser:appuser --from=dawg-downloader /dawg/*.bin.dawg ./resources/

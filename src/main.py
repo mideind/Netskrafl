@@ -242,11 +242,17 @@ def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None
             if APP_VERSION:
                 # Production: use deployment version for cache busting
                 values[param_name] = APP_VERSION
-            else:
+            elif running_local:
                 # Local development: use file mtime for instant refresh
                 static_folder = web_blueprint.static_folder or "."
                 filepath = os.path.join(static_folder, filename)
-                values[param_name] = int(os.stat(filepath).st_mtime)
+                try:
+                    values[param_name] = int(os.stat(filepath).st_mtime)
+                except OSError:
+                    values[param_name] = "dev"
+            else:
+                # Production without APP_VERSION set - use fallback
+                values[param_name] = "1"
 
 
 @app.route("/_ah/start")
