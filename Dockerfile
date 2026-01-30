@@ -17,11 +17,19 @@
 # syntax=docker/dockerfile:1.7
 
 # =============================================================================
-# Stage 1: Builder - install dependencies with cache optimization
+# Stage 1: Get uv binary from official image
+# =============================================================================
+FROM ghcr.io/astral-sh/uv:latest AS uv
+
+# =============================================================================
+# Stage 2: Builder - install dependencies with uv (10-100x faster than pip)
 # =============================================================================
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
+
+# Copy uv binary from official image
+COPY --from=uv /uv /usr/local/bin/uv
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,36 +37,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies with pip cache mount for faster rebuilds
+# Install Python dependencies with uv (uses cache mount for speed)
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --user -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system --target /app/packages -r requirements.txt
 
 # =============================================================================
-# Stage 2: Runtime - minimal production image
+# Stage 3: Runtime - minimal production image
 # =============================================================================
 FROM python:3.11-slim
 
-WORKDIR /app
+# Create non-root user first (before any file operations)
+RUN useradd --create-home --shell /bin/bash --uid 1000 appuser
 
 # Install runtime dependencies (curl for health checks)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --shell /bin/bash appuser
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder (--link for better caching)
-COPY --link --from=builder /root/.local /home/appuser/.local
-ENV PATH=/home/appuser/.local/bin:$PATH
+WORKDIR /app
 
-# Copy application code (--link creates independent layers)
-COPY --link src/ ./src/
-COPY --link static/ ./static/
-COPY --link templates/ ./templates/
-COPY --link resources/*.bin.dawg ./resources/
+# Copy installed packages with correct ownership (--chown is faster than separate chown)
+COPY --link --chown=appuser:appuser --from=builder /app/packages /home/appuser/.local/lib/python3.11/site-packages
 
-# Set ownership to non-root user
-RUN chown -R appuser:appuser /app
+# Copy application code with correct ownership
+COPY --link --chown=appuser:appuser src/ ./src/
+COPY --link --chown=appuser:appuser static/ ./static/
+COPY --link --chown=appuser:appuser templates/ ./templates/
+COPY --link --chown=appuser:appuser resources/*.bin.dawg ./resources/
 
 # Switch to non-root user
 USER appuser
@@ -67,7 +73,8 @@ USER appuser
 ENV PORT=8080 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app/src
+    PYTHONPATH=/app/src:/home/appuser/.local/lib/python3.11/site-packages \
+    PATH=/home/appuser/.local/lib/python3.11/site-packages/bin:$PATH
 
 # Health check using the /health/live endpoint
 # start_interval: check frequently during startup for faster ready signal
