@@ -123,9 +123,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install supercronic for container-friendly cron scheduling
-# TARGETARCH is set automatically by Docker (amd64, arm64, etc.)
+# TARGETARCH is set by BuildKit; default to amd64 for platforms that don't set it
 # SHA1 checksums from https://github.com/aptible/supercronic/releases/tag/v0.2.42
-ARG TARGETARCH
+ARG TARGETARCH=amd64
 RUN set -e; \
     SUPERCRONIC_VERSION=v0.2.42; \
     case "${TARGETARCH}" in \
