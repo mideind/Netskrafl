@@ -93,24 +93,37 @@ APP_VERSION: str = (
 )
 GAE_INSTANCE: str = "" if running_local else os.environ.get("GAE_INSTANCE", "")
 
-# Only check port availability when running locally
+# Detect if running on Google App Engine (vs Docker/DO/Cloud Run)
+on_gae: bool = bool(os.environ.get("GAE_APPLICATION") or os.environ.get("GAE_SERVICE"))
+
+# Configure logging based on environment
 if running_local:
+    # Local development: logging configured in config.py
     check_port_available(host, int(port))
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
     # Disable Werkzeug's default request logging to avoid duplicate logs,
     # since we are logging web requests ourselves
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
-else:
-    # Import the Google Cloud client library
+elif on_gae:
+    # Google App Engine: use Google Cloud Logging
     import google.cloud.logging
 
-    # Instantiate a logging client
     logging_client = google.cloud.logging.Client(
         credentials=auth_manager.get_credentials()
     )
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
+else:
+    # Docker/Digital Ocean/Cloud Run: use standard stderr logging
+    # This format works well with container log aggregators
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.info(f"{PROJECT_ID} server starting (Docker/container mode)")
 
 # Initialize Firebase
 init_firebase_app()
