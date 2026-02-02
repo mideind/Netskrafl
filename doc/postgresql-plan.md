@@ -559,9 +559,9 @@ class Challenge(Base, UUIDMixin):
     user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     dest_user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
     prefs = Column(JSONB)  # PrefsDict
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Indexes from index.yaml
+    # Indexes from index.yaml (timestamp only queried via these composites)
     __table_args__ = (
         # NDB: (destuser, timestamp)
         Index("ix_challenges_dest_ts", "dest_user_id", "timestamp"),
@@ -579,7 +579,7 @@ class Stats(Base, UUIDMixin):
     # id is UUID from UUIDMixin
     user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
     robot_level = Column(Integer, default=0)  # Indexed via composite index only
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())  # Leading column in composites
 
     games = Column(Integer, default=0)
     human_games = Column(Integer, default=0)
@@ -652,13 +652,13 @@ class ChatMessage(Base, UUIDMixin):
     __tablename__ = "chat_messages"
 
     # id is UUID from UUIDMixin
-    channel = Column(String(128), nullable=False, index=True)
+    channel = Column(String(128), nullable=False)  # Leading column in composite
     user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     recipient_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
     message = Column(Text, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Indexes from index.yaml (all with timestamp for ordered queries)
+    # Indexes from index.yaml (standalone indexes not needed - composites cover all queries)
     __table_args__ = (
         # NDB: (channel, timestamp DESC)
         Index("ix_chat_channel_ts", "channel", "timestamp"),
@@ -696,9 +696,9 @@ class Promotion(Base, UUIDMixin):
     # id is UUID from UUIDMixin
     player_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     promotion = Column(String(64), nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Index from index.yaml: (player, promotion, timestamp)
+    # Index from index.yaml: (player, promotion, timestamp) - no standalone indexes needed
     __table_args__ = (
         Index("ix_promo_player_type_ts", "player_id", "promotion", "timestamp"),
     )
