@@ -247,7 +247,10 @@ user nicknames and text. PostgreSQL's ICU collations provide the best solution f
 - Accented characters sort near their base letters (á near a, ö near o)
 - Consistent behavior across all languages
 
-The database should be created with ICU collation as the default:
+The database should be created with ICU collation as the default.
+
+**Requires PostgreSQL 15+** for `LOCALE_PROVIDER` / `ICU_LOCALE` syntax. Digital Ocean
+managed PostgreSQL supports versions 13-16, so 15+ is available.
 
 ```sql
 -- Verify ICU support is available
@@ -1721,6 +1724,9 @@ For reference, here is the complete PostgreSQL schema as raw SQL.
 -- The 'und' (undetermined) locale uses Unicode CLDR root collation rules,
 -- which provide sensible sorting for mixed-language text (Icelandic, English,
 -- Polish, Norwegian nicknames, etc.)
+--
+-- NOTE: This syntax requires PostgreSQL 15+. For PostgreSQL 10-14, ICU collations
+-- must be created separately and applied per-column or per-index.
 CREATE DATABASE netskrafl
     TEMPLATE template0
     ENCODING 'UTF8'
