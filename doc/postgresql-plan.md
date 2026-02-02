@@ -1609,43 +1609,270 @@ def test_query_performance():
 
 ---
 
+## Source File Architecture
+
+### Design Goals
+
+1. **Drop-in replacement** - Existing imports (`from skrafldb import UserModel`) continue to work
+2. **Side-by-side operation** - Both NDB and PostgreSQL backends available during migration
+3. **Same API** - PostgreSQL models expose NDB-compatible methods
+4. **Backend switching** - Environment variable selects active backend
+5. **Clean separation** - Each backend in its own package
+
+### Proposed Directory Structure
+
+```
+src/
+  skrafldb.py                  # Facade for backward compatibility (re-exports from db/)
+
+  db/
+    __init__.py                # Backend selector - exports models based on DATABASE_BACKEND
+    config.py                  # Backend selection, connection strings
+
+    ndb/
+      __init__.py              # Exports: UserModel, GameModel, etc.
+      models.py                # Current skrafldb.py content (moved here intact)
+
+    postgresql/
+      __init__.py              # Exports: UserModel, GameModel, etc. (compat wrappers)
+      connection.py            # Engine, SessionLocal, db_transaction() context manager
+      models.py                # SQLAlchemy ORM model definitions
+      compat.py                # NDB-compatible API wrappers around SQLAlchemy models
+```
+
+### Key Files
+
+#### `db/config.py` - Backend Configuration
+
+```python
+import os
+
+# Select database backend: "ndb" (default) or "postgresql"
+DATABASE_BACKEND = os.environ.get("DATABASE_BACKEND", "ndb")
+
+# PostgreSQL connection (only used when backend is "postgresql")
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://user:pass@localhost:5432/netskrafl"
+)
+```
+
+#### `db/__init__.py` - Backend Selector
+
+```python
+from db.config import DATABASE_BACKEND
+
+if DATABASE_BACKEND == "postgresql":
+    # PostgreSQL backend with NDB-compatible API
+    from db.postgresql.compat import (
+        UserModel,
+        GameModel,
+        EloModel,
+        # ... all model classes
+    )
+    from db.postgresql.connection import db_transaction, get_session
+else:
+    # Original NDB backend
+    from db.ndb.models import (
+        UserModel,
+        GameModel,
+        EloModel,
+        # ... all model classes
+    )
+```
+
+#### `skrafldb.py` - Backward Compatibility Facade
+
+```python
+"""
+Database models and operations.
+
+This module is a facade that delegates to the active backend (NDB or PostgreSQL)
+based on the DATABASE_BACKEND environment variable. Existing code that imports
+from skrafldb continues to work unchanged.
+"""
+from db import *
+```
+
+#### `db/postgresql/compat.py` - NDB-Compatible Wrappers
+
+```python
+"""
+NDB-compatible API wrappers for SQLAlchemy models.
+
+These classes provide the same interface as the NDB models (get_by_id, fetch, put, query)
+so that existing application code works unchanged with the PostgreSQL backend.
+"""
+from __future__ import annotations
+from typing import Optional, List, Iterator, Any
+from db.postgresql.connection import db_transaction, get_session
+from db.postgresql.models import User, Game, EloRating  # SQLAlchemy models
+
+
+class UserModel:
+    """PostgreSQL User with NDB-compatible API."""
+
+    def __init__(self, **kwargs):
+        self._entity = User(**kwargs)
+        # Expose attributes directly
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    @classmethod
+    def get_by_id(cls, user_id: str) -> Optional[UserModel]:
+        """Get user by primary key (NDB API)."""
+        with db_transaction() as session:
+            entity = session.get(User, user_id)
+            return cls._wrap(entity) if entity else None
+
+    @classmethod
+    def fetch(cls, user_id: str) -> Optional[UserModel]:
+        """Fetch user by ID - same as get_by_id for PostgreSQL."""
+        return cls.get_by_id(user_id)
+
+    @classmethod
+    def query(cls, *filters) -> Query:
+        """Return a query object (NDB-style)."""
+        return Query(cls, User, filters)
+
+    def put(self) -> None:
+        """Save entity to database (NDB API)."""
+        with db_transaction() as session:
+            session.merge(self._entity)
+
+    @classmethod
+    def _wrap(cls, entity: Optional[User]) -> Optional[UserModel]:
+        """Wrap a SQLAlchemy entity in the compatibility class."""
+        if entity is None:
+            return None
+        wrapper = cls.__new__(cls)
+        wrapper._entity = entity
+        # Copy attributes to wrapper for direct access
+        for column in User.__table__.columns:
+            setattr(wrapper, column.name, getattr(entity, column.name))
+        return wrapper
+
+
+class Query:
+    """NDB-style query wrapper for SQLAlchemy."""
+
+    def __init__(self, wrapper_cls, model_cls, filters):
+        self._wrapper_cls = wrapper_cls
+        self._model_cls = model_cls
+        self._filters = list(filters)
+        self._order_by = []
+        self._limit = None
+
+    def filter(self, *conditions) -> Query:
+        """Add filter conditions."""
+        self._filters.extend(conditions)
+        return self
+
+    def order(self, *columns) -> Query:
+        """Add ordering (prefix with - for descending)."""
+        self._order_by.extend(columns)
+        return self
+
+    def fetch(self, limit: Optional[int] = None) -> List[Any]:
+        """Execute query and return results."""
+        with db_transaction() as session:
+            q = session.query(self._model_cls)
+            for f in self._filters:
+                q = q.filter(f)
+            for o in self._order_by:
+                q = q.order_by(o)
+            if limit:
+                q = q.limit(limit)
+            return [self._wrapper_cls._wrap(e) for e in q.all()]
+
+    def get(self) -> Optional[Any]:
+        """Get first result or None."""
+        results = self.fetch(limit=1)
+        return results[0] if results else None
+
+    def count(self) -> int:
+        """Count matching entities."""
+        with db_transaction() as session:
+            q = session.query(self._model_cls)
+            for f in self._filters:
+                q = q.filter(f)
+            return q.count()
+```
+
+### Migration Path with This Structure
+
+| Phase | DATABASE_BACKEND | Behavior |
+|-------|------------------|----------|
+| Development | `ndb` | Current behavior, no changes |
+| Testing | `postgresql` | Test PostgreSQL backend locally |
+| Dual-write | `ndb` | NDB primary, PostgreSQL shadow writes |
+| Cutover | `postgresql` | PostgreSQL primary |
+| Cleanup | `postgresql` | Remove NDB code |
+
+### Benefits
+
+1. **Zero changes to business logic** - `from skrafldb import UserModel` works with either backend
+2. **Gradual migration** - Switch backends with an environment variable
+3. **Easy rollback** - Set `DATABASE_BACKEND=ndb` to revert
+4. **Testable in isolation** - Test PostgreSQL backend without affecting production
+5. **Clear code organization** - Each backend is self-contained
+
+---
+
 ## Implementation Phases
 
-### Phase 1: Add SQLAlchemy Models (Parallel to NDB)
+### Phase 1: Create PostgreSQL Backend (Parallel to NDB)
 
-**Duration**: 1-2 weeks
-
-1. Create `src/models/` directory with all model definitions
-2. Create `src/database.py` for connection management
-3. Create `src/repositories/` for data access layer
-4. Add unit tests for new models
-5. No changes to production code paths
+1. Create `src/db/` package structure
+2. Move current `skrafldb.py` content to `src/db/ndb/models.py`
+3. Create PostgreSQL connection management
+4. Create SQLAlchemy model definitions
+5. Create NDB-compatible wrapper classes
+6. Update `skrafldb.py` to be a facade
+7. Add unit tests for PostgreSQL backend
+8. No changes to production code paths yet
 
 **Files to create:**
-- `src/database.py`
-- `src/models/__init__.py`
-- `src/models/base.py`
-- `src/models/user.py`
-- `src/models/game.py`
-- `src/models/elo.py`
-- `src/models/...` (one file per model or grouped logically)
-- `src/repositories/__init__.py`
-- `src/repositories/user.py`
-- `src/repositories/game.py`
-- `src/repositories/...`
+```
+src/db/
+  __init__.py              # Backend selector
+  config.py                # DATABASE_BACKEND, DATABASE_URL
 
-### Phase 2: Implement Dual-Write (Optional)
+  ndb/
+    __init__.py
+    models.py              # Content from current skrafldb.py
 
-**Duration**: 1-2 weeks
-
-1. Create dual-write wrappers for repositories
-2. Add PostgreSQL writes as shadow operations
-3. Monitor for errors and performance
-4. Build confidence in PostgreSQL data
+  postgresql/
+    __init__.py
+    connection.py          # Engine, SessionLocal, db_transaction()
+    models.py              # SQLAlchemy ORM definitions
+    compat.py              # NDB-compatible API wrappers
+```
 
 **Files to modify:**
-- `src/skrafldb.py` - Add dual-write hooks
-- `src/cache.py` - Enhance for PostgreSQL caching
+- `src/skrafldb.py` → becomes thin facade: `from db import *`
+
+### Phase 2: Testing and Dual-Write (Optional)
+
+1. Test PostgreSQL backend locally with `DATABASE_BACKEND=postgresql`
+2. Run existing test suite against PostgreSQL backend
+3. Optionally implement dual-write mode for production validation
+4. Monitor for errors and data consistency
+
+**Dual-write mode** (if needed): Modify `db/ndb/models.py` to shadow-write to PostgreSQL:
+
+```python
+# In db/ndb/models.py - add shadow writes
+def put(self):
+    # Primary write to NDB
+    super().put()
+    # Shadow write to PostgreSQL (fire-and-forget, log errors)
+    try:
+        from db.postgresql.compat import UserModel as PgUserModel
+        PgUserModel.from_ndb(self).put()
+    except Exception as e:
+        logging.warning(f"PostgreSQL shadow write failed: {e}")
+```
 
 ### Phase 3: Migrate Data
 
@@ -1660,43 +1887,54 @@ def test_query_performance():
 - `scripts/migrate_to_postgres.py`
 - `scripts/verify_migration.py`
 
-### Phase 4: Switch Reads to PostgreSQL
+### Phase 4: Switch to PostgreSQL
 
-**Duration**: 1 week
+1. Set `DATABASE_BACKEND=postgresql` in production environment
+2. Monitor application logs and performance
+3. Keep NDB code available for quick rollback (`DATABASE_BACKEND=ndb`)
+4. Run for 1-2 weeks to build confidence
 
-1. Update repositories to read from PostgreSQL
-2. Keep NDB writes as backup
-3. Monitor for consistency issues
-4. Gradual rollout (feature flags)
+**No code changes required** - the backend switch is purely configuration:
 
-**Files to modify:**
-- `src/repositories/*.py` - Switch to PostgreSQL reads
-- `src/skraflgame.py` - Use new repositories
-- `src/skrafluser.py` - Use new repositories
-- `src/logic.py` - Use new repositories
-- `src/api.py` - Use new session management
+```bash
+# Production environment variable
+DATABASE_BACKEND=postgresql
+```
+
+**Rollback procedure** (if needed):
+```bash
+DATABASE_BACKEND=ndb  # Instantly reverts to NDB
+```
 
 ### Phase 5: Remove NDB Code
 
-**Duration**: 1 week
+After PostgreSQL has been stable in production:
 
-1. Remove NDB dependencies
-2. Clean up dual-write code
-3. Remove NDB model definitions
-4. Update tests
-5. Update deployment configuration
+1. Remove `src/db/ndb/` directory
+2. Simplify `src/db/__init__.py` to always use PostgreSQL
+3. Remove `google-cloud-ndb` from `requirements.txt`
+4. Remove NDB client initialization from `src/main.py`
+5. Update `skrafldb.py` to import directly from PostgreSQL backend
+6. Remove `DATABASE_BACKEND` configuration (no longer needed)
 
-**Files to modify/delete:**
-- `src/skrafldb.py` - Remove or archive
+**Files to delete:**
+- `src/db/ndb/` directory
+
+**Files to simplify:**
+- `src/db/__init__.py` - Remove backend selection logic
+- `src/skrafldb.py` - Direct imports from `db.postgresql.compat`
 - `requirements.txt` - Remove `google-cloud-ndb`
-- `src/main.py` - Remove NDB client initialization
+- `src/main.py` - Remove NDB client setup
 
 ---
 
 ## Appendix: Environment Variables
 
 ```bash
-# PostgreSQL connection
+# Database backend selection: "ndb" (default) or "postgresql"
+DATABASE_BACKEND=postgresql
+
+# PostgreSQL connection (required when DATABASE_BACKEND=postgresql)
 DATABASE_URL=postgresql://user:password@host:5432/netskrafl
 
 # Connection pool settings (optional, have defaults)
