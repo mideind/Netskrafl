@@ -1003,33 +1003,29 @@ def fetch_page(session, last_id=None, page_size=50):
     return items, next_id, has_more
 ```
 
-### Async Queries → Parallel SQL Queries
+### Async Queries → Sequential Queries
 
 ```python
-# NDB - Async queries
+# NDB - Async queries (parallel execution to hide Datastore latency)
 q0_future = q0.fetch_async(limit=max_len)
 q1_future = q1.fetch_async(limit=max_len)
 GameModelFuture.wait_all([q0_future, q1_future])
 results0 = q0_future.get_result()
 results1 = q1_future.get_result()
 
-# SQLAlchemy - Use asyncio with async session (optional)
-# Or use threading for parallel queries:
-from concurrent.futures import ThreadPoolExecutor
-
-def run_query(session_factory, query_func):
-    session = session_factory()
-    try:
-        return query_func(session)
-    finally:
-        session.close()
-
-with ThreadPoolExecutor(max_workers=2) as executor:
-    future0 = executor.submit(run_query, SessionLocal, lambda s: q0_func(s))
-    future1 = executor.submit(run_query, SessionLocal, lambda s: q1_func(s))
-    results0 = future0.result()
-    results1 = future1.result()
+# SQLAlchemy - Sequential queries (PostgreSQL is fast, no need for parallelism)
+results0 = session.query(Game).filter(Game.player0_id == uid).limit(max_len).all()
+results1 = session.query(Game).filter(Game.player1_id == uid).limit(max_len).all()
 ```
+
+**Why sequential is fine**: NDB's `fetch_async` was valuable because Google Cloud Datastore
+has significant network latency per request. With PostgreSQL running nearby (same datacenter
+or managed service), individual queries are fast enough that parallelizing them within a
+single request provides little benefit. Request-level concurrency is handled by Gunicorn's
+multiple workers.
+
+**Note**: SQLAlchemy 1.4+ does support native async via `sqlalchemy.ext.asyncio`, but this
+requires an async framework. With synchronous Flask, the standard sync API is appropriate.
 
 ---
 
