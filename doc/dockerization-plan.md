@@ -168,7 +168,7 @@ The Dockerfile downloads these during build, eliminating the need to commit bina
 # Automatically detects environment:
 if running_local:
     # Local dev: config.py logging
-elif on_gae:  # GAE_APPLICATION or GAE_SERVICE set
+elif ON_GAE:  # GAE_APPLICATION or GAE_SERVICE set
     # Google Cloud Logging
 else:
     # Docker/DO: stderr with timestamp format
@@ -177,24 +177,29 @@ else:
 
 ### Cron Job Authentication
 
-The `is_cron_request()` function in `firebase.py` supports multiple authentication methods:
+The `is_cron_request()` function in `firebase.py` supports multiple authentication methods with platform-aware security:
 
 ```python
 def is_cron_request() -> bool:
-    # GAE Task Queue
-    if headers.get("X-AppEngine-QueueName"):
-        return True
-    # GAE Cron
-    if headers.get("X-Appengine-Cron") == "true":
-        return True
-    # Cloud Scheduler
-    if request.environ.get("HTTP_X_CLOUDSCHEDULER") == "true":
-        return True
-    # External scheduler with secret token
-    if CRON_SECRET and headers.get("X-Cron-Secret") == CRON_SECRET:
-        return True
-    # Development mode
+    # Local development: always allow
     if running_local:
+        return True
+    headers = request.headers
+    # GAE-specific headers: only trust these when running on GAE
+    # (these headers can be spoofed on non-GAE platforms)
+    if ON_GAE:
+        # GAE Task Queue
+        if headers.get("X-AppEngine-QueueName", ""):
+            return True
+        # GAE Cron
+        if headers.get("X-Appengine-Cron", "") == "true":
+            return True
+    # Cloud Scheduler: only trust on GCP (GAE or Cloud Run)
+    # (this header can be spoofed on non-GCP platforms)
+    if ON_GCP and request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true":
+        return True
+    # External scheduler with secret token (for Docker/Kubernetes deployments)
+    if CRON_SECRET and headers.get("X-Cron-Secret", "") == CRON_SECRET:
         return True
     return False
 ```

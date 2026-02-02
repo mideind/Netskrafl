@@ -19,8 +19,10 @@
 
 # =============================================================================
 # Stage 1: Get uv binary from official image
+# Pinned to specific version + digest for supply-chain security
+# To update: docker pull ghcr.io/astral-sh/uv:latest && docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/astral-sh/uv:latest
 # =============================================================================
-FROM ghcr.io/astral-sh/uv:latest AS uv
+FROM ghcr.io/astral-sh/uv:0.9.28@sha256:59240a65d6b57e6c507429b45f01b8f2c7c0bbeee0fb697c41a39c6a8e3a4cfb AS uv
 
 # =============================================================================
 # Stage 2: Builder - install dependencies with uv (10-100x faster than pip)
@@ -58,6 +60,9 @@ WORKDIR /dawg
 
 # List of all DAWG files to download
 # These are the vocabulary files for different languages and robot difficulty levels
+# NOTE: The authoritative list of DAWGs used by the app is in src/wordbase.py (_ALL_DAWGS).
+# This list should include all files from there (with .bin.dawg extension) plus any legacy files.
+# If you add or remove DAWGs in wordbase.py, update this list accordingly.
 RUN for dawg in \
     algeng.bin.dawg \
     amlodi.bin.dawg \

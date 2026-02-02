@@ -45,7 +45,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-        restart: true
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
       interval: 30s
