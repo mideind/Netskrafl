@@ -86,3 +86,11 @@ v311/
 # Test stuff
 test/
 
+# Docker files (not needed for GAE deployment)
+Dockerfile
+docker-compose.yml
+.dockerignore
+crontab
+nginx.conf
+credentials/
+
