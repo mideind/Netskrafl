@@ -1033,7 +1033,9 @@ requires an async framework. With synchronous Flask, the standard sync API is ap
 
 ### The Single Transaction: `submit_move()`
 
-The only NDB transaction in the codebase can be converted to SQLAlchemy session management:
+The only NDB transaction in the codebase can be converted to SQLAlchemy session management.
+The key principle: **use exceptions for control flow** so the session context manager can
+reliably commit or rollback.
 
 ```python
 # NDB version (current)
@@ -1042,48 +1044,43 @@ def submit_move(uuid: str, movelist: List[Any], movecount: int, validate: bool) 
     game = Game.load(uuid, use_cache=False, set_locale=True)
     # ... validation ...
     return process_move(game, movelist, validate=validate)
-
-# SQLAlchemy version
-def submit_move(session: Session, uuid: str, movelist: List[Any], movecount: int, validate: bool) -> ResponseType:
-    try:
-        # Load game with row-level lock for update
-        game = session.query(Game).filter(Game.id == uuid).with_for_update().first()
-        if game is None:
-            return jsonify(result=Error.GAME_NOT_FOUND)
-
-        # Validation
-        if movecount != len(game.moves):
-            return jsonify(result=Error.OUT_OF_SYNC)
-        if game_player_id_to_move(game) != current_user_id():
-            return jsonify(result=Error.WRONG_USER)
-
-        # Process move (modifies game object)
-        result = process_move(session, game, movelist, validate=validate)
-
-        # Commit transaction
-        session.commit()
-        return result
-
-    except Exception:
-        session.rollback()
-        raise
 ```
 
-Key changes:
-1. Pass session as parameter (dependency injection)
-2. Use `with_for_update()` for row-level locking (SELECT FOR UPDATE)
-3. Explicit `commit()` and `rollback()`
-4. The function is no longer decorated - transaction boundary is explicit
-
-### Session Management Pattern
+### SQLAlchemy Version with Clean Transaction Handling
 
 ```python
-# Flask request context manager
+# Custom exception for expected validation errors (not bugs)
+class GameError(Exception):
+    """Expected game-related error with an error code for the client."""
+    def __init__(self, error_code: int):
+        self.error_code = error_code
+
+# Business logic - raises GameError on validation failure, Exception on bugs
+def submit_move(session: Session, uuid: str, movelist: List[Any], movecount: int, validate: bool) -> dict:
+    # Load game with row-level lock (SELECT FOR UPDATE)
+    game = session.query(Game).filter(Game.id == uuid).with_for_update().first()
+    if game is None:
+        raise GameError(Error.GAME_NOT_FOUND)
+
+    # Validation
+    if movecount != len(game.moves):
+        raise GameError(Error.OUT_OF_SYNC)
+    if game_player_id_to_move(game) != current_user_id():
+        raise GameError(Error.WRONG_USER)
+
+    # Process move (modifies game object)
+    return process_move(session, game, movelist, validate=validate)
+    # Note: No commit here - the context manager handles it
+```
+
+### Session Context Manager
+
+```python
 from contextlib import contextmanager
 
 @contextmanager
-def db_session():
-    """Provide a transactional scope around a series of operations."""
+def db_transaction():
+    """Provide a transactional scope - commits on success, rolls back on any exception."""
     session = SessionLocal()
     try:
         yield session
@@ -1093,13 +1090,28 @@ def db_session():
         raise
     finally:
         session.close()
-
-# Usage in Flask route
-@app.route("/api/submitmove", methods=["POST"])
-def submitmove():
-    with db_session() as session:
-        return submit_move(session, uuid, movelist, movecount, validate)
 ```
+
+### Flask Route
+
+```python
+@app.route("/api/submitmove", methods=["POST"])
+def submitmove_route():
+    try:
+        with db_transaction() as session:
+            result = submit_move(session, uuid, movelist, movecount, validate)
+            return jsonify(result)
+    except GameError as e:
+        # Expected validation error - return error code to client
+        return jsonify(result=e.error_code)
+    # Other exceptions propagate up (500 error)
+```
+
+**Key principles:**
+1. **Exceptions for control flow** - GameError for validation failures ensures rollback
+2. **Context manager owns the transaction** - always commits or rolls back, never leaves session dangling
+3. **Business logic is transaction-agnostic** - doesn't call commit/rollback, just raises on error
+4. **Route handles response formatting** - converts results/errors to JSON
 
 ---
 
