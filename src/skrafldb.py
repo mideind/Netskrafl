@@ -834,7 +834,10 @@ class UserModel(Model["UserModel"]):
             return q
         if not locale:
             return q.filter(
-                ndb.OR(UserModel.locale == DEFAULT_LOCALE, UserModel.locale is None)
+                ndb.OR(
+                    UserModel.locale == DEFAULT_LOCALE,
+                    UserModel.locale == None,  # noqa: E711
+                )
             )
         return q.filter(UserModel.locale == locale)
 
