@@ -25,7 +25,7 @@ function indexes
 function cron
 {
     echo "Cron update starting"
-    echo "*** Currently disabled ***"
+    gcloud app deploy --project=explo-dev cron.yaml
     echo "Cron update completed"
 }
 
