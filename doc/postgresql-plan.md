@@ -236,6 +236,46 @@ def get_db() -> Session:
         db.close()
 ```
 
+#### Collation for Multilingual Text
+
+The application supports multiple locales (Icelandic, English, Polish, Norwegian) with mixed-language
+user nicknames and text. PostgreSQL's ICU collations provide the best solution for universal text sorting.
+
+**Unicode Root Collation (`und-x-icu`)**:
+- Based on Unicode Collation Algorithm (UCA) / CLDR root
+- Language-neutral, handles all Unicode characters sensibly
+- Accented characters sort near their base letters (á near a, ö near o)
+- Consistent behavior across all languages
+
+The database should be created with ICU collation as the default:
+
+```sql
+-- Verify ICU support is available
+SELECT collname FROM pg_collation WHERE collprovider = 'i' LIMIT 5;
+
+-- Create database with Unicode root collation
+CREATE DATABASE netskrafl
+    TEMPLATE template0
+    ENCODING 'UTF8'
+    LOCALE_PROVIDER icu
+    ICU_LOCALE 'und'
+    LC_COLLATE 'C'      -- Required placeholder when using ICU
+    LC_CTYPE 'C';       -- Required placeholder when using ICU
+```
+
+**Language-Specific Sorting**: When strict Icelandic alphabetical order is needed (þ, æ, ö as
+separate letters at the end), use explicit collation in queries:
+
+```sql
+-- Icelandic-specific ordering for leaderboards
+SELECT nickname FROM users
+WHERE locale = 'is_IS'
+ORDER BY nickname COLLATE "is-IS-x-icu";
+
+-- Or create an Icelandic-collated index for frequently used queries
+CREATE INDEX ix_users_nickname_is ON users (nickname COLLATE "is-IS-x-icu");
+```
+
 ### SQLAlchemy Model Definitions
 
 #### UTC Timezone Handling
@@ -1161,10 +1201,17 @@ users_with_elo = session.query(User).options(
 4. Verify schema matches NDB model capabilities
 
 ```bash
-# Create database
-psql -U postgres -c "CREATE DATABASE netskrafl;"
+# Create database with ICU collation for multilingual text sorting
+psql -U postgres -c "CREATE DATABASE netskrafl
+    TEMPLATE template0
+    ENCODING 'UTF8'
+    LOCALE_PROVIDER icu
+    ICU_LOCALE 'und'
+    LC_COLLATE 'C'
+    LC_CTYPE 'C';"
 psql -U postgres -c "CREATE USER netskrafl WITH PASSWORD 'xxx';"
 psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE netskrafl TO netskrafl;"
+psql -U postgres -c "ALTER DATABASE netskrafl SET timezone TO 'UTC';"
 ```
 
 ### Phase 2: Dual-Write Period (Optional)
@@ -1660,12 +1707,38 @@ REDISPORT=6379
 
 For reference, here is the complete PostgreSQL schema as raw SQL.
 
-**Important**: All `TIMESTAMP WITH TIME ZONE` columns store values in UTC. The application
-sets `TIME ZONE 'UTC'` on each connection to ensure consistent behavior.
+**Important notes**:
+- All `TIMESTAMP WITH TIME ZONE` columns store values in UTC
+- The database uses ICU Unicode root collation (`und`) for multilingual text sorting
+- Use `COLLATE "is-IS-x-icu"` in queries when strict Icelandic alphabetical order is needed
 
 ```sql
--- Database setup: Ensure UTC timezone at database level (optional but recommended)
+-- =============================================================================
+-- DATABASE CREATION (run as postgres superuser)
+-- =============================================================================
+
+-- Create database with ICU collation for multilingual text sorting
+-- The 'und' (undetermined) locale uses Unicode CLDR root collation rules,
+-- which provide sensible sorting for mixed-language text (Icelandic, English,
+-- Polish, Norwegian nicknames, etc.)
+CREATE DATABASE netskrafl
+    TEMPLATE template0
+    ENCODING 'UTF8'
+    LOCALE_PROVIDER icu
+    ICU_LOCALE 'und'
+    LC_COLLATE 'C'
+    LC_CTYPE 'C';
+
+-- Set default timezone to UTC
 ALTER DATABASE netskrafl SET timezone TO 'UTC';
+
+-- Create application user
+CREATE USER netskrafl WITH PASSWORD 'xxx';
+GRANT ALL PRIVILEGES ON DATABASE netskrafl TO netskrafl;
+
+-- =============================================================================
+-- SCHEMA (run as netskrafl user, connected to netskrafl database)
+-- =============================================================================
 
 -- Enable UUID extension (required for gen_random_uuid() fallback)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
