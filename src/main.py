@@ -41,7 +41,7 @@ import logging
 
 from datetime import datetime, timedelta, timezone
 
-from flask import g, request
+from flask import g, request, send_from_directory
 from flask.wrappers import Response
 from flask.json.provider import DefaultJSONProvider
 
@@ -51,6 +51,7 @@ from config import (
     ResponseType,
     DEFAULT_LOCALE,
     running_local,
+    ON_GAE,
     host,
     port,
     PROJECT_ID,
@@ -93,24 +94,35 @@ APP_VERSION: str = (
 )
 GAE_INSTANCE: str = "" if running_local else os.environ.get("GAE_INSTANCE", "")
 
-# Only check port availability when running locally
+
+# Configure logging based on environment
 if running_local:
+    # Local development: logging configured in config.py
     check_port_available(host, int(port))
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
     # Disable Werkzeug's default request logging to avoid duplicate logs,
     # since we are logging web requests ourselves
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
-else:
-    # Import the Google Cloud client library
+elif ON_GAE:
+    # Google App Engine: use Google Cloud Logging
     import google.cloud.logging
 
-    # Instantiate a logging client
     logging_client = google.cloud.logging.Client(
         credentials=auth_manager.get_credentials()
     )
     # Connects the logger to the root logging handler;
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
+else:
+    # Docker/Digital Ocean/Cloud Run: use standard stderr logging
+    # This format works well with container log aggregators
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.info(f"{PROJECT_ID} server starting (Docker/container mode)")
 
 # Initialize Firebase
 init_firebase_app()
@@ -121,6 +133,15 @@ app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
 # Wrap the WSGI app to insert the Google App Engine NDB client context
 # into each request
 app.wsgi_app = ndb_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]
+
+# When running behind a reverse proxy (Digital Ocean, Cloud Run, etc.),
+# trust the X-Forwarded-* headers to get correct scheme (https) and host.
+# GAE handles this automatically, so we only apply ProxyFix elsewhere.
+if not running_local and not ON_GAE:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(  # type: ignore[assignment]
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
 
 # Initialize Cross-Origin Resource Sharing (CORS)
 init_cors(app)
@@ -242,11 +263,17 @@ def versioned_url_for_static_file(endpoint: str, values: Dict[str, Any]) -> None
             if APP_VERSION:
                 # Production: use deployment version for cache busting
                 values[param_name] = APP_VERSION
-            else:
+            elif running_local:
                 # Local development: use file mtime for instant refresh
                 static_folder = web_blueprint.static_folder or "."
                 filepath = os.path.join(static_folder, filename)
-                values[param_name] = int(os.stat(filepath).st_mtime)
+                try:
+                    values[param_name] = int(os.stat(filepath).st_mtime)
+                except OSError:
+                    values[param_name] = "dev"
+            else:
+                # Production without APP_VERSION set - use fallback
+                values[param_name] = "1"
 
 
 @app.route("/_ah/start")
@@ -307,6 +334,37 @@ def health_ready() -> ResponseType:
         logging.warning(f"Health check: Redis unavailable - {repr(e)}")
         return "Redis unavailable", 503
     return "OK", 200
+
+
+# Root-level static files that GAE serves via handlers in app.yaml
+# In Docker/Cloud Run deployments, Flask serves these directly
+_ROOT_STATIC_FILES: frozenset[str] = frozenset({
+    "robots.txt",
+    "favicon.ico",
+    "favicon-32x32.png",
+    "favicon-16x16.png",
+    "browserconfig.xml",
+    "mstile-150x150.png",
+    "netskrafl.webmanifest",
+    "safari-pinned-tab.svg",
+    "touch-icon-ipad.png",
+    "touch-icon-ipad-retina.png",
+    "touch-icon-iphone-retina.png",
+})
+
+
+@app.route("/<filename>")
+def root_static_files(filename: str) -> ResponseType:
+    """Serve root-level static files (favicon, robots.txt, etc.)
+    This mirrors GAE's static file handlers from app.yaml for Docker deployments.
+    Uses <filename> (not <path:filename>) to only match single path segments."""
+    # Handle alias: apple-touch-icon.png -> touch-icon-ipad-retina.png
+    if filename == "apple-touch-icon.png":
+        filename = "touch-icon-ipad-retina.png"
+    if filename in _ROOT_STATIC_FILES:
+        return send_from_directory(STATIC_FOLDER, filename, max_age=86400)
+    # Not a known root static file - return 404
+    return "Not found", 404
 
 
 @app.errorhandler(500)

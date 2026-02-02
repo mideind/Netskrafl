@@ -1,0 +1,19 @@
+# Crontab for Netskrafl/Explo Docker container
+# Used by supercronic - see https://github.com/aptible/supercronic
+#
+# Note: CRON_SECRET environment variable must be set for authentication
+
+# Explicitly set timezone to UTC (supercronic respects this)
+CRON_TZ=UTC
+
+# Online presence sync - every 2 minutes
+# Syncs Firebase presence data to Redis cache
+*/2 * * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/connect/update
+
+# Daily statistics job - 03:00 UTC
+# Computes and stores daily game statistics
+0 3 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/stats/run
+
+# Daily ratings job - 03:45 UTC
+# Updates Elo ratings and leaderboards
+45 3 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/stats/ratings

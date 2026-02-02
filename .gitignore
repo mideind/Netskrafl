@@ -75,6 +75,10 @@ static/NetskraflFacebookCover.jpg
 *.bak
 *.csv
 
+# Docker credentials directory (keep .gitkeep for structure)
+credentials/
+!credentials/.gitkeep
+
 # Distribution / packaging / IDEs
 .Python
 google/

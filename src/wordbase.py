@@ -43,6 +43,9 @@ TwoLetterListTuple = Tuple[List[str], List[str]]
 BASE_PATH = os.path.join(os.path.dirname(__file__), "..")
 
 # Known dictionaries
+# NOTE: This is the authoritative list of DAWG files used by the application.
+# The Dockerfile also maintains a list for downloading files during build.
+# If you add or remove entries here, update the Dockerfile DAWG download list.
 _ALL_DAWGS: Sequence[Tuple[str, Alphabet]] = [
     # Icelandic
     ("ordalisti", IcelandicAlphabet),

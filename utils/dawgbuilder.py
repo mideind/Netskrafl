@@ -111,6 +111,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
 import os
 import sys
 import time
+import glob
+import argparse
 
 import binascii
 import struct
@@ -1614,6 +1616,105 @@ def run_norwegian_nynorsk_filter() -> None:
     )
 
 
+def upload_dawgs_to_spaces() -> None:
+    """Upload all DAWG files to Digital Ocean Spaces.
+
+    Requires:
+        DO_SPACES_KEY: Access key for DO Spaces (environment variable)
+        DO_SPACES_SECRET: Secret key for DO Spaces (environment variable,
+            or read from ../credentials/netskrafl-cdn.key)
+
+    Optional environment variables:
+        DO_SPACES_BUCKET: Bucket name (default: netskrafl-cdn)
+        DO_SPACES_REGION: Region (default: ams3)
+        DO_SPACES_PATH: Path prefix in bucket (default: dawg)
+    """
+    try:
+        import boto3
+        from botocore.config import Config
+    except ImportError:
+        print("Error: boto3 is required for uploading. Install with: pip install boto3")
+        sys.exit(1)
+
+    # Configuration from environment
+    access_key = os.environ.get("DO_SPACES_KEY")
+    secret_key = os.environ.get("DO_SPACES_SECRET")
+
+    # Try to read secret from file if not in environment
+    if not secret_key:
+        secret_file = os.path.join(base_path, "..", "credentials", "netskrafl-cdn.key")
+        if os.path.exists(secret_file):
+            with open(secret_file, "r") as f:
+                secret_key = f.read().strip()
+            print(f"Read DO Spaces secret from {secret_file}")
+
+    if not access_key or not secret_key:
+        print("Error: DO_SPACES_KEY and DO_SPACES_SECRET are required")
+        print("Set DO_SPACES_KEY as environment variable")
+        print("Set DO_SPACES_SECRET as environment variable or in credentials/netskrafl-cdn.key")
+        sys.exit(1)
+
+    bucket = os.environ.get("DO_SPACES_BUCKET", "netskrafl-cdn")
+    region = os.environ.get("DO_SPACES_REGION", "ams3")
+    path_prefix = os.environ.get("DO_SPACES_PATH", "dawg")
+
+    endpoint_url = f"https://{region}.digitaloceanspaces.com"
+
+    print(f"Connecting to Digital Ocean Spaces: {bucket} in {region}")
+
+    # Create S3 client for DO Spaces (S3-compatible)
+    s3 = boto3.client(
+        "s3",
+        region_name=region,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        config=Config(signature_version="s3v4"),
+    )
+
+    # Find all DAWG files
+    dawg_pattern = rpath("*.bin.dawg")
+    dawg_files = glob.glob(dawg_pattern)
+
+    if not dawg_files:
+        print(f"No DAWG files found matching {dawg_pattern}")
+        sys.exit(1)
+
+    print(f"Found {len(dawg_files)} DAWG files to upload")
+
+    uploaded = 0
+    failed = 0
+
+    for dawg_file in sorted(dawg_files):
+        filename = os.path.basename(dawg_file)
+        key = f"{path_prefix}/{filename}"
+        file_size = os.path.getsize(dawg_file)
+
+        print(f"  Uploading {filename} ({file_size:,} bytes) -> s3://{bucket}/{key}")
+
+        try:
+            # Upload with public-read ACL so files are publicly accessible
+            s3.upload_file(
+                dawg_file,
+                bucket,
+                key,
+                ExtraArgs={
+                    "ACL": "public-read",
+                    "ContentType": "application/octet-stream",
+                },
+            )
+            uploaded += 1
+        except Exception as e:
+            print(f"    ERROR: {e}")
+            failed += 1
+
+    print(f"\nUpload complete: {uploaded} succeeded, {failed} failed")
+    print(f"Files available at: https://{bucket}.{region}.digitaloceanspaces.com/{path_prefix}/")
+
+    if failed > 0:
+        sys.exit(1)
+
+
 if __name__ == "__main__":
 
     print(f"DawgBuilder - project {os.environ['PROJECT_ID']}")
@@ -1642,24 +1743,75 @@ if __name__ == "__main__":
 
     alltasks = frozenset(name(t) for t in ALL_TASKS)
 
-    def exit_with_help() -> None:
-        print("Please specify a task to perform or 'all'.")
-        print("The tasks are:", ", ".join(alltasks))
-        exit(1)
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="Build DAWG vocabulary files for Netskrafl/Explo",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Available tasks: {', '.join(sorted(alltasks))}
 
-    if len(sys.argv) < 2:
-        exit_with_help()
+Examples:
+  %(prog)s all                    Build all vocabularies
+  %(prog)s skrafl                 Build Icelandic vocabulary only
+  %(prog)s all --upload           Build all and upload to DO Spaces
+  %(prog)s --upload-only          Upload existing files without building
 
-    if len(sys.argv) == 2 and sys.argv[1] == "all":
+Environment variables for upload:
+  DO_SPACES_KEY       Access key for Digital Ocean Spaces (required)
+  DO_SPACES_SECRET    Secret key (or put in credentials/netskrafl-cdn.key)
+  DO_SPACES_BUCKET    Bucket name (default: netskrafl-cdn)
+  DO_SPACES_REGION    Region (default: ams3)
+  DO_SPACES_PATH      Path prefix in bucket (default: dawg)
+""",
+    )
+    parser.add_argument(
+        "tasks",
+        nargs="*",
+        help="Tasks to run (use 'all' for all tasks)",
+    )
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Upload DAWG files to Digital Ocean Spaces after building",
+    )
+    parser.add_argument(
+        "--upload-only",
+        action="store_true",
+        help="Only upload existing DAWG files (skip building)",
+    )
+
+    args = parser.parse_args()
+
+    # Handle upload-only mode
+    if args.upload_only:
+        upload_dawgs_to_spaces()
+        sys.exit(0)
+
+    # Require at least one task if not upload-only
+    if not args.tasks:
+        parser.print_help()
+        sys.exit(1)
+
+    # Determine which tasks to run
+    if args.tasks == ["all"]:
         tasks = ALL_TASKS
     else:
-        args = frozenset(sys.argv[1:])
-        if not (args <= alltasks):
-            exit_with_help()
+        task_set = frozenset(args.tasks)
+        if not (task_set <= alltasks):
+            unknown = task_set - alltasks
+            print(f"Unknown tasks: {', '.join(unknown)}")
+            print(f"Available tasks: {', '.join(sorted(alltasks))}")
+            sys.exit(1)
         # Keep original task order
-        tasks = [t for t in ALL_TASKS if name(t) in args]
-        if not tasks:
-            exit_with_help()
+        tasks = [t for t in ALL_TASKS if name(t) in task_set]
 
+    # Run the tasks
     for task in tasks:
         task()
+
+    # Upload if requested
+    if args.upload:
+        print("\n" + "=" * 60)
+        print("Uploading DAWG files to Digital Ocean Spaces...")
+        print("=" * 60 + "\n")
+        upload_dawgs_to_spaces()

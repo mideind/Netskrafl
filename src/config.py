@@ -61,6 +61,13 @@ RouteType = Callable[..., ResponseReturnValue]
 # A Flask route function decorator
 RouteFunc = Callable[[RouteType], RouteType]
 
+# Detect if running on Google App Engine (vs Docker/DO/Cloud Run)
+ON_GAE: bool = bool(os.environ.get("GAE_APPLICATION") or os.environ.get("GAE_SERVICE"))
+
+# Detect if running on any Google Cloud Platform (GAE or Cloud Run)
+# Cloud Run sets K_SERVICE and K_REVISION environment variables
+ON_GCP: bool = ON_GAE or bool(os.environ.get("K_SERVICE"))
+
 
 class FlaskConfig(TypedDict):
     """The Flask configuration dictionary"""
