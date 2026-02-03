@@ -764,6 +764,8 @@ class ChallengeRepository:
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """Find a challenge relationship and its preferences."""
+        from uuid import UUID as PyUUID
+
         stmt = select(Challenge).where(
             and_(
                 Challenge.src_user_id == src_user_id,
@@ -771,7 +773,7 @@ class ChallengeRepository:
             )
         )
         if key:
-            stmt = stmt.where(Challenge.id == int(key))
+            stmt = stmt.where(Challenge.id == PyUUID(key))
 
         challenge = self._session.execute(stmt).scalar_one_or_none()
         if challenge:
@@ -794,6 +796,8 @@ class ChallengeRepository:
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """Delete a challenge and return its preferences."""
+        from uuid import UUID as PyUUID
+
         # First find to get prefs
         found, prefs = self.find_relation(src_user_id, dest_user_id, key)
         if not found:
@@ -806,7 +810,7 @@ class ChallengeRepository:
             )
         )
         if key:
-            stmt = stmt.where(Challenge.id == int(key))
+            stmt = stmt.where(Challenge.id == PyUUID(key))
 
         self._session.execute(stmt)
         self._session.commit()
@@ -1286,7 +1290,10 @@ class CompletionRepository:
     ) -> None:
         """Log a successful completion."""
         comp = Completion(
-            proctype=proctype, ts_from=ts_from, ts_to=ts_to, success=True
+            proctype=proctype,
+            ts_from=ts_from,
+            ts_to=ts_to,
+            success=True,
         )
         self._session.add(comp)
         self._session.commit()

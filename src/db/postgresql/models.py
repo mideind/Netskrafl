@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 
+from uuid import UUID as PyUUID
+
 from sqlalchemy import (
     String,
     Text,
@@ -19,8 +21,9 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     LargeBinary,
+    text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -267,8 +270,10 @@ class Challenge(Base):
 
     __tablename__ = "challenges"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # Users involved
     src_user_id: Mapped[str] = mapped_column(
@@ -296,8 +301,10 @@ class Stats(Base):
 
     __tablename__ = "stats"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # User (nullable for robot stats)
     user_id: Mapped[Optional[str]] = mapped_column(
@@ -343,8 +350,10 @@ class Chat(Base):
 
     __tablename__ = "chats"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # Channel (game:uuid or user:id1:id2)
     channel: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
@@ -408,8 +417,10 @@ class Report(Base):
 
     __tablename__ = "reports"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # Users
     reporter_id: Mapped[str] = mapped_column(
@@ -434,8 +445,10 @@ class Image(Base):
 
     __tablename__ = "images"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # User reference
     user_id: Mapped[str] = mapped_column(
@@ -458,8 +471,10 @@ class Promo(Base):
 
     __tablename__ = "promos"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # User
     user_id: Mapped[str] = mapped_column(
@@ -480,8 +495,10 @@ class Transaction(Base):
 
     __tablename__ = "transactions"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # User
     user_id: Mapped[str] = mapped_column(
@@ -504,8 +521,10 @@ class Submission(Base):
 
     __tablename__ = "submissions"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # User
     user_id: Mapped[str] = mapped_column(
@@ -528,8 +547,10 @@ class Completion(Base):
 
     __tablename__ = "completions"
 
-    # Auto-generated primary key
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Primary key - native UUID with auto-generation
+    id: Mapped[PyUUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # Process type (stats, ratings, etc.)
     proctype: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
