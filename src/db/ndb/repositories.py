@@ -300,7 +300,12 @@ class EloRepository:
             manual_elo=ratings.manual_elo,
         )
         model = skrafldb.EloModel.create(locale, user_id, ndb_ratings)
-        return EloEntity(model) if model else None
+        if model is None:
+            return None
+        # EloModel.create() returns an entity but doesn't persist it
+        # We need to call put() to save it to NDB
+        model.put()
+        return EloEntity(model)
 
     def upsert(
         self,
