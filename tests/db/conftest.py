@@ -56,12 +56,9 @@ def get_requested_backends(config: pytest.Config) -> list[str]:
 def _create_ndb_backend() -> "DatabaseBackendProtocol":
     """Create an NDB backend instance for testing."""
     # Import here to avoid loading NDB dependencies when not needed
-    from typing import cast
     from src.db.ndb import NDBBackend
 
-    # Cast needed because NDBBackend uses concrete repository types
-    # rather than protocol types in its property annotations
-    return cast("DatabaseBackendProtocol", NDBBackend())
+    return NDBBackend()
 
 
 # Global NDB context manager for the test session
@@ -82,7 +79,6 @@ def _create_postgresql_backend(
     database_url: str | None = None,
 ) -> "DatabaseBackendProtocol":
     """Create a PostgreSQL backend instance for testing."""
-    from typing import cast
     from src.db.postgresql import PostgreSQLBackend
 
     # Use test database URL from environment or default
@@ -90,8 +86,7 @@ def _create_postgresql_backend(
         "TEST_DATABASE_URL",
         "postgresql://test:test@localhost:5432/netskrafl_test",
     )
-    # Cast needed because PostgreSQLBackend uses concrete repository types
-    return cast("DatabaseBackendProtocol", PostgreSQLBackend(database_url=url))
+    return PostgreSQLBackend(database_url=url)
 
 
 # Track if PostgreSQL tables have been reset this session

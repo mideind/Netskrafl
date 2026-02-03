@@ -226,9 +226,8 @@ class StatsInfo:
 
 T = TypeVar("T", covariant=True)
 T_co = TypeVar("T_co", covariant=True)
-# Invariant type variable for QueryProtocol (protocols require invariant type vars
-# when methods both produce and consume the type, e.g., filter() -> QueryProtocol[T])
-T_Query = TypeVar("T_Query")
+# Covariant type variable for QueryProtocol - T only appears in return positions
+T_Query = TypeVar("T_Query", covariant=True)
 
 
 @runtime_checkable
@@ -568,7 +567,7 @@ class QueryProtocol(Protocol, Generic[T_Query]):
         """Add ordering to the query."""
         ...
 
-    def fetch(self, limit: Optional[int] = None) -> List[T_Query]:
+    def fetch(self, limit: Optional[int] = None) -> Sequence[T_Query]:
         """Execute the query and return results."""
         ...
 
@@ -611,7 +610,7 @@ class UserRepositoryProtocol(Protocol):
         """Fetch a user by their email address."""
         ...
 
-    def get_multi(self, user_ids: List[str]) -> List[Optional[UserEntityProtocol]]:
+    def get_multi(self, user_ids: List[str]) -> Sequence[Optional[UserEntityProtocol]]:
         """Fetch multiple users by their IDs."""
         ...
 
@@ -652,7 +651,7 @@ class UserRepositoryProtocol(Protocol):
 
     def list_similar_elo(
         self, elo: int, max_len: int = 40, locale: Optional[str] = None
-    ) -> List[Tuple[str, EloDict]]:
+    ) -> Sequence[Tuple[str, EloDict]]:
         """List users with similar Elo ratings."""
         ...
 
@@ -766,7 +765,7 @@ class StatsRepositoryProtocol(Protocol):
         """Get the most recent stats before a timestamp."""
         ...
 
-    def last_for_user(self, user_id: str, days: int) -> List[StatsEntityProtocol]:
+    def last_for_user(self, user_id: str, days: int) -> Sequence[StatsEntityProtocol]:
         """Get stats entries for a user over the last N days."""
         ...
 

@@ -14,7 +14,7 @@ Usage:
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .protocols import DatabaseBackendProtocol
@@ -47,11 +47,11 @@ def get_backend(force_new: bool = False) -> "DatabaseBackendProtocol":
     if backend_name == "postgresql":
         from .postgresql import PostgreSQLBackend
 
-        backend = cast("DatabaseBackendProtocol", PostgreSQLBackend())
+        backend = PostgreSQLBackend()
     else:
         from .ndb import NDBBackend
 
-        backend = cast("DatabaseBackendProtocol", NDBBackend())
+        backend = NDBBackend()
 
     _backend_instance = backend
     return backend

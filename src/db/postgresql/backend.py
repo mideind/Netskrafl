@@ -7,7 +7,7 @@ DatabaseBackendProtocol using SQLAlchemy ORM.
 
 from __future__ import annotations
 
-from typing import Optional, Any
+from typing import Optional, Any, TYPE_CHECKING
 import uuid
 
 from sqlalchemy.orm import Session
@@ -34,6 +34,28 @@ from .repositories import (
     CompletionRepository,
     RobotRepository,
 )
+
+if TYPE_CHECKING:
+    from ..protocols import (
+        UserRepositoryProtocol,
+        GameRepositoryProtocol,
+        EloRepositoryProtocol,
+        StatsRepositoryProtocol,
+        FavoriteRepositoryProtocol,
+        ChallengeRepositoryProtocol,
+        ChatRepositoryProtocol,
+        BlockRepositoryProtocol,
+        ZombieRepositoryProtocol,
+        RatingRepositoryProtocol,
+        RiddleRepositoryProtocol,
+        ImageRepositoryProtocol,
+        ReportRepositoryProtocol,
+        PromoRepositoryProtocol,
+        TransactionRepositoryProtocol,
+        SubmissionRepositoryProtocol,
+        CompletionRepositoryProtocol,
+        RobotRepositoryProtocol,
+    )
 
 
 class PostgreSQLTransactionContext:
@@ -143,92 +165,92 @@ class PostgreSQLBackend:
         return self._db_session._session_factory()
 
     @property
-    def users(self) -> UserRepository:
+    def users(self) -> "UserRepositoryProtocol":
         """Access the User repository."""
         return self._users
 
     @property
-    def games(self) -> GameRepository:
+    def games(self) -> "GameRepositoryProtocol":
         """Access the Game repository."""
         return self._games
 
     @property
-    def elo(self) -> EloRepository:
+    def elo(self) -> "EloRepositoryProtocol":
         """Access the Elo repository."""
         return self._elo
 
     @property
-    def stats(self) -> StatsRepository:
+    def stats(self) -> "StatsRepositoryProtocol":
         """Access the Stats repository."""
         return self._stats
 
     @property
-    def favorites(self) -> FavoriteRepository:
+    def favorites(self) -> "FavoriteRepositoryProtocol":
         """Access the Favorite repository."""
         return self._favorites
 
     @property
-    def challenges(self) -> ChallengeRepository:
+    def challenges(self) -> "ChallengeRepositoryProtocol":
         """Access the Challenge repository."""
         return self._challenges
 
     @property
-    def chat(self) -> ChatRepository:
+    def chat(self) -> "ChatRepositoryProtocol":
         """Access the Chat repository."""
         return self._chat
 
     @property
-    def blocks(self) -> BlockRepository:
+    def blocks(self) -> "BlockRepositoryProtocol":
         """Access the Block repository."""
         return self._blocks
 
     @property
-    def zombies(self) -> ZombieRepository:
+    def zombies(self) -> "ZombieRepositoryProtocol":
         """Access the Zombie repository."""
         return self._zombies
 
     @property
-    def ratings(self) -> RatingRepository:
+    def ratings(self) -> "RatingRepositoryProtocol":
         """Access the Rating repository."""
         return self._ratings
 
     @property
-    def riddles(self) -> RiddleRepository:
+    def riddles(self) -> "RiddleRepositoryProtocol":
         """Access the Riddle repository."""
         return self._riddles
 
     @property
-    def images(self) -> ImageRepository:
+    def images(self) -> "ImageRepositoryProtocol":
         """Access the Image repository."""
         return self._images
 
     @property
-    def reports(self) -> ReportRepository:
+    def reports(self) -> "ReportRepositoryProtocol":
         """Access the Report repository."""
         return self._reports
 
     @property
-    def promos(self) -> PromoRepository:
+    def promos(self) -> "PromoRepositoryProtocol":
         """Access the Promo repository."""
         return self._promos
 
     @property
-    def transactions(self) -> TransactionRepository:
+    def transactions(self) -> "TransactionRepositoryProtocol":
         """Access the Transaction repository."""
         return self._transactions
 
     @property
-    def submissions(self) -> SubmissionRepository:
+    def submissions(self) -> "SubmissionRepositoryProtocol":
         """Access the Submission repository."""
         return self._submissions
 
     @property
-    def completions(self) -> CompletionRepository:
+    def completions(self) -> "CompletionRepositoryProtocol":
         """Access the Completion repository."""
         return self._completions
 
     @property
-    def robots(self) -> RobotRepository:
+    def robots(self) -> "RobotRepositoryProtocol":
         """Access the Robot repository."""
         return self._robots
 
