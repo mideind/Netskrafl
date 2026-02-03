@@ -12,3 +12,5 @@ Flask-Cors==6.0.0
 PyJWT
 google-cloud-secret-manager==2.23.2
 Pillow
+SQLAlchemy==2.0.36
+psycopg2-binary==2.9.10
