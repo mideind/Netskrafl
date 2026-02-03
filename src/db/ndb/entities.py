@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from skrafldb import (
         UserModel as NDBUserModel,
         GameModel as NDBGameModel,
-        MoveModel as NDBMoveModel,
         EloModel as NDBEloModel,
         StatsModel as NDBStatsModel,
         ChatModel as NDBChatModel,

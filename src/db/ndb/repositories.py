@@ -45,7 +45,6 @@ from .entities import (
     GameEntity,
     EloEntity,
     StatsEntity,
-    ChatEntity,
     RiddleEntity,
 )
 
@@ -54,8 +53,6 @@ if TYPE_CHECKING:
         UserEntityProtocol,
         GameEntityProtocol,
         EloEntityProtocol,
-        StatsEntityProtocol,
-        RiddleEntityProtocol,
         QueryProtocol,
     )
 

@@ -16,6 +16,10 @@ from typing import (
     Tuple,
     Any,
     TYPE_CHECKING,
+    TypeVar,
+    Generic,
+    Type,
+    Callable,
 )
 from datetime import datetime, timezone
 import uuid
@@ -49,7 +53,6 @@ from .entities import (
     GameEntity,
     EloEntity,
     StatsEntity,
-    ChatEntity,
     RiddleEntity,
 )
 
@@ -120,7 +123,7 @@ class UserRepository:
         # Find active users with this email, ordered by elo > 0 desc, timestamp desc
         stmt = (
             select(User)
-            .where(and_(User.email == email.lower(), User.inactive == False))
+            .where(and_(User.email == email.lower(), User.inactive == False))  # noqa: E712
             .order_by(desc(User.elo > 0), desc(User.timestamp))
         )
         user = self._session.execute(stmt).scalars().first()
@@ -233,7 +236,7 @@ class UserRepository:
                     User.nick_lc.startswith(prefix_lc),
                     User.name_lc.startswith(prefix_lc),
                 ),
-                User.inactive == False,
+                User.inactive == False,  # noqa: E712
             )
         )
 
@@ -266,7 +269,7 @@ class UserRepository:
         # Get users with lower Elo
         stmt_lower = (
             select(User)
-            .where(and_(User.human_elo < elo, User.inactive == False))
+            .where(and_(User.human_elo < elo, User.inactive == False))  # noqa: E712
             .order_by(desc(User.human_elo))
             .limit(half)
         )
@@ -276,7 +279,7 @@ class UserRepository:
         # Get users with higher or equal Elo
         stmt_higher = (
             select(User)
-            .where(and_(User.human_elo >= elo, User.inactive == False))
+            .where(and_(User.human_elo >= elo, User.inactive == False))  # noqa: E712
             .order_by(asc(User.human_elo))
             .limit(half)
         )
@@ -345,7 +348,7 @@ class GameRepository:
             select(Game)
             .where(
                 and_(
-                    Game.over == True,
+                    Game.over == True,  # noqa: E712
                     or_(Game.player0_id == user_id, Game.player1_id == user_id),
                 )
             )
@@ -402,7 +405,7 @@ class GameRepository:
             select(Game)
             .where(
                 and_(
-                    Game.over == False,
+                    Game.over == False,  # noqa: E712
                     or_(Game.player0_id == user_id, Game.player1_id == user_id),
                 )
             )
@@ -1329,8 +1332,6 @@ class RobotRepository:
 # =============================================================================
 # Query Wrapper
 # =============================================================================
-
-from typing import TypeVar, Generic, Type, Callable, cast
 
 T = TypeVar("T")
 

@@ -73,7 +73,11 @@ def freeze_time(frozen_time: datetime) -> Iterator[None]:
     """
     global _time_override
     old_override = _time_override
-    _time_override = lambda: frozen_time
+
+    def _frozen() -> datetime:
+        return frozen_time
+
+    _time_override = _frozen
     try:
         yield
     finally:

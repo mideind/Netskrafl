@@ -8,7 +8,6 @@ DatabaseBackendProtocol using SQLAlchemy ORM.
 from __future__ import annotations
 
 from typing import Optional, Any
-from contextlib import contextmanager
 import uuid
 
 from sqlalchemy.orm import Session
