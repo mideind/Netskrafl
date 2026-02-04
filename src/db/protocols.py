@@ -1039,6 +1039,10 @@ class TransactionRepositoryProtocol(Protocol):
         """Log a transaction."""
         ...
 
+    def count_for_user(self, user_id: str) -> int:
+        """Count transactions for a user."""
+        ...
+
 
 class SubmissionRepositoryProtocol(Protocol):
     """Protocol for word Submission repository operations."""
@@ -1047,6 +1051,10 @@ class SubmissionRepositoryProtocol(Protocol):
         self, user_id: str, locale: str, word: str, comment: str
     ) -> None:
         """Submit a word for review."""
+        ...
+
+    def count_for_user(self, user_id: str) -> int:
+        """Count submissions for a user."""
         ...
 
 
@@ -1063,6 +1071,10 @@ class CompletionRepositoryProtocol(Protocol):
         self, proctype: str, ts_from: datetime, ts_to: datetime, reason: str
     ) -> None:
         """Log a failed completion."""
+        ...
+
+    def count_for_proctype(self, proctype: str) -> int:
+        """Count completions for a process type."""
         ...
 
 

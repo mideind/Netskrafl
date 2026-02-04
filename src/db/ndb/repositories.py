@@ -168,10 +168,7 @@ class UserRepository:
     ) -> List[Tuple[str, EloDict]]:
         """List users with similar Elo ratings."""
         result = skrafldb.UserModel.list_similar_elo(elo, max_len, locale)
-        return [
-            (uid, EloDict(e.elo, e.human_elo, e.manual_elo))
-            for uid, e in result
-        ]
+        return [(uid, EloDict(e.elo, e.human_elo, e.manual_elo)) for uid, e in result]
 
     def query(self) -> "QueryProtocol[UserEntity]":
         """Return a query object for users."""
@@ -354,8 +351,7 @@ class EloRepository:
         """Load Elo ratings for multiple users."""
         result = skrafldb.EloModel.load_multi(locale, user_ids)
         return {
-            uid: EloDict(e.elo, e.human_elo, e.manual_elo)
-            for uid, e in result.items()
+            uid: EloDict(e.elo, e.human_elo, e.manual_elo) for uid, e in result.items()
         }
 
 
@@ -367,12 +363,19 @@ class StatsRepository:
     ) -> StatsEntity:
         """Create a new stats entry."""
         model = skrafldb.StatsModel.create(user_id, robot_level)
+        # StatsModel.create() returns an entity but doesn't persist it
+        # We need to call put() to save it to NDB
+        model.put()
         return StatsEntity(model)
 
     def newest_for_user(self, user_id: str) -> Optional[StatsEntity]:
         """Get the most recent stats for a user."""
         model = skrafldb.StatsModel.newest_for_user(user_id)
-        return StatsEntity(model) if model else None
+        # NDB's newest_for_user creates a new (unpersisted) entity if none exists.
+        # Check if the model has a key to determine if it was actually found in DB.
+        if model is None or model.key is None:
+            return None
+        return StatsEntity(model)
 
     def newest_before(
         self, ts: datetime, user_id: str, robot_level: int = 0
@@ -611,6 +614,9 @@ class BlockRepository:
 
     def block_user(self, blocker_id: str, blocked_id: str) -> bool:
         """Block a user. Returns True if newly blocked."""
+        # Check if already blocked to return correct value
+        if self.is_blocking(blocker_id, blocked_id):
+            return False
         return skrafldb.BlockModel.block_user(blocker_id, blocked_id)
 
     def unblock_user(self, blocker_id: str, blocked_id: str) -> bool:
@@ -726,6 +732,7 @@ class RiddleRepository:
         model.riddle_json = riddle_json
         model.version = version
         from datetime import datetime, UTC
+
         model.created = datetime.now(UTC)
         model.put()
         return RiddleEntity(model)
@@ -776,23 +783,37 @@ class TransactionRepository:
         """Log a transaction."""
         skrafldb.TransactionModel.add_transaction(user_id, plan, kind, op)
 
+    def count_for_user(self, user_id: str) -> int:
+        """Count transactions for a user."""
+        from google.cloud.ndb import Key
+
+        user_key = Key(skrafldb.UserModel, user_id)
+        return skrafldb.TransactionModel.query(
+            skrafldb.TransactionModel.user == user_key
+        ).count()
+
 
 class SubmissionRepository:
     """NDB implementation of SubmissionRepositoryProtocol."""
 
-    def submit_word(
-        self, user_id: str, locale: str, word: str, comment: str
-    ) -> None:
+    def submit_word(self, user_id: str, locale: str, word: str, comment: str) -> None:
         """Submit a word for review."""
         skrafldb.SubmissionModel.submit_word(user_id, locale, word, comment)
+
+    def count_for_user(self, user_id: str) -> int:
+        """Count submissions for a user."""
+        from google.cloud.ndb import Key
+
+        user_key = Key(skrafldb.UserModel, user_id)
+        return skrafldb.SubmissionModel.query(
+            skrafldb.SubmissionModel.user == user_key
+        ).count()
 
 
 class CompletionRepository:
     """NDB implementation of CompletionRepositoryProtocol."""
 
-    def add_completion(
-        self, proctype: str, ts_from: datetime, ts_to: datetime
-    ) -> None:
+    def add_completion(self, proctype: str, ts_from: datetime, ts_to: datetime) -> None:
         """Log a successful completion."""
         skrafldb.CompletionModel.add_completion(proctype, ts_from, ts_to)
 
@@ -801,6 +822,12 @@ class CompletionRepository:
     ) -> None:
         """Log a failed completion."""
         skrafldb.CompletionModel.add_failure(proctype, ts_from, ts_to, reason)
+
+    def count_for_proctype(self, proctype: str) -> int:
+        """Count completions for a process type."""
+        return skrafldb.CompletionModel.query(
+            skrafldb.CompletionModel.proctype == proctype
+        ).count()
 
 
 class RobotRepository:

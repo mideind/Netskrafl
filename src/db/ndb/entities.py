@@ -349,7 +349,8 @@ class StatsEntity:
 
     @property
     def key_id(self) -> str:
-        return self._model.key.id()
+        # NDB key.id() can return an integer for auto-generated IDs
+        return str(self._model.key.id())
 
     @property
     def user_id(self) -> Optional[str]:

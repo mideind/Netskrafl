@@ -758,7 +758,7 @@ class ChallengeRepository:
                 Challenge.dest_user_id == dest_user_id,
             )
         )
-        return self._session.execute(stmt).scalar_one_or_none() is not None
+        return self._session.execute(stmt).scalars().first() is not None
 
     def find_relation(
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None
@@ -775,7 +775,7 @@ class ChallengeRepository:
         if key:
             stmt = stmt.where(Challenge.id == PyUUID(key))
 
-        challenge = self._session.execute(stmt).scalar_one_or_none()
+        challenge = self._session.execute(stmt).scalars().first()
         if challenge:
             return True, challenge.prefs
         return False, None
@@ -866,28 +866,51 @@ class ChatRepository:
     def list_conversation(
         self, channel: str, max_len: int = 250
     ) -> Iterator[ChatMessage]:
-        """List messages in a conversation channel."""
+        """List messages in a conversation channel.
+
+        Note: Read markers (empty messages) are returned but don't count
+        toward the max_len limit, matching NDB behavior.
+        """
         stmt = (
             select(Chat)
             .where(Chat.channel == channel)
             .order_by(desc(Chat.timestamp))
-            .limit(max_len)
         )
+        count = 0
         for msg in self._session.execute(stmt).scalars():
             yield ChatMessage(
                 user=msg.user_id,
-                name="",  # Would need to join User table for name
+                name="",  # NDB also returns empty string for name
                 ts=msg.timestamp,
                 msg=msg.msg,
             )
+            if msg.msg:
+                # Don't count read markers (empty messages) toward the limit
+                count += 1
+                if count >= max_len:
+                    break
 
     def check_conversation(self, channel: str, user_id: str) -> bool:
-        """Check if there are unread messages for a user in a channel."""
-        # Simplified: check if any messages exist where user is recipient
-        stmt = select(Chat).where(
-            and_(Chat.channel == channel, Chat.recipient_id == user_id)
+        """Check if there are unread messages for a user in a channel.
+
+        Returns True if there are unseen messages in the conversation.
+        Uses the same algorithm as NDB: looks for messages from other users,
+        or read markers (empty messages) from the current user.
+        """
+        stmt = (
+            select(Chat)
+            .where(Chat.channel == channel)
+            .order_by(desc(Chat.timestamp))
         )
-        return self._session.execute(stmt).scalar_one_or_none() is not None
+        for msg in self._session.execute(stmt).scalars():
+            if msg.user_id != user_id and msg.msg:
+                # Found a message from another user
+                return True
+            if msg.user_id == user_id and not msg.msg:
+                # Found a read marker (empty message) from the querying user
+                return False
+        # Gone through the whole thread without finding an unseen message
+        return False
 
     def add_msg(
         self,
@@ -1217,10 +1240,10 @@ class ReportRepository:
         return True
 
     def list_reported_by(self, user_id: str, max_len: int = 100) -> Iterator[str]:
-        """List users reported by a user."""
+        """List users who have reported the given user."""
         stmt = (
-            select(Report.reported_id)
-            .where(Report.reporter_id == user_id)
+            select(Report.reporter_id)
+            .where(Report.reported_id == user_id)
             .distinct()
             .limit(max_len)
         )
@@ -1263,6 +1286,13 @@ class TransactionRepository:
         self._session.add(txn)
         self._session.commit()
 
+    def count_for_user(self, user_id: str) -> int:
+        """Count transactions for a user."""
+        stmt = select(func.count()).select_from(Transaction).where(
+            Transaction.user_id == user_id
+        )
+        return self._session.execute(stmt).scalar() or 0
+
 
 class SubmissionRepository:
     """PostgreSQL implementation of SubmissionRepositoryProtocol."""
@@ -1277,6 +1307,13 @@ class SubmissionRepository:
         sub = Submission(user_id=user_id, locale=locale, word=word, comment=comment)
         self._session.add(sub)
         self._session.commit()
+
+    def count_for_user(self, user_id: str) -> int:
+        """Count submissions for a user."""
+        stmt = select(func.count()).select_from(Submission).where(
+            Submission.user_id == user_id
+        )
+        return self._session.execute(stmt).scalar() or 0
 
 
 class CompletionRepository:
@@ -1311,6 +1348,13 @@ class CompletionRepository:
         )
         self._session.add(comp)
         self._session.commit()
+
+    def count_for_proctype(self, proctype: str) -> int:
+        """Count completions for a process type."""
+        stmt = select(func.count()).select_from(Completion).where(
+            Completion.proctype == proctype
+        )
+        return self._session.execute(stmt).scalar() or 0
 
 
 class RobotRepository:
