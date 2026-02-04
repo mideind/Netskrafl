@@ -662,7 +662,11 @@ class RatingRepository:
 
     def get_or_create(self, kind: str, rank: int) -> Any:
         """Get or create a rating entry."""
-        return skrafldb.RatingModel.get_or_create(kind, rank)
+        model = skrafldb.RatingModel.get_or_create(kind, rank)
+        # RatingModel.get_or_create() returns an entity but doesn't persist it
+        # if it was newly created. Call put() to ensure it's saved.
+        model.put()
+        return model
 
     def list_rating(self, kind: str) -> Iterator[RatingInfo]:
         """List all ratings of a kind."""

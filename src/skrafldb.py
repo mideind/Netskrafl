@@ -317,9 +317,7 @@ class Query(Generic[_T_Model], ndb.Query):
         ).fetch
         return f(*args, **kwargs)
 
-    def fetch_async(
-        self, limit: int | None = None, **kwargs: Any
-    ) -> Future[_T_Model]:
+    def fetch_async(self, limit: int | None = None, **kwargs: Any) -> Future[_T_Model]:
         f: Callable[..., Future[_T_Model]] = cast(Any, super()).fetch_async
         return f(limit=limit, **kwargs)
 
@@ -828,9 +826,9 @@ class UserModel(Model["UserModel"]):
     ) -> Query[UserModel]:
         """Filter the query by locale, if given, otherwise stay with the default"""
         if NETSKRAFL:
-            assert (
-                locale is None or locale == DEFAULT_LOCALE
-            ), f"Netskrafl only allows {DEFAULT_LOCALE}"
+            assert locale is None or locale == DEFAULT_LOCALE, (
+                f"Netskrafl only allows {DEFAULT_LOCALE}"
+            )
             return q
         if not locale:
             return q.filter(
@@ -1012,9 +1010,7 @@ class EloModelFuture(Future["EloModel"]):
 # Optional locale string, defaulting to the project default locale
 # in the case of Netskrafl, but otherwise a required string
 def OptionalLocaleString():
-    return (
-        Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
-    )
+    return Model.OptionalStr(default=DEFAULT_LOCALE) if NETSKRAFL else Model.Str()
 
 
 class EloModel(Model["EloModel"]):
@@ -2475,7 +2471,7 @@ class ChatModel(Model["ChatModel"]):
 
     @classmethod
     def check_conversation(cls, channel: str, userid: Optional[str]) -> bool:
-        """ Returns True if there are unseen messages in the conversation """
+        """Returns True if there are unseen messages in the conversation"""
         CHUNK_SIZE = 40
         q = cls.query(ChatModel.channel == channel).order(
             -cast(int, ChatModel.timestamp)
@@ -3044,10 +3040,12 @@ class RiddleModel(Model["RiddleModel"]):
     @classmethod
     def get_riddles_for_date(cls, date_str: str) -> Sequence[RiddleModel]:
         """Get all riddles for a specific date (all locales)."""
-        # Query by key prefix - requires key range query
-        query = cls.query()
-        query = query.filter(cls.key >= ndb.Key(cls, f"{date_str}:"))
-        query = query.filter(cls.key < ndb.Key(cls, f"{date_str}:ÿ"))
+        # Query by key prefix using key range query.
+        # In google-cloud-ndb, key comparisons require FilterNode with '__key__'.
+        query = cls.query(
+            ndb.query.FilterNode("__key__", ">=", ndb.Key(cls, f"{date_str}:")),  # type: ignore[attr-defined]
+            ndb.query.FilterNode("__key__", "<", ndb.Key(cls, f"{date_str}:\xff")),  # type: ignore[attr-defined]
+        )
         return query.fetch()
 
     @property
@@ -3056,4 +3054,3 @@ class RiddleModel(Model["RiddleModel"]):
         if not self.riddle_json:
             return None
         return json.loads(self.riddle_json)
-
