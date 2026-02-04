@@ -10,9 +10,9 @@ from __future__ import annotations
 from typing import Optional, Any, TYPE_CHECKING
 import uuid
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from .connection import DatabaseSession, create_db_engine
+from .connection import create_db_engine
 from .models import Base
 from .repositories import (
     UserRepository,
@@ -120,13 +120,16 @@ class PostgreSQLBackend:
             database_url: PostgreSQL connection URL. If not provided, reads from
                           DATABASE_URL environment variable.
         """
-        # Create engine and session manager
-        engine = create_db_engine(database_url)
-        self._db_session = DatabaseSession(engine)
+        # Create engine and session factory
+        self._engine = create_db_engine(database_url)
+        self._session_factory = sessionmaker(
+            bind=self._engine,
+            expire_on_commit=False,
+        )
 
         # Create the request-scoped session
         # This session will be used by all repositories
-        self._session: Session = self._db_session._session_factory()
+        self._session: Session = self._session_factory()
 
         # Track nested transaction context (for explicit transactions)
         self._in_transaction: bool = False
@@ -277,7 +280,7 @@ class PostgreSQLBackend:
     def close(self) -> None:
         """Close database connections and clean up resources."""
         self._session.close()
-        self._db_session.close()
+        self._engine.dispose()
 
     def generate_id(self) -> str:
         """Generate a new unique ID for entities."""
@@ -289,11 +292,11 @@ class PostgreSQLBackend:
         This should only be called during initial setup or testing.
         For production, use proper migrations (e.g., Alembic).
         """
-        Base.metadata.create_all(self._db_session.engine)
+        Base.metadata.create_all(self._engine)
 
     def drop_tables(self) -> None:
         """Drop all database tables.
 
         WARNING: This deletes all data! Only use for testing.
         """
-        Base.metadata.drop_all(self._db_session.engine)
+        Base.metadata.drop_all(self._engine)
