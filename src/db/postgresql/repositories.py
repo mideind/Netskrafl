@@ -172,7 +172,7 @@ class UserRepository:
             games=0,
         )
         self._session.add(user)
-        self._session.commit()
+        self._session.flush()
 
         # Return full preferences with defaults
         all_prefs: PrefsDict = {
@@ -208,14 +208,14 @@ class UserRepository:
             if isinstance(prefs, dict) and "full_name" in prefs:
                 model.name_lc = prefs["full_name"].lower()
 
-        self._session.commit()
+        self._session.flush()
 
     def delete(self, user_id: str) -> None:
         """Delete a user and their related entities."""
         # CASCADE will handle related entities
         stmt = delete(User).where(User.id == user_id)
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def count(self) -> int:
         """Return the total number of users."""
@@ -319,7 +319,7 @@ class GameRepository:
         game_id = kwargs.pop("id", None) or _generate_id()
         game = Game(id=game_id, **kwargs)
         self._session.add(game)
-        self._session.commit()
+        self._session.flush()
         return GameEntity(game)
 
     def update(self, game: "GameEntityProtocol", **kwargs: Any) -> None:
@@ -332,13 +332,13 @@ class GameRepository:
             if hasattr(model, key):
                 setattr(model, key, value)
 
-        self._session.commit()
+        self._session.flush()
 
     def delete(self, game_id: str) -> None:
         """Delete a game."""
         stmt = delete(Game).where(Game.id == game_id)
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def list_finished_games(
         self, user_id: str, versus: Optional[str] = None, max_len: int = 10
@@ -441,7 +441,7 @@ class GameRepository:
             or_(Game.player0_id == user_id, Game.player1_id == user_id)
         )
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def query(self) -> "PostgreSQLQueryWrapper[GameEntity]":
         """Return a query object for games."""
@@ -473,7 +473,7 @@ class EloRepository:
             manual_elo=ratings.manual_elo,
         )
         self._session.add(elo)
-        self._session.commit()
+        self._session.flush()
         return EloEntity(elo)
 
     def upsert(
@@ -495,14 +495,14 @@ class EloRepository:
         model.human_elo = ratings.human_elo
         model.manual_elo = ratings.manual_elo
         model.timestamp = datetime.now(UTC)
-        self._session.commit()
+        self._session.flush()
         return True
 
     def delete_for_user(self, user_id: str) -> None:
         """Delete all Elo ratings for a user."""
         stmt = delete(EloRating).where(EloRating.user_id == user_id)
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def list_rating(
         self, kind: str, locale: str, limit: int = 100
@@ -587,7 +587,7 @@ class StatsRepository:
         """Create a new stats entry."""
         stats = Stats(user_id=user_id, robot_level=robot_level)
         self._session.add(stats)
-        self._session.commit()
+        self._session.flush()
         return StatsEntity(stats)
 
     def newest_for_user(self, user_id: str) -> Optional[StatsEntity]:
@@ -687,13 +687,13 @@ class StatsRepository:
         """Delete all stats for a user."""
         stmt = delete(Stats).where(Stats.user_id == user_id)
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def delete_at_timestamp(self, timestamp: datetime) -> None:
         """Delete stats at a specific timestamp."""
         stmt = delete(Stats).where(Stats.timestamp == timestamp)
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
 
 class FavoriteRepository:
@@ -722,7 +722,7 @@ class FavoriteRepository:
         if not self.has_relation(src_user_id, dest_user_id):
             fav = Favorite(src_user_id=src_user_id, dest_user_id=dest_user_id)
             self._session.add(fav)
-            self._session.commit()
+            self._session.flush()
 
     def delete_relation(self, src_user_id: str, dest_user_id: str) -> None:
         """Delete a favorite relationship."""
@@ -733,7 +733,7 @@ class FavoriteRepository:
             )
         )
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def delete_for_user(self, user_id: str) -> None:
         """Delete all favorites for a user."""
@@ -741,7 +741,7 @@ class FavoriteRepository:
             or_(Favorite.src_user_id == user_id, Favorite.dest_user_id == user_id)
         )
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
 
 class ChallengeRepository:
@@ -790,7 +790,7 @@ class ChallengeRepository:
             prefs=prefs,
         )
         self._session.add(challenge)
-        self._session.commit()
+        self._session.flush()
 
     def delete_relation(
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None
@@ -813,7 +813,7 @@ class ChallengeRepository:
             stmt = stmt.where(Challenge.id == PyUUID(key))
 
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
         return True, prefs
 
     def delete_for_user(self, user_id: str) -> None:
@@ -822,7 +822,7 @@ class ChallengeRepository:
             or_(Challenge.src_user_id == user_id, Challenge.dest_user_id == user_id)
         )
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def list_issued(self, user_id: str, max_len: int = 20) -> Iterator[ChallengeInfo]:
         """List challenges issued by a user."""
@@ -930,7 +930,7 @@ class ChatRepository:
             timestamp=ts,
         )
         self._session.add(chat)
-        self._session.commit()
+        self._session.flush()
         return ts
 
     def add_msg_in_game(
@@ -1032,7 +1032,7 @@ class BlockRepository:
             return False
         block = Block(blocker_id=blocker_id, blocked_id=blocked_id)
         self._session.add(block)
-        self._session.commit()
+        self._session.flush()
         return True
 
     def unblock_user(self, blocker_id: str, blocked_id: str) -> bool:
@@ -1043,7 +1043,7 @@ class BlockRepository:
             and_(Block.blocker_id == blocker_id, Block.blocked_id == blocked_id)
         )
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
         return True
 
     def is_blocking(self, blocker_id: str, blocked_id: str) -> bool:
@@ -1062,7 +1062,7 @@ class ZombieRepository:
         """Mark a game as zombie for a user."""
         zombie = Zombie(game_id=game_id, user_id=user_id)
         self._session.merge(zombie)
-        self._session.commit()
+        self._session.flush()
 
     def delete_game(self, game_id: str, user_id: str) -> None:
         """Remove zombie marking for a game/user."""
@@ -1070,13 +1070,13 @@ class ZombieRepository:
             and_(Zombie.game_id == game_id, Zombie.user_id == user_id)
         )
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def delete_for_user(self, user_id: str) -> None:
         """Delete all zombie entries for a user."""
         stmt = delete(Zombie).where(Zombie.user_id == user_id)
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
     def list_games(self, user_id: str) -> Iterator[ZombieGameInfo]:
         """List zombie games for a user."""
@@ -1111,7 +1111,7 @@ class RatingRepository:
         if rating is None:
             rating = Rating(kind=kind, rank=rank)
             self._session.add(rating)
-            self._session.commit()
+            self._session.flush()
         return rating
 
     def list_rating(self, kind: str) -> Iterator[RatingInfo]:
@@ -1155,7 +1155,7 @@ class RatingRepository:
         """Delete all rating entries."""
         stmt = delete(Rating)
         self._session.execute(stmt)
-        self._session.commit()
+        self._session.flush()
 
 
 class RiddleRepository:
@@ -1185,7 +1185,7 @@ class RiddleRepository:
         riddle.riddle_json = riddle_json
         riddle.version = version
         riddle.created = datetime.now(UTC)
-        self._session.commit()
+        self._session.flush()
         return RiddleEntity(riddle)
 
 
@@ -1216,7 +1216,7 @@ class ImageRepository:
         else:
             img = Image(user_id=user_id, fmt=fmt, image=image)
             self._session.add(img)
-        self._session.commit()
+        self._session.flush()
 
 
 class ReportRepository:
@@ -1236,7 +1236,7 @@ class ReportRepository:
             text=text,
         )
         self._session.add(report)
-        self._session.commit()
+        self._session.flush()
         return True
 
     def list_reported_by(self, user_id: str, max_len: int = 100) -> Iterator[str]:
@@ -1261,7 +1261,7 @@ class PromoRepository:
         """Record that a user has seen a promotion."""
         promo = Promo(user_id=user_id, promotion=promotion)
         self._session.add(promo)
-        self._session.commit()
+        self._session.flush()
 
     def list_promotions(self, user_id: str, promotion: str) -> Iterator[datetime]:
         """List when a user has seen a promotion."""
@@ -1284,7 +1284,7 @@ class TransactionRepository:
         """Log a transaction."""
         txn = Transaction(user_id=user_id, plan=plan, kind=kind, op=op)
         self._session.add(txn)
-        self._session.commit()
+        self._session.flush()
 
     def count_for_user(self, user_id: str) -> int:
         """Count transactions for a user."""
@@ -1306,7 +1306,7 @@ class SubmissionRepository:
         """Submit a word for review."""
         sub = Submission(user_id=user_id, locale=locale, word=word, comment=comment)
         self._session.add(sub)
-        self._session.commit()
+        self._session.flush()
 
     def count_for_user(self, user_id: str) -> int:
         """Count submissions for a user."""
@@ -1333,7 +1333,7 @@ class CompletionRepository:
             success=True,
         )
         self._session.add(comp)
-        self._session.commit()
+        self._session.flush()
 
     def add_failure(
         self, proctype: str, ts_from: datetime, ts_to: datetime, reason: str
@@ -1347,7 +1347,7 @@ class CompletionRepository:
             reason=reason,
         )
         self._session.add(comp)
-        self._session.commit()
+        self._session.flush()
 
     def count_for_proctype(self, proctype: str) -> int:
         """Count completions for a process type."""
@@ -1376,7 +1376,7 @@ class RobotRepository:
         else:
             robot = Robot(locale=locale, level=level, elo=elo)
             self._session.add(robot)
-        self._session.commit()
+        self._session.flush()
         return True
 
 

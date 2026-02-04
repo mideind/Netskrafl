@@ -233,6 +233,31 @@ class NDBBackend:
         """
         return NDBTransactionContext()
 
+    def flush(self) -> None:
+        """Flush pending changes to the database.
+
+        For NDB, this is a no-op since each put() immediately
+        persists to the datastore.
+        """
+        pass
+
+    def commit(self) -> None:
+        """Commit the current transaction.
+
+        For NDB, this is a no-op since each put() immediately
+        persists to the datastore. Provided for API compatibility.
+        """
+        pass
+
+    def rollback(self) -> None:
+        """Roll back the current transaction.
+
+        For NDB, this is a no-op since puts cannot be rolled back.
+        Provided for API compatibility. Note that already-executed
+        puts will remain in the datastore.
+        """
+        pass
+
     def close(self) -> None:
         """Close database connections and clean up resources.
 

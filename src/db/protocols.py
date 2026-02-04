@@ -1217,6 +1217,37 @@ class DatabaseBackendProtocol(Protocol):
         """
         ...
 
+    def flush(self) -> None:
+        """Flush pending changes to the database.
+
+        For PostgreSQL: Writes pending changes to the database without
+        committing the transaction. Changes become visible within the
+        same transaction but can still be rolled back.
+
+        For NDB: No-op since each put() is immediately persisted.
+        """
+        ...
+
+    def commit(self) -> None:
+        """Commit the current transaction.
+
+        For PostgreSQL: Makes all changes permanent and ends the transaction.
+
+        For NDB: No-op since each put() is immediately persisted.
+        Provided for API compatibility.
+        """
+        ...
+
+    def rollback(self) -> None:
+        """Roll back the current transaction.
+
+        For PostgreSQL: Discards all uncommitted changes.
+
+        For NDB: No-op since puts cannot be rolled back.
+        Provided for API compatibility.
+        """
+        ...
+
     def close(self) -> None:
         """Close database connections and clean up resources."""
         ...

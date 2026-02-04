@@ -8,10 +8,16 @@ Use --backend option to select which backend(s) to test.
 from __future__ import annotations
 
 import pytest
+import uuid
 from typing import TYPE_CHECKING
 from datetime import datetime, timezone
 
 from src.db.testing import DualBackendRunner, compare_entities
+
+
+def fresh_id() -> str:
+    """Generate a fresh UUID for test entities."""
+    return str(uuid.uuid1())
 
 if TYPE_CHECKING:
     from src.db.protocols import DatabaseBackendProtocol
@@ -796,7 +802,7 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
-        game_id = "compare-game-001"
+        game_id = fresh_id()
 
         # Create game on both backends
         runner.run(
@@ -869,7 +875,7 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, _ = comparison_users
 
-        game_id = "compare-robot-game-001"
+        game_id = fresh_id()
 
         # Create robot game on both backends
         runner.run(
@@ -924,7 +930,7 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
-        game_id = "compare-update-game-001"
+        game_id = fresh_id()
 
         # Create game on both backends
         runner.run(
@@ -1014,7 +1020,7 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
-        game_id = "compare-finished-game-001"
+        game_id = fresh_id()
 
         # Create finished game with Elo data on both backends
         runner.run(
@@ -1085,9 +1091,13 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
+        # Generate fresh game IDs and track them for filtering
+        finished_game_ids: set[str] = set()
+
         # Create multiple finished games
         for i in range(3):
-            game_id = f"compare-list-finished-{i:03d}"
+            game_id = fresh_id()
+            finished_game_ids.add(game_id)
             ndb.games.create(
                 id=game_id,
                 player0_id=player0_id,
@@ -1128,6 +1138,10 @@ class TestGameComparison:
             )
 
         def compare_finished_lists(list1, list2):
+            # Filter to only games created in this test to avoid pollution
+            # from other tests in the same session
+            list1 = [g for g in list1 if g.uuid in finished_game_ids]
+            list2 = [g for g in list2 if g.uuid in finished_game_ids]
             # Compare by game UUIDs (order may differ due to timestamps)
             ids1 = {g.uuid for g in list1}
             ids2 = {g.uuid for g in list2}
@@ -1171,11 +1185,13 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
-        # Create live games with unique IDs for this test
-        live_game_ids = {"compare-live-001", "compare-live-002"}
+        # Generate fresh game IDs
+        game_id_1 = fresh_id()
+        game_id_2 = fresh_id()
+        live_game_ids = {game_id_1, game_id_2}
         live_games = [
             {
-                "id": "compare-live-001",
+                "id": game_id_1,
                 "player0_id": player0_id,
                 "player1_id": player1_id,
                 "score0": 120,
@@ -1184,7 +1200,7 @@ class TestGameComparison:
                 "robot_level": 0,
             },
             {
-                "id": "compare-live-002",
+                "id": game_id_2,
                 "player0_id": player0_id,
                 "player1_id": None,
                 "score0": 80,
@@ -1253,7 +1269,7 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
-        game_id = "compare-moves-game-001"
+        game_id = fresh_id()
         moves = [
             {"coord": "H8", "tiles": "HELLO", "score": 24},
             {"coord": "8G", "tiles": "WORLD", "score": 18},
@@ -1326,7 +1342,7 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
-        game_id = "compare-prefs-game-001"
+        game_id = fresh_id()
         prefs = {"manual": True, "timed": False, "duration": 25}
 
         # Create game with prefs on both backends
@@ -1386,7 +1402,7 @@ class TestGameComparison:
         runner = DualBackendRunner(ndb, pg)
         player0_id, player1_id = comparison_users
 
-        game_id = "compare-delete-game-001"
+        game_id = fresh_id()
 
         # Create game on both backends
         ndb.games.create(

@@ -61,39 +61,36 @@ if TYPE_CHECKING:
 class PostgreSQLTransactionContext:
     """Transaction context manager for PostgreSQL.
 
-    This wraps a SQLAlchemy session with automatic commit/rollback.
+    When used within an existing request-scoped session, this creates
+    a savepoint (nested transaction). On exception, only changes within
+    this context are rolled back; the outer transaction continues.
+
+    Usage:
+        with db.transaction():
+            # All operations here are in a savepoint
+            db.users.update(...)
+            # Commits savepoint on success, rolls back on exception
     """
 
     def __init__(self, backend: "PostgreSQLBackend") -> None:
         self._backend = backend
-        self._session: Optional[Session] = None
+        self._savepoint: Any = None  # SQLAlchemy nested transaction
 
     def __enter__(self) -> "PostgreSQLTransactionContext":
-        """Begin a new transaction."""
-        self._session = self._backend._db_session._session_factory()
-        # Update backend's current session
-        self._backend._current_session = self._session
-        # Reinitialize repositories with new session
-        self._backend._init_repositories(self._session)
+        """Begin a nested transaction (savepoint)."""
+        self._savepoint = self._backend._session.begin_nested()
+        self._backend._in_transaction = True
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
-        """End the transaction - commit or rollback."""
-        if self._session is None:
-            return False
-
-        try:
-            if exc_type is None:
-                self._session.commit()
-            else:
-                self._session.rollback()
-        finally:
-            self._session.close()
-            self._session = None
-            # Reset to default session
-            self._backend._current_session = None
-            self._backend._init_repositories(None)
-
+        """End the nested transaction - commit or rollback savepoint."""
+        self._backend._in_transaction = False
+        if exc_type is None:
+            # Commit the savepoint (not the main transaction)
+            self._savepoint.commit()
+        else:
+            # Rollback to the savepoint
+            self._savepoint.rollback()
         return False  # Don't suppress exceptions
 
 
@@ -127,18 +124,19 @@ class PostgreSQLBackend:
         engine = create_db_engine(database_url)
         self._db_session = DatabaseSession(engine)
 
-        # Track current session for transaction management
-        self._current_session: Optional[Session] = None
+        # Create the request-scoped session
+        # This session will be used by all repositories
+        self._session: Session = self._db_session._session_factory()
 
-        # Initialize repositories with None session (will use auto-session)
-        self._init_repositories(None)
+        # Track nested transaction context (for explicit transactions)
+        self._in_transaction: bool = False
 
-    def _init_repositories(self, session: Optional[Session]) -> None:
-        """Initialize or reinitialize repositories with a session."""
-        # If no explicit session, create one that auto-commits
-        if session is None:
-            session = self._get_auto_session()
+        # Initialize repositories with the session
+        self._init_repositories()
 
+    def _init_repositories(self) -> None:
+        """Initialize repositories with the current session."""
+        session = self._session
         self._users = UserRepository(session)
         self._games = GameRepository(session)
         self._elo = EloRepository(session)
@@ -157,12 +155,6 @@ class PostgreSQLBackend:
         self._submissions = SubmissionRepository(session)
         self._completions = CompletionRepository(session)
         self._robots = RobotRepository(session)
-
-    def _get_auto_session(self) -> Session:
-        """Get a session for auto-commit operations."""
-        # For simplicity, create a new session
-        # In production, you might want connection pooling
-        return self._db_session._session_factory()
 
     @property
     def users(self) -> "UserRepositoryProtocol":
@@ -265,8 +257,26 @@ class PostgreSQLBackend:
         """
         return PostgreSQLTransactionContext(self)
 
+    def flush(self) -> None:
+        """Flush pending changes to the database without committing.
+
+        This writes changes to the database so they become visible
+        within the same transaction, but the transaction remains open
+        and changes can still be rolled back.
+        """
+        self._session.flush()
+
+    def commit(self) -> None:
+        """Commit the current transaction, making all changes permanent."""
+        self._session.commit()
+
+    def rollback(self) -> None:
+        """Roll back the current transaction, discarding all changes."""
+        self._session.rollback()
+
     def close(self) -> None:
         """Close database connections and clean up resources."""
+        self._session.close()
         self._db_session.close()
 
     def generate_id(self) -> str:
