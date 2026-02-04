@@ -27,21 +27,18 @@ For PostgreSQL:
 
 from __future__ import annotations
 
-import os
 import logging
 from typing import Optional, Any, TYPE_CHECKING, Iterator
 from contextlib import contextmanager
 from threading import local
+
+from .config import get_config
 
 if TYPE_CHECKING:
     from .protocols import DatabaseBackendProtocol
 
 # Thread-local storage for request-scoped backend instances
 _thread_local = local()
-
-# Global backend configuration
-_backend_type: str = os.environ.get("DB_BACKEND", "ndb")
-_postgresql_url: Optional[str] = None
 
 # Logger for this module
 _log = logging.getLogger(__name__)
@@ -69,25 +66,26 @@ class SessionManager:
 
     def __init__(
         self,
-        backend_type: str = "ndb",
+        backend_type: Optional[str] = None,
         database_url: Optional[str] = None,
     ) -> None:
         """Initialize the session manager.
 
         Args:
-            backend_type: Either "ndb" or "postgresql"
-            database_url: PostgreSQL connection URL (required for postgresql)
+            backend_type: Either "ndb" or "postgresql". If not provided,
+                          reads from DATABASE_BACKEND environment variable.
+            database_url: PostgreSQL connection URL. If not provided,
+                          reads from DATABASE_URL environment variable.
         """
-        self._backend_type = backend_type
-        self._database_url = database_url
+        config = get_config()
+        self._backend_type = backend_type or config.backend
+        self._database_url = database_url or config.database_url
 
-        if backend_type == "postgresql" and not database_url:
-            self._database_url = os.environ.get("DATABASE_URL")
-            if not self._database_url:
-                raise ValueError(
-                    "DATABASE_URL required for PostgreSQL backend. "
-                    "Set via environment or database_url parameter."
-                )
+        if self._backend_type == "postgresql" and not self._database_url:
+            raise ValueError(
+                "DATABASE_URL required for PostgreSQL backend. "
+                "Set via environment or database_url parameter."
+            )
 
     @property
     def backend_type(self) -> str:
@@ -181,16 +179,18 @@ _session_manager: Optional[SessionManager] = None
 
 
 def init_session_manager(
-    backend_type: str = "ndb",
+    backend_type: Optional[str] = None,
     database_url: Optional[str] = None,
 ) -> SessionManager:
     """Initialize the global session manager.
 
     Call this once at application startup, before handling any requests.
+    If parameters are not provided, they are read from environment variables
+    via DatabaseConfig.
 
     Args:
-        backend_type: Either "ndb" or "postgresql"
-        database_url: PostgreSQL connection URL (for postgresql backend)
+        backend_type: Either "ndb" or "postgresql". Defaults to DATABASE_BACKEND env var.
+        database_url: PostgreSQL connection URL. Defaults to DATABASE_URL env var.
 
     Returns:
         The initialized SessionManager instance.

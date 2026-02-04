@@ -7,7 +7,6 @@ and transaction handling for the PostgreSQL backend.
 
 from __future__ import annotations
 
-import os
 from typing import Iterator, Optional
 from contextlib import contextmanager
 
@@ -15,38 +14,23 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 
-
-# Default connection settings
-DEFAULT_POOL_SIZE = 5
-DEFAULT_MAX_OVERFLOW = 10
-DEFAULT_POOL_TIMEOUT = 30
-DEFAULT_POOL_RECYCLE = 1800  # 30 minutes
-
-
-def get_database_url() -> str:
-    """Get the database URL from environment or raise an error."""
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        raise ValueError(
-            "DATABASE_URL environment variable not set. "
-            "Expected format: postgresql://user:password@host:port/database"
-        )
-    return url
+from ..config import get_config
 
 
 def create_db_engine(
     database_url: Optional[str] = None,
-    pool_size: int = DEFAULT_POOL_SIZE,
-    max_overflow: int = DEFAULT_MAX_OVERFLOW,
-    pool_timeout: int = DEFAULT_POOL_TIMEOUT,
-    pool_recycle: int = DEFAULT_POOL_RECYCLE,
-    echo: bool = False,
+    pool_size: Optional[int] = None,
+    max_overflow: Optional[int] = None,
+    pool_timeout: Optional[int] = None,
+    pool_recycle: Optional[int] = None,
+    echo: Optional[bool] = None,
 ) -> Engine:
     """Create a SQLAlchemy engine with connection pooling.
 
+    All parameters default to values from DatabaseConfig if not provided.
+
     Args:
-        database_url: PostgreSQL connection URL. If not provided, reads from
-                      DATABASE_URL environment variable.
+        database_url: PostgreSQL connection URL.
         pool_size: Number of connections to keep in the pool.
         max_overflow: Maximum overflow connections beyond pool_size.
         pool_timeout: Seconds to wait for a connection from the pool.
@@ -56,15 +40,21 @@ def create_db_engine(
     Returns:
         SQLAlchemy Engine instance.
     """
-    url = database_url or get_database_url()
+    config = get_config()
+    url = database_url or config.database_url
+    if not url:
+        raise ValueError(
+            "DATABASE_URL environment variable not set. "
+            "Expected format: postgresql://user:password@host:port/database"
+        )
 
     engine = create_engine(
         url,
-        pool_size=pool_size,
-        max_overflow=max_overflow,
-        pool_timeout=pool_timeout,
-        pool_recycle=pool_recycle,
-        echo=echo,
+        pool_size=pool_size if pool_size is not None else config.pool_size,
+        max_overflow=max_overflow if max_overflow is not None else config.max_overflow,
+        pool_timeout=pool_timeout if pool_timeout is not None else config.pool_timeout,
+        pool_recycle=pool_recycle if pool_recycle is not None else config.pool_recycle,
+        echo=echo if echo is not None else config.echo_sql,
         # Ensure all connections use UTC timezone
         connect_args={
             "options": "-c timezone=utc"
