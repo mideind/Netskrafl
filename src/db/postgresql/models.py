@@ -58,9 +58,9 @@ class User(Base):
     nickname: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     inactive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    # Optional fields
-    email: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
-    image: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    # These fields are never NULL - empty string is used instead (matching NDB behavior)
+    email: Mapped[str] = mapped_column(String(256), nullable=False, default="", index=True)
+    image: Mapped[str] = mapped_column(String(512), nullable=False, default="")
     image_blob: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
     account: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
     plan: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

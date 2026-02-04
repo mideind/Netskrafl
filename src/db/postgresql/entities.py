@@ -40,11 +40,11 @@ class UserEntity:
         return self._model.nickname
 
     @property
-    def email(self) -> Optional[str]:
+    def email(self) -> str:
         return self._model.email
 
     @property
-    def image(self) -> Optional[str]:
+    def image(self) -> str:
         return self._model.image
 
     @property

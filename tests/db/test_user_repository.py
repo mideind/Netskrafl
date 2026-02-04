@@ -211,6 +211,40 @@ class TestUserQueries:
 class TestUserComparison:
     """Comparison tests that verify both backends behave identically."""
 
+    # Fields to compare for user entities
+    USER_COMPARE_FIELDS = [
+        "nickname",
+        "email",
+        "locale",
+        "inactive",
+        "account",
+        "image",
+        "ready",
+        "ready_timed",
+        "chat_disabled",
+        "elo",
+        "human_elo",
+        "manual_elo",
+    ]
+
+    @staticmethod
+    def compare_users(u1, u2):
+        """Compare two user entities."""
+        if u1 is None and u2 is None:
+            return True, None
+        if u1 is None or u2 is None:
+            return False, f"One user is None: {u1} vs {u2}"
+        return compare_entities(u1, u2, TestUserComparison.USER_COMPARE_FIELDS)
+
+    @staticmethod
+    def compare_user_lists(list1, list2):
+        """Compare two lists of users by their IDs (order-independent)."""
+        ids1 = {u.key_id for u in list1 if u is not None}
+        ids2 = {u.key_id for u in list2 if u is not None}
+        if ids1 != ids2:
+            return False, f"User ID sets differ: {ids1} vs {ids2}"
+        return True, None
+
     @pytest.mark.comparison
     def test_create_retrieve_equivalence(
         self,
@@ -245,29 +279,260 @@ class TestUserComparison:
             ),
         )
 
-        # Retrieve and compare
-        def compare_users(u1, u2):
-            if u1 is None and u2 is None:
-                return True, None
-            if u1 is None or u2 is None:
-                return False, "One user is None"
-            return compare_entities(
-                u1, u2, ["nickname", "email", "locale", "inactive"]
-            )
-
+        # Retrieve and compare by ID
         runner.run(
             "get_user_by_id",
             lambda: ndb.users.get_by_id(user_id),
             lambda: pg.users.get_by_id(user_id),
-            comparator=compare_users,
+            comparator=self.compare_users,
         )
 
+        # Retrieve and compare by account
         runner.run(
             "get_user_by_account",
             lambda: ndb.users.get_by_account(account),
             lambda: pg.users.get_by_account(account),
-            comparator=compare_users,
+            comparator=self.compare_users,
+        )
+
+        # Retrieve and compare by email
+        runner.run(
+            "get_user_by_email",
+            lambda: ndb.users.get_by_email(email),
+            lambda: pg.users.get_by_email(email),
+            comparator=self.compare_users,
+        )
+
+        # Retrieve and compare by nickname (exact match)
+        runner.run(
+            "get_user_by_nickname_exact",
+            lambda: ndb.users.get_by_nickname(nickname),
+            lambda: pg.users.get_by_nickname(nickname),
+            comparator=self.compare_users,
+        )
+
+        # Retrieve and compare by nickname (case insensitive)
+        runner.run(
+            "get_user_by_nickname_case_insensitive",
+            lambda: ndb.users.get_by_nickname(nickname.lower(), ignore_case=True),
+            lambda: pg.users.get_by_nickname(nickname.lower(), ignore_case=True),
+            comparator=self.compare_users,
         )
 
         # Verify all comparisons passed
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_get_nonexistent_user_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+    ) -> None:
+        """Getting a non-existent user returns None on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+
+        nonexistent_id = "nonexistent-compare-user-xyz"
+
+        runner.run(
+            "get_nonexistent_by_id",
+            lambda: ndb.users.get_by_id(nonexistent_id),
+            lambda: pg.users.get_by_id(nonexistent_id),
+            comparator=self.compare_users,
+        )
+
+        runner.run(
+            "get_nonexistent_by_account",
+            lambda: ndb.users.get_by_account("nonexistent:account"),
+            lambda: pg.users.get_by_account("nonexistent:account"),
+            comparator=self.compare_users,
+        )
+
+        runner.run(
+            "get_nonexistent_by_email",
+            lambda: ndb.users.get_by_email("nonexistent@example.com"),
+            lambda: pg.users.get_by_email("nonexistent@example.com"),
+            comparator=self.compare_users,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_get_multi_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+    ) -> None:
+        """get_multi returns users in same order on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+
+        # Create test users on both backends
+        for i in range(3):
+            user_id = f"compare-multi-{i:03d}"
+            runner.run(
+                f"create_user_{i}",
+                lambda uid=user_id, idx=i: ndb.users.create(
+                    user_id=uid,
+                    account=f"test:comparemulti{idx}",
+                    email=None,
+                    nickname=f"CompareMulti{idx}",
+                    locale="is_IS",
+                ),
+                lambda uid=user_id, idx=i: pg.users.create(
+                    user_id=uid,
+                    account=f"test:comparemulti{idx}",
+                    email=None,
+                    nickname=f"CompareMulti{idx}",
+                    locale="is_IS",
+                ),
+            )
+
+        # Fetch multiple, including one that doesn't exist
+        user_ids = [
+            "compare-multi-000",
+            "compare-multi-001",
+            "nonexistent-compare",
+            "compare-multi-002",
+        ]
+
+        def compare_multi_results(r1, r2):
+            if len(r1) != len(r2):
+                return False, f"Length mismatch: {len(r1)} vs {len(r2)}"
+            for i, (u1, u2) in enumerate(zip(r1, r2)):
+                match, diff = self.compare_users(u1, u2)
+                if not match:
+                    return False, f"User at index {i}: {diff}"
+            return True, None
+
+        runner.run(
+            "get_multi",
+            lambda: ndb.users.get_multi(user_ids),
+            lambda: pg.users.get_multi(user_ids),
+            comparator=compare_multi_results,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_update_user_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+    ) -> None:
+        """Updating a user produces identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+
+        user_id = "compare-update-user-001"
+
+        # Create user on both backends
+        runner.run(
+            "create_user",
+            lambda: ndb.users.create(
+                user_id=user_id,
+                account="test:compareupd001",
+                email="original@test.com",
+                nickname="OriginalNick",
+                locale="is_IS",
+            ),
+            lambda: pg.users.create(
+                user_id=user_id,
+                account="test:compareupd001",
+                email="original@test.com",
+                nickname="OriginalNick",
+                locale="is_IS",
+            ),
+        )
+
+        # Get user entities
+        ndb_user = ndb.users.get_by_id(user_id)
+        pg_user = pg.users.get_by_id(user_id)
+
+        assert ndb_user is not None
+        assert pg_user is not None
+
+        # Update on both
+        runner.run(
+            "update_user",
+            lambda: ndb.users.update(ndb_user, nickname="UpdatedNick", elo=1250),
+            lambda: pg.users.update(pg_user, nickname="UpdatedNick", elo=1250),
+        )
+
+        # Retrieve and compare
+        runner.run(
+            "get_updated_user",
+            lambda: ndb.users.get_by_id(user_id),
+            lambda: pg.users.get_by_id(user_id),
+            comparator=self.compare_users,
+        )
+
+        # Verify updated values
+        ndb_updated = ndb.users.get_by_id(user_id)
+        pg_updated = pg.users.get_by_id(user_id)
+        assert ndb_updated is not None and ndb_updated.nickname == "UpdatedNick"
+        assert pg_updated is not None and pg_updated.nickname == "UpdatedNick"
+        assert ndb_updated.elo == 1250
+        assert pg_updated.elo == 1250
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_list_prefix_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+    ) -> None:
+        """list_prefix returns same users on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+
+        # Create test users with predictable prefixes
+        test_users = [
+            ("compare-prefix-001", "PrefixAlice"),
+            ("compare-prefix-002", "PrefixAlbert"),
+            ("compare-prefix-003", "PrefixBob"),
+        ]
+
+        for user_id, nickname in test_users:
+            runner.run(
+                f"create_{user_id}",
+                lambda uid=user_id, nick=nickname: ndb.users.create(
+                    user_id=uid,
+                    account=f"test:{uid}",
+                    email=None,
+                    nickname=nick,
+                    locale="is_IS",
+                ),
+                lambda uid=user_id, nick=nickname: pg.users.create(
+                    user_id=uid,
+                    account=f"test:{uid}",
+                    email=None,
+                    nickname=nick,
+                    locale="is_IS",
+                ),
+            )
+
+        def compare_prefix_results(r1, r2):
+            # Convert to lists and compare by user IDs
+            list1 = list(r1)
+            list2 = list(r2)
+            ids1 = {u.id for u in list1}
+            ids2 = {u.id for u in list2}
+            if ids1 != ids2:
+                return False, f"User ID sets differ: {ids1} vs {ids2}"
+            return True, None
+
+        # Search for "PrefixAl" - should find Alice and Albert
+        runner.run(
+            "list_prefix_al",
+            lambda: ndb.users.list_prefix("PrefixAl", locale="is_IS"),
+            lambda: pg.users.list_prefix("PrefixAl", locale="is_IS"),
+            comparator=compare_prefix_results,
+        )
+
+        # Search for "PrefixB" - should find Bob
+        runner.run(
+            "list_prefix_b",
+            lambda: ndb.users.list_prefix("PrefixB", locale="is_IS"),
+            lambda: pg.users.list_prefix("PrefixB", locale="is_IS"),
+            comparator=compare_prefix_results,
+        )
+
         assert runner.report.all_passed, runner.report.format()

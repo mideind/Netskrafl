@@ -157,11 +157,11 @@ class UserRepository:
         user = User(
             id=user_id,
             account=account,
-            email=email,
+            email=email or "",  # NDB stores "" not NULL
             nickname=nickname,
             nick_lc=nickname.lower(),
             name_lc=prefs.get("full_name", "").lower() if prefs else "",
-            image=image,
+            image=image or "",  # NDB stores "" not NULL
             inactive=False,
             prefs=prefs,
             plan="friend" if prefs.get("friend", False) else None,

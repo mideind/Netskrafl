@@ -89,16 +89,13 @@ def _create_postgresql_backend(
     return PostgreSQLBackend(database_url=url)
 
 
-# Track if PostgreSQL tables have been reset this session
-_pg_tables_reset = False
+@pytest.fixture(scope="session")
+def _reset_postgresql_tables() -> Iterator[None]:
+    """Session-scoped fixture that resets PostgreSQL tables once per test session.
 
-
-def _reset_postgresql_tables() -> None:
-    """Reset PostgreSQL tables once per test session."""
-    global _pg_tables_reset
-    if _pg_tables_reset:
-        return
-
+    This fixture is automatically used by all PostgreSQL-related fixtures.
+    It drops and recreates all tables to ensure a clean state.
+    """
     from src.db.postgresql import PostgreSQLBackend
 
     url = os.environ.get(
@@ -106,19 +103,22 @@ def _reset_postgresql_tables() -> None:
         "postgresql://test:test@localhost:5432/netskrafl_test",
     )
 
-    # Only reset if we can connect
+    # Reset tables at session start
     try:
         db = PostgreSQLBackend(database_url=url)
         db.drop_tables()
         db.create_tables()
         db.close()
-        _pg_tables_reset = True
     except Exception:
         pass  # PostgreSQL may not be available
 
+    yield
+
 
 @pytest.fixture(params=["ndb", "postgresql"])
-def backend(request: pytest.FixtureRequest) -> Iterator["DatabaseBackendProtocol"]:
+def backend(
+    request: pytest.FixtureRequest, _reset_postgresql_tables: None
+) -> Iterator["DatabaseBackendProtocol"]:
     """Fixture that provides each database backend.
 
     Tests using this fixture run twice: once with NDB, once with PostgreSQL.
@@ -148,8 +148,6 @@ def backend(request: pytest.FixtureRequest) -> Iterator["DatabaseBackendProtocol
             return  # type: ignore[return-value]
     else:
         try:
-            # Reset PostgreSQL tables once per session
-            _reset_postgresql_tables()
             db = _create_postgresql_backend()
         except NotImplementedError:
             pytest.skip("PostgreSQL backend not yet implemented")
@@ -179,7 +177,9 @@ def ndb_backend(request: pytest.FixtureRequest) -> Iterator["DatabaseBackendProt
 
 
 @pytest.fixture
-def pg_backend(request: pytest.FixtureRequest) -> Iterator["DatabaseBackendProtocol"]:
+def pg_backend(
+    request: pytest.FixtureRequest, _reset_postgresql_tables: None
+) -> Iterator["DatabaseBackendProtocol"]:
     """Fixture that provides only the PostgreSQL backend.
 
     Use this for PostgreSQL-specific tests.
@@ -196,7 +196,7 @@ def pg_backend(request: pytest.FixtureRequest) -> Iterator["DatabaseBackendProto
 
 @pytest.fixture
 def both_backends(
-    request: pytest.FixtureRequest,
+    request: pytest.FixtureRequest, _reset_postgresql_tables: None
 ) -> Iterator[Tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"]]:
     """Fixture for comparison tests - provides both backends simultaneously.
 

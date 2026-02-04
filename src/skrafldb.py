@@ -440,6 +440,11 @@ class Model(Generic[_T_Model], ndb.Model):
         return cast(str, ndb.StringProperty(required=True))
 
     @staticmethod
+    def EmptyStr() -> str:
+        """Non-required string that defaults to empty string, never None."""
+        return cast(str, ndb.StringProperty(required=False, default=""))
+
+    @staticmethod
     def OptionalStr(default: Optional[str] = None) -> Optional[str]:
         """This is indexed by default"""
         return cast(Optional[str], ndb.StringProperty(required=False, default=default))
@@ -621,12 +626,12 @@ class UserModel(Model["UserModel"]):
 
     nickname = Model.Str()
 
-    email = Model.OptionalStr()
+    email = Model.EmptyStr()
 
     # A user image can be either a URL
     # or a complete JPEG image stored in a BLOB
     # Note: indexing of string properties is mandatory
-    image = Model.OptionalStr()
+    image: str = Model.EmptyStr()
     image_blob = Model.OptionalBlob()  # Not indexed
 
     # OAuth2 account identifier (unfortunately different from GAE user id)
@@ -795,21 +800,21 @@ class UserModel(Model["UserModel"]):
         """Return the ndb key of a user as a string"""
         return self.key.id()
 
-    def get_image(self) -> Tuple[Optional[str], Optional[bytes]]:
+    def get_image(self) -> Tuple[str, Optional[bytes]]:
         """Obtain image data about the user, consisting of
         a string and a BLOB (bytes)"""
         image = self.image
         if image and image.startswith("/image?"):
             # Wrong URL in the database: act as if no URL is stored
-            image = None
+            image = ""
         return image, self.image_blob
 
-    def set_image(self, image: Optional[str], image_blob: Optional[bytes]) -> None:
+    def set_image(self, image: str, image_blob: Optional[bytes]) -> None:
         """Set image data about the user, consisting of
         a string and a BLOB (bytes)"""
         if image and image.startswith("/image?"):
             # Attempting to set the URL of the image API endpoint: not allowed
-            image = None
+            image = ""
         self.image = image
         self.image_blob = image_blob
         self.put()

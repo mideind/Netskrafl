@@ -11,6 +11,8 @@ import pytest
 from typing import TYPE_CHECKING
 from datetime import datetime, timezone
 
+from src.db.testing import DualBackendRunner, compare_entities
+
 if TYPE_CHECKING:
     from src.db.protocols import DatabaseBackendProtocol
 
@@ -667,3 +669,770 @@ class TestGamePreferences:
         assert loaded is not None
         assert loaded.prefs is not None
         assert loaded.prefs.get("manual") is True
+
+
+class TestGameComparison:
+    """Comparison tests that verify both backends behave identically for games."""
+
+    # Fields to compare for game entities
+    GAME_COMPARE_FIELDS = [
+        "player0_id",
+        "player1_id",
+        "locale",
+        "rack0",
+        "rack1",
+        "score0",
+        "score1",
+        "to_move",
+        "robot_level",
+        "over",
+    ]
+
+    # Additional fields for finished games
+    GAME_ELO_FIELDS = [
+        "elo0",
+        "elo1",
+        "elo0_adj",
+        "elo1_adj",
+        "human_elo0_adj",
+        "human_elo1_adj",
+        "manual_elo0_adj",
+        "manual_elo1_adj",
+    ]
+
+    @staticmethod
+    def compare_games(g1, g2):
+        """Compare two game entities."""
+        if g1 is None and g2 is None:
+            return True, None
+        if g1 is None or g2 is None:
+            return False, f"One game is None: {g1} vs {g2}"
+        return compare_entities(g1, g2, TestGameComparison.GAME_COMPARE_FIELDS)
+
+    @staticmethod
+    def compare_games_with_elo(g1, g2):
+        """Compare two game entities including Elo fields."""
+        if g1 is None and g2 is None:
+            return True, None
+        if g1 is None or g2 is None:
+            return False, f"One game is None: {g1} vs {g2}"
+        all_fields = (
+            TestGameComparison.GAME_COMPARE_FIELDS + TestGameComparison.GAME_ELO_FIELDS
+        )
+        return compare_entities(g1, g2, all_fields)
+
+    @staticmethod
+    def compare_live_game_info(g1, g2):
+        """Compare two LiveGameInfo objects."""
+        if g1 is None and g2 is None:
+            return True, None
+        if g1 is None or g2 is None:
+            return False, f"One LiveGameInfo is None: {g1} vs {g2}"
+        fields_to_compare = ["uuid", "opp", "robot_level", "my_turn", "sc0", "sc1", "locale"]
+        for field in fields_to_compare:
+            v1 = getattr(g1, field, None)
+            v2 = getattr(g2, field, None)
+            if v1 != v2:
+                return False, f"Field '{field}' differs: {v1!r} vs {v2!r}"
+        return True, None
+
+    @staticmethod
+    def compare_finished_game_info(g1, g2):
+        """Compare two FinishedGameInfo objects."""
+        if g1 is None and g2 is None:
+            return True, None
+        if g1 is None or g2 is None:
+            return False, f"One FinishedGameInfo is None: {g1} vs {g2}"
+        fields_to_compare = [
+            "uuid", "opp", "robot_level", "sc0", "sc1",
+            "elo_adj", "human_elo_adj", "manual_elo_adj", "locale"
+        ]
+        for field in fields_to_compare:
+            v1 = getattr(g1, field, None)
+            v2 = getattr(g2, field, None)
+            if v1 != v2:
+                return False, f"Field '{field}' differs: {v1!r} vs {v2!r}"
+        return True, None
+
+    @pytest.fixture
+    def comparison_users(
+        self, both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"]
+    ) -> tuple[str, str]:
+        """Create test users on both backends for game comparison tests."""
+        ndb, pg = both_backends
+
+        user_ids = ["compare-game-player0", "compare-game-player1"]
+
+        for i, user_id in enumerate(user_ids):
+            # Create on NDB if not exists
+            if ndb.users.get_by_id(user_id) is None:
+                ndb.users.create(
+                    user_id=user_id,
+                    account=f"test:comparegame{i}",
+                    email=None,
+                    nickname=f"CompareGamePlayer{i}",
+                    locale="is_IS",
+                )
+            # Create on PostgreSQL if not exists
+            if pg.users.get_by_id(user_id) is None:
+                pg.users.create(
+                    user_id=user_id,
+                    account=f"test:comparegame{i}",
+                    email=None,
+                    nickname=f"CompareGamePlayer{i}",
+                    locale="is_IS",
+                )
+
+        return tuple(user_ids)  # type: ignore
+
+    @pytest.mark.comparison
+    def test_create_retrieve_game_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """Game create/retrieve produces identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        game_id = "compare-game-001"
+
+        # Create game on both backends
+        runner.run(
+            "create_game",
+            lambda: ndb.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="AEILNRT",
+                rack1="DGOSTU?",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=0,
+                over=False,
+            ),
+            lambda: pg.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="AEILNRT",
+                rack1="DGOSTU?",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=0,
+                over=False,
+            ),
+            comparator=self.compare_games,
+        )
+
+        # Retrieve and compare
+        runner.run(
+            "get_game_by_id",
+            lambda: ndb.games.get_by_id(game_id),
+            lambda: pg.games.get_by_id(game_id),
+            comparator=self.compare_games,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_get_nonexistent_game_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+    ) -> None:
+        """Getting a non-existent game returns None on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+
+        runner.run(
+            "get_nonexistent_game",
+            lambda: ndb.games.get_by_id("nonexistent-compare-game-xyz"),
+            lambda: pg.games.get_by_id("nonexistent-compare-game-xyz"),
+            comparator=self.compare_games,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_robot_game_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """Games against robots produce identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, _ = comparison_users
+
+        game_id = "compare-robot-game-001"
+
+        # Create robot game on both backends
+        runner.run(
+            "create_robot_game",
+            lambda: ndb.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=None,  # Robot opponent
+                locale="is_IS",
+                rack0="AEILNRT",
+                rack1="DGOSTU?",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=15,
+                over=False,
+            ),
+            lambda: pg.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=None,  # Robot opponent
+                locale="is_IS",
+                rack0="AEILNRT",
+                rack1="DGOSTU?",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=15,
+                over=False,
+            ),
+            comparator=self.compare_games,
+        )
+
+        # Retrieve and compare
+        runner.run(
+            "get_robot_game",
+            lambda: ndb.games.get_by_id(game_id),
+            lambda: pg.games.get_by_id(game_id),
+            comparator=self.compare_games,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_update_game_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """Updating a game produces identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        game_id = "compare-update-game-001"
+
+        # Create game on both backends
+        runner.run(
+            "create_game",
+            lambda: ndb.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="AEILNRT",
+                rack1="DGOSTU?",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=0,
+                over=False,
+            ),
+            lambda: pg.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="AEILNRT",
+                rack1="DGOSTU?",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=0,
+                over=False,
+            ),
+            comparator=self.compare_games,
+        )
+
+        # Get game entities
+        ndb_game = ndb.games.get_by_id(game_id)
+        pg_game = pg.games.get_by_id(game_id)
+        assert ndb_game is not None
+        assert pg_game is not None
+
+        # Update on both
+        runner.run(
+            "update_game",
+            lambda: ndb.games.update(
+                ndb_game,
+                score0=42,
+                score1=35,
+                to_move=1,
+                rack0="BFGHIJK",
+                rack1="LMNOPQR",
+            ),
+            lambda: pg.games.update(
+                pg_game,
+                score0=42,
+                score1=35,
+                to_move=1,
+                rack0="BFGHIJK",
+                rack1="LMNOPQR",
+            ),
+        )
+
+        # Retrieve and compare
+        runner.run(
+            "get_updated_game",
+            lambda: ndb.games.get_by_id(game_id),
+            lambda: pg.games.get_by_id(game_id),
+            comparator=self.compare_games,
+        )
+
+        # Verify updated values
+        ndb_updated = ndb.games.get_by_id(game_id)
+        pg_updated = pg.games.get_by_id(game_id)
+        assert ndb_updated is not None and ndb_updated.score0 == 42
+        assert pg_updated is not None and pg_updated.score0 == 42
+        assert ndb_updated.to_move == 1
+        assert pg_updated.to_move == 1
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_finished_game_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """Finished games with Elo produce identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        game_id = "compare-finished-game-001"
+
+        # Create finished game with Elo data on both backends
+        runner.run(
+            "create_finished_game",
+            lambda: ndb.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="",
+                rack1="",
+                score0=320,
+                score1=280,
+                to_move=0,
+                robot_level=0,
+                over=True,
+                elo0=1200,
+                elo1=1180,
+                elo0_adj=5,
+                elo1_adj=-5,
+                human_elo0_adj=5,
+                human_elo1_adj=-5,
+                manual_elo0_adj=0,
+                manual_elo1_adj=0,
+            ),
+            lambda: pg.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="",
+                rack1="",
+                score0=320,
+                score1=280,
+                to_move=0,
+                robot_level=0,
+                over=True,
+                elo0=1200,
+                elo1=1180,
+                elo0_adj=5,
+                elo1_adj=-5,
+                human_elo0_adj=5,
+                human_elo1_adj=-5,
+                manual_elo0_adj=0,
+                manual_elo1_adj=0,
+            ),
+            comparator=self.compare_games_with_elo,
+        )
+
+        # Retrieve and compare
+        runner.run(
+            "get_finished_game",
+            lambda: ndb.games.get_by_id(game_id),
+            lambda: pg.games.get_by_id(game_id),
+            comparator=self.compare_games_with_elo,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_list_finished_games_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """list_finished_games returns same results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        # Create multiple finished games
+        for i in range(3):
+            game_id = f"compare-list-finished-{i:03d}"
+            ndb.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="",
+                rack1="",
+                score0=300 + i * 10,
+                score1=280 + i * 5,
+                to_move=0,
+                robot_level=0,
+                over=True,
+                elo0_adj=5 - i,
+                elo1_adj=-(5 - i),
+                human_elo0_adj=0,
+                human_elo1_adj=0,
+                manual_elo0_adj=0,
+                manual_elo1_adj=0,
+            )
+            pg.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="",
+                rack1="",
+                score0=300 + i * 10,
+                score1=280 + i * 5,
+                to_move=0,
+                robot_level=0,
+                over=True,
+                elo0_adj=5 - i,
+                elo1_adj=-(5 - i),
+                human_elo0_adj=0,
+                human_elo1_adj=0,
+                manual_elo0_adj=0,
+                manual_elo1_adj=0,
+            )
+
+        def compare_finished_lists(list1, list2):
+            # Compare by game UUIDs (order may differ due to timestamps)
+            ids1 = {g.uuid for g in list1}
+            ids2 = {g.uuid for g in list2}
+            if ids1 != ids2:
+                return False, f"Game UUID sets differ: {ids1} vs {ids2}"
+            # Compare each game by UUID
+            dict1 = {g.uuid: g for g in list1}
+            dict2 = {g.uuid: g for g in list2}
+            for uuid in ids1:
+                match, diff = self.compare_finished_game_info(dict1[uuid], dict2[uuid])
+                if not match:
+                    return False, f"Game {uuid}: {diff}"
+            return True, None
+
+        # List finished games for player0
+        runner.run(
+            "list_finished_games",
+            lambda: ndb.games.list_finished_games(player0_id),
+            lambda: pg.games.list_finished_games(player0_id),
+            comparator=compare_finished_lists,
+        )
+
+        # List finished games for player0 vs player1
+        runner.run(
+            "list_finished_games_versus",
+            lambda: ndb.games.list_finished_games(player0_id, versus=player1_id),
+            lambda: pg.games.list_finished_games(player0_id, versus=player1_id),
+            comparator=compare_finished_lists,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_iter_live_games_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """iter_live_games returns same results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        # Create live games with unique IDs for this test
+        live_game_ids = {"compare-live-001", "compare-live-002"}
+        live_games = [
+            {
+                "id": "compare-live-001",
+                "player0_id": player0_id,
+                "player1_id": player1_id,
+                "score0": 120,
+                "score1": 95,
+                "to_move": 0,
+                "robot_level": 0,
+            },
+            {
+                "id": "compare-live-002",
+                "player0_id": player0_id,
+                "player1_id": None,
+                "score0": 80,
+                "score1": 100,
+                "to_move": 1,
+                "robot_level": 10,
+            },
+        ]
+
+        for game_data in live_games:
+            ndb.games.create(
+                locale="is_IS",
+                rack0="AEIOU",
+                rack1="BCDFG",
+                over=False,
+                tile_count=86,
+                **game_data,
+            )
+            pg.games.create(
+                locale="is_IS",
+                rack0="AEIOU",
+                rack1="BCDFG",
+                over=False,
+                tile_count=86,
+                **game_data,
+            )
+
+        def compare_live_lists(iter1, iter2):
+            list1 = list(iter1)
+            list2 = list(iter2)
+            # Filter to only games created in this test to avoid pollution
+            # from other tests in the same session
+            list1 = [g for g in list1 if g.uuid in live_game_ids]
+            list2 = [g for g in list2 if g.uuid in live_game_ids]
+            # Compare by game UUIDs
+            ids1 = {g.uuid for g in list1}
+            ids2 = {g.uuid for g in list2}
+            if ids1 != ids2:
+                return False, f"Game UUID sets differ: {ids1} vs {ids2}"
+            # Compare each game by UUID
+            dict1 = {g.uuid: g for g in list1}
+            dict2 = {g.uuid: g for g in list2}
+            for uuid in ids1:
+                match, diff = self.compare_live_game_info(dict1[uuid], dict2[uuid])
+                if not match:
+                    return False, f"Game {uuid}: {diff}"
+            return True, None
+
+        runner.run(
+            "iter_live_games",
+            lambda: ndb.games.iter_live_games(player0_id),
+            lambda: pg.games.iter_live_games(player0_id),
+            comparator=compare_live_lists,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_game_with_moves_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """Games with moves produce identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        game_id = "compare-moves-game-001"
+        moves = [
+            {"coord": "H8", "tiles": "HELLO", "score": 24},
+            {"coord": "8G", "tiles": "WORLD", "score": 18},
+        ]
+
+        # Create game with moves on both backends
+        runner.run(
+            "create_game_with_moves",
+            lambda: ndb.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="AEIOU",
+                rack1="BCDFG",
+                score0=24,
+                score1=18,
+                to_move=0,
+                robot_level=0,
+                over=False,
+                moves=moves,
+            ),
+            lambda: pg.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="AEIOU",
+                rack1="BCDFG",
+                score0=24,
+                score1=18,
+                to_move=0,
+                robot_level=0,
+                over=False,
+                moves=moves,
+            ),
+            comparator=self.compare_games,
+        )
+
+        # Retrieve and compare moves
+        ndb_game = ndb.games.get_by_id(game_id)
+        pg_game = pg.games.get_by_id(game_id)
+
+        assert ndb_game is not None
+        assert pg_game is not None
+
+        # Compare moves if both have them
+        ndb_moves = ndb_game.moves
+        pg_moves = pg_game.moves
+
+        if ndb_moves and pg_moves:
+            assert len(ndb_moves) == len(pg_moves), (
+                f"Move count differs: {len(ndb_moves)} vs {len(pg_moves)}"
+            )
+            for i, (m1, m2) in enumerate(zip(ndb_moves, pg_moves)):
+                assert m1.coord == m2.coord, f"Move {i} coord differs"
+                assert m1.tiles == m2.tiles, f"Move {i} tiles differs"
+                assert m1.score == m2.score, f"Move {i} score differs"
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_game_with_prefs_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """Games with preferences produce identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        game_id = "compare-prefs-game-001"
+        prefs = {"manual": True, "timed": False, "duration": 25}
+
+        # Create game with prefs on both backends
+        runner.run(
+            "create_game_with_prefs",
+            lambda: ndb.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="",
+                rack1="",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=0,
+                over=False,
+                prefs=prefs,
+            ),
+            lambda: pg.games.create(
+                id=game_id,
+                player0_id=player0_id,
+                player1_id=player1_id,
+                locale="is_IS",
+                rack0="",
+                rack1="",
+                score0=0,
+                score1=0,
+                to_move=0,
+                robot_level=0,
+                over=False,
+                prefs=prefs,
+            ),
+            comparator=self.compare_games,
+        )
+
+        # Retrieve and compare prefs
+        ndb_game = ndb.games.get_by_id(game_id)
+        pg_game = pg.games.get_by_id(game_id)
+
+        assert ndb_game is not None
+        assert pg_game is not None
+        assert ndb_game.prefs == pg_game.prefs, (
+            f"Prefs differ: {ndb_game.prefs} vs {pg_game.prefs}"
+        )
+
+        assert runner.report.all_passed, runner.report.format()
+
+    @pytest.mark.comparison
+    def test_delete_game_equivalence(
+        self,
+        both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"],
+        comparison_users: tuple[str, str],
+    ) -> None:
+        """Deleting a game produces identical results on both backends."""
+        ndb, pg = both_backends
+        runner = DualBackendRunner(ndb, pg)
+        player0_id, player1_id = comparison_users
+
+        game_id = "compare-delete-game-001"
+
+        # Create game on both backends
+        ndb.games.create(
+            id=game_id,
+            player0_id=player0_id,
+            player1_id=player1_id,
+            locale="is_IS",
+            rack0="",
+            rack1="",
+            score0=0,
+            score1=0,
+            to_move=0,
+            robot_level=0,
+            over=False,
+        )
+        pg.games.create(
+            id=game_id,
+            player0_id=player0_id,
+            player1_id=player1_id,
+            locale="is_IS",
+            rack0="",
+            rack1="",
+            score0=0,
+            score1=0,
+            to_move=0,
+            robot_level=0,
+            over=False,
+        )
+
+        # Verify exists on both
+        assert ndb.games.get_by_id(game_id) is not None
+        assert pg.games.get_by_id(game_id) is not None
+
+        # Delete on both
+        runner.run(
+            "delete_game",
+            lambda: ndb.games.delete(game_id),
+            lambda: pg.games.delete(game_id),
+        )
+
+        # Verify gone on both
+        runner.run(
+            "get_deleted_game",
+            lambda: ndb.games.get_by_id(game_id),
+            lambda: pg.games.get_by_id(game_id),
+            comparator=self.compare_games,
+        )
+
+        assert runner.report.all_passed, runner.report.format()
