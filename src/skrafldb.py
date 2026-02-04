@@ -3044,10 +3044,12 @@ class RiddleModel(Model["RiddleModel"]):
     @classmethod
     def get_riddles_for_date(cls, date_str: str) -> Sequence[RiddleModel]:
         """Get all riddles for a specific date (all locales)."""
-        # Query by key prefix - requires key range query
-        query = cls.query()
-        query = query.filter(cls.key >= ndb.Key(cls, f"{date_str}:"))
-        query = query.filter(cls.key < ndb.Key(cls, f"{date_str}:ÿ"))
+        # Query by key prefix using key range query.
+        # In google-cloud-ndb, key comparisons require FilterNode with '__key__'.
+        query = cls.query(
+            ndb.query.FilterNode("__key__", ">=", ndb.Key(cls, f"{date_str}:")),  # type: ignore[attr-defined]
+            ndb.query.FilterNode("__key__", "<", ndb.Key(cls, f"{date_str}:\xff")),  # type: ignore[attr-defined]
+        )
         return query.fetch()
 
     @property
