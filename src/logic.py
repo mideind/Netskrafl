@@ -39,7 +39,6 @@ import functools
 import random
 from datetime import UTC, datetime, timedelta
 
-from google.cloud import ndb
 from flask import url_for
 import firebase
 
@@ -89,6 +88,7 @@ from skrafldb import (
     FavoriteModel,
     GameModel,
     RatingModel,
+    transactional,
 )
 from cache import memcache
 
@@ -709,7 +709,7 @@ def process_move(
     return jsonify(game.client_state(1 - opponent_index))
 
 
-@ndb.transactional()  # type: ignore
+@transactional()
 def submit_move(
     uuid: str, movelist: List[Any], movecount: int, validate: bool
 ) -> ResponseType:

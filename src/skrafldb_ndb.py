@@ -92,6 +92,10 @@ import json
 
 from google.cloud import ndb
 
+# Re-export ndb.transactional so that application code can import it
+# from skrafldb instead of depending directly on google.cloud.ndb
+transactional = ndb.transactional
+
 from config import (
     DEFAULT_ELO,
     DEFAULT_LOCALE,

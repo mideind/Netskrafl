@@ -100,9 +100,11 @@ class PostgreSQLBackend:
     This class provides a PostgreSQL backend using SQLAlchemy ORM.
 
     Usage:
-        from src.db.postgresql import PostgreSQLBackend
-
+        # Standalone (tests, scripts): creates its own engine and pool
         db = PostgreSQLBackend(database_url="postgresql://...")
+
+        # Shared pool (production): receives a pre-created sessionmaker
+        db = PostgreSQLBackend(session_factory=shared_session_factory)
 
         # Simple operations (auto-commit per operation)
         user = db.users.get_by_id("user-123")
@@ -113,19 +115,32 @@ class PostgreSQLBackend:
             db.games.update(game, over=True)
     """
 
-    def __init__(self, database_url: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        database_url: Optional[str] = None,
+        session_factory: Optional[sessionmaker] = None,
+    ) -> None:
         """Initialize the PostgreSQL backend.
 
         Args:
-            database_url: PostgreSQL connection URL. If not provided, reads from
-                          DATABASE_URL environment variable.
+            database_url: PostgreSQL connection URL. Used to create a
+                          standalone engine (for tests/scripts). Ignored
+                          if session_factory is provided.
+            session_factory: Pre-created sessionmaker with a shared engine
+                          and connection pool. Preferred for production use
+                          to avoid creating a new pool per request.
         """
-        # Create engine and session factory
-        self._engine = create_db_engine(database_url)
-        self._session_factory = sessionmaker(
-            bind=self._engine,
-            expire_on_commit=False,
-        )
+        if session_factory is not None:
+            # Shared pool mode: use the provided sessionmaker
+            self._engine = None  # Not owned by this instance
+            self._session_factory = session_factory
+        else:
+            # Standalone mode: create our own engine and pool
+            self._engine = create_db_engine(database_url)
+            self._session_factory = sessionmaker(
+                bind=self._engine,
+                expire_on_commit=False,
+            )
 
         # Create the request-scoped session
         # This session will be used by all repositories
@@ -278,9 +293,16 @@ class PostgreSQLBackend:
         self._session.rollback()
 
     def close(self) -> None:
-        """Close database connections and clean up resources."""
+        """Close the session, returning the connection to the pool.
+
+        In shared pool mode, only the session is closed (the connection
+        goes back to the shared pool). In standalone mode, the engine
+        is also disposed, closing all pooled connections.
+        """
         self._session.close()
-        self._engine.dispose()
+        if self._engine is not None:
+            # Standalone mode: we own the engine, so dispose it
+            self._engine.dispose()
 
     def generate_id(self) -> str:
         """Generate a new unique ID for entities."""
@@ -292,11 +314,13 @@ class PostgreSQLBackend:
         This should only be called during initial setup or testing.
         For production, use proper migrations (e.g., Alembic).
         """
-        Base.metadata.create_all(self._engine)
+        engine = self._engine or self._session.get_bind()
+        Base.metadata.create_all(engine)
 
     def drop_tables(self) -> None:
         """Drop all database tables.
 
         WARNING: This deletes all data! Only use for testing.
         """
-        Base.metadata.drop_all(self._engine)
+        engine = self._engine or self._session.get_bind()
+        Base.metadata.drop_all(engine)

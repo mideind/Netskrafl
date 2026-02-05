@@ -80,24 +80,46 @@ class SessionManager:
         config = get_config()
         self._backend_type = backend_type or config.backend
         self._database_url = database_url or config.database_url
+        # Shared sessionmaker for PostgreSQL (created once, used by all requests)
+        self._pg_session_factory: Optional[Any] = None
 
-        if self._backend_type == "postgresql" and not self._database_url:
-            raise ValueError(
-                "DATABASE_URL required for PostgreSQL backend. "
-                "Set via environment or database_url parameter."
-            )
+        if self._backend_type == "postgresql":
+            if not self._database_url:
+                raise ValueError(
+                    "DATABASE_URL required for PostgreSQL backend. "
+                    "Set via environment or database_url parameter."
+                )
+            # Create the shared engine and sessionmaker once at startup
+            self._init_pg_pool()
 
     @property
     def backend_type(self) -> str:
         """Get the configured backend type."""
         return self._backend_type
 
+    def _init_pg_pool(self) -> None:
+        """Create the shared SQLAlchemy engine and sessionmaker.
+
+        Called once at startup. The engine manages a connection pool
+        that is shared across all requests. Each request creates a
+        lightweight Session from the shared sessionmaker, which checks
+        out a pooled connection.
+        """
+        from sqlalchemy.orm import sessionmaker
+        from .postgresql.connection import create_db_engine
+
+        engine = create_db_engine(self._database_url)
+        self._pg_session_factory = sessionmaker(
+            bind=engine,
+            expire_on_commit=False,
+        )
+
     def _create_backend(self) -> "DatabaseBackendProtocol":
-        """Create a new backend instance."""
+        """Create a new backend instance for the current request."""
         if self._backend_type == "postgresql":
             from .postgresql import PostgreSQLBackend
 
-            return PostgreSQLBackend(database_url=self._database_url)
+            return PostgreSQLBackend(session_factory=self._pg_session_factory)
         else:
             from .ndb import NDBBackend
 

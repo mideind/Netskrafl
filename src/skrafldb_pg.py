@@ -39,6 +39,7 @@ import logging
 import uuid
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from functools import wraps
 from itertools import zip_longest
 
 from config import (
@@ -68,6 +69,25 @@ from skrafldb_ndb import (
 
 
 _log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Transaction decorator (no-op for PostgreSQL)
+# ---------------------------------------------------------------------------
+
+def transactional(**_kw: Any) -> Any:
+    """No-op replacement for ndb.transactional() on the PostgreSQL backend.
+
+    The PostgreSQL WSGI middleware already wraps each request in a transaction,
+    so there is no need for an additional transactional wrapper here."""
+
+    def decorator(fn: Any) -> Any:
+        @wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            return fn(*args, **kwargs)
+        return wrapper
+
+    return decorator
 
 
 # ---------------------------------------------------------------------------
@@ -1054,11 +1074,20 @@ class GameModel:
                 self._attrs.clear()
                 self._moves_list = None
         else:
-            # Creating a new game
-            create_kwargs = dict(update_attrs)
-            create_kwargs["id"] = self._id
-            entity = db.games.create(**create_kwargs)
-            self._entity = entity
+            # No loaded entity: check whether a game with this id
+            # already exists in the database (NDB put() is an upsert)
+            existing = db.games.get_by_id(self._id)
+            if existing is not None:
+                # Update the existing game
+                self._entity = existing
+                if update_attrs:
+                    db.games.update(existing, **update_attrs)
+            else:
+                # Creating a new game
+                create_kwargs = dict(update_attrs)
+                create_kwargs["id"] = self._id
+                entity = db.games.create(**create_kwargs)
+                self._entity = entity
             self._attrs.clear()
             self._moves_list = None
         return self.key
