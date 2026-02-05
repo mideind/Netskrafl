@@ -7,7 +7,6 @@ Use --backend option to select which backend(s) to test.
 
 from __future__ import annotations
 
-import pytest
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

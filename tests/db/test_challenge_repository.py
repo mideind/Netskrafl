@@ -10,6 +10,8 @@ from __future__ import annotations
 import pytest
 from typing import TYPE_CHECKING
 
+from src.db.protocols import PrefsDict
+
 if TYPE_CHECKING:
     from src.db.protocols import DatabaseBackendProtocol
 
@@ -45,7 +47,7 @@ class TestChallengeCRUD:
 
     def test_add_challenge_with_prefs(self, backend: "DatabaseBackendProtocol") -> None:
         """Can add a challenge with game preferences."""
-        prefs = {"duration": 10, "manual": True}
+        prefs: PrefsDict = {"duration": 10, "manual": True}
         backend.challenges.add_relation("chal-user-1", "chal-user-3", prefs=prefs)
 
         found, loaded_prefs = backend.challenges.find_relation(
@@ -75,7 +77,7 @@ class TestChallengeCRUD:
 
     def test_delete_returns_prefs(self, backend: "DatabaseBackendProtocol") -> None:
         """Deleting a challenge returns its preferences."""
-        prefs = {"timed": True, "robot_level": 5}
+        prefs: PrefsDict = {"fairplay": True, "duration": 5}
         backend.challenges.add_relation("chal-user-3", "chal-user-1", prefs=prefs)
 
         found, returned_prefs = backend.challenges.delete_relation(
@@ -84,8 +86,8 @@ class TestChallengeCRUD:
 
         assert found
         assert returned_prefs is not None
-        assert returned_prefs.get("timed") is True
-        assert returned_prefs.get("robot_level") == 5
+        assert returned_prefs.get("fairplay") is True
+        assert returned_prefs.get("duration") == 5
 
     def test_challenge_is_directional(
         self, backend: "DatabaseBackendProtocol"

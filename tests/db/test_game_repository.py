@@ -222,7 +222,7 @@ class TestGameTimestamps:
 
         before = datetime.now(UTC)
 
-        game = backend.games.create(
+        backend.games.create(
             id="test-ts-game-001",
             player0_id="ts-game-player0",
             player1_id=None,
@@ -612,7 +612,7 @@ class TestGameMoves:
             {"coord": "8G", "tiles": "WORLD", "score": 18},
         ]
 
-        game = backend.games.create(
+        backend.games.create(
             id="test-moves-game-001",
             player0_id="moves-game-player",
             player1_id=None,
@@ -656,7 +656,7 @@ class TestGamePreferences:
 
         prefs = {"manual": True, "timed": False}
 
-        game = backend.games.create(
+        backend.games.create(
             id="test-prefs-game-001",
             player0_id="prefs-game-player",
             player1_id=None,
@@ -1150,10 +1150,10 @@ class TestGameComparison:
             # Compare each game by UUID
             dict1 = {g.uuid: g for g in list1}
             dict2 = {g.uuid: g for g in list2}
-            for uuid in ids1:
-                match, diff = self.compare_finished_game_info(dict1[uuid], dict2[uuid])
+            for game_uuid in ids1:
+                match, diff = self.compare_finished_game_info(dict1[game_uuid], dict2[game_uuid])
                 if not match:
-                    return False, f"Game {uuid}: {diff}"
+                    return False, f"Game {game_uuid}: {diff}"
             return True, None
 
         # List finished games for player0
@@ -1243,10 +1243,10 @@ class TestGameComparison:
             # Compare each game by UUID
             dict1 = {g.uuid: g for g in list1}
             dict2 = {g.uuid: g for g in list2}
-            for uuid in ids1:
-                match, diff = self.compare_live_game_info(dict1[uuid], dict2[uuid])
+            for game_uuid in ids1:
+                match, diff = self.compare_live_game_info(dict1[game_uuid], dict2[game_uuid])
                 if not match:
-                    return False, f"Game {uuid}: {diff}"
+                    return False, f"Game {game_uuid}: {diff}"
             return True, None
 
         runner.run(

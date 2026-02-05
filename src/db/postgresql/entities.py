@@ -7,7 +7,7 @@ the entity protocols defined in src/db/protocols.py.
 
 from __future__ import annotations
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from datetime import datetime
 import json
 
@@ -77,7 +77,7 @@ class UserEntity:
 
     @property
     def prefs(self) -> PrefsDict:
-        return self._model.prefs or {}
+        return cast(PrefsDict, self._model.prefs or {})
 
     @property
     def timestamp(self) -> datetime:
@@ -229,7 +229,7 @@ class GameEntity:
 
     @property
     def prefs(self) -> Optional[PrefsDict]:
-        return self._model.prefs
+        return cast(Optional[PrefsDict], self._model.prefs)
 
     @property
     def tile_count(self) -> Optional[int]:

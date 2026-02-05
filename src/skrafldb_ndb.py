@@ -69,7 +69,6 @@ from typing import (
     Dict,
     Generic,
     Literal,
-    NamedTuple,
     Sequence,
     Set,
     Tuple,
@@ -80,7 +79,6 @@ from typing import (
     Any,
     Type,
     TypeVar,
-    TypedDict,
     Callable,
     cast,
     overload,
@@ -88,7 +86,6 @@ from typing import (
 
 import logging
 import uuid
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from itertools import zip_longest
 import json
@@ -106,179 +103,25 @@ from cache import memcache
 from authmanager import auth_manager
 
 
-# Type definitions
-_T = TypeVar("_T", covariant=True)
-_T_Model = TypeVar("_T_Model", bound=ndb.Model)
-
-
-class PrefsDict(TypedDict, total=False):
-    """Dictionary of user or game preferences"""
-
-    full_name: str
-    email: str
-    locale: str
-    duration: int
-    fairplay: bool
-    newbag: bool
-    manual: bool
-    board_type: str
-    friend: bool
-    haspaid: bool
-    beginner: bool
-    ready: bool
-    ready_timed: bool
-    audio: bool
-    fanfare: bool
-
-
-ChallengeTuple = NamedTuple(
-    "ChallengeTuple",
-    [
-        ("opp", Optional[str]),  # Challenged user
-        ("prefs", Optional[PrefsDict]),  # Parameters of the challenge
-        ("ts", datetime),  # Timestamp of the challenge
-        ("key", str),  # Key of the ChallengeModel entity
-    ],
+# Shared type definitions - canonical definitions are in src.db.protocols
+from src.db.protocols import (
+    PrefsDict,
+    ChallengeTuple,
+    StatsDict,
+    StatsResults,
+    LiveGameDict,
+    FinishedGameDict,
+    ZombieGameDict,
+    ChatModelHistoryDict,
+    ListPrefixDict,
+    RatingDict,
+    RatingForLocaleDict,
+    EloDict,
 )
 
-
-class StatsDict(TypedDict):
-    """Summarized result from a StatsModel query"""
-
-    user: Optional[str]
-    robot_level: int
-    timestamp: datetime
-    games: int
-    elo: int
-    score: int
-    score_against: int
-    wins: int
-    losses: int
-    rank: int
-
-
-StatsResults = List[StatsDict]
-
-
-class LiveGameDict(TypedDict):
-    """The dictionary returned from the iter_live_games() method"""
-
-    uuid: str
-    ts: datetime
-    opp: Optional[str]
-    robot_level: int
-    my_turn: bool
-    sc0: int
-    sc1: int
-    prefs: Optional[PrefsDict]
-    tile_count: int
-    locale: str
-
-
-class FinishedGameDict(TypedDict):
-    """The dictionary returned from the list_finished_games() method"""
-
-    uuid: str
-    ts: datetime
-    ts_last_move: datetime
-    opp: Optional[str]
-    robot_level: int
-    sc0: int
-    sc1: int
-    elo_adj: Optional[int]
-    human_elo_adj: Optional[int]
-    manual_elo_adj: Optional[int]
-    prefs: Optional[PrefsDict]
-    locale: str
-
-
-class ZombieGameDict(TypedDict):
-    """The dictionary returned from the ZombieModel.list_games() method"""
-
-    uuid: str
-    ts: datetime
-    opp: Optional[str]
-    robot_level: int
-    sc0: int
-    sc1: int
-    locale: str
-
-
-class ChatModelHistoryDict(TypedDict):
-    """The dictionary returned from the ChatModel.chat_history() method"""
-
-    user: str
-    ts: datetime
-    last_msg: str
-    unread: bool
-
-
-class ListPrefixDict(TypedDict):
-    """The dictionary returned from the UserModel.list_prefix() method"""
-
-    id: str
-    nickname: str
-    prefs: PrefsDict
-    timestamp: datetime
-    ready: Optional[bool]
-    ready_timed: Optional[bool]
-    elo: int
-    human_elo: int
-    manual_elo: int
-    image: Optional[str]
-    has_image_blob: bool
-
-
-class RatingDict(TypedDict):
-    """The dictionary returned from RatingModel.list_rating() function"""
-
-    rank: int
-    userid: str
-    games: int
-    elo: int
-    score: int
-    score_against: int
-    wins: int
-    losses: int
-    rank_yesterday: int
-    games_yesterday: int
-    elo_yesterday: int
-    score_yesterday: int
-    score_against_yesterday: int
-    wins_yesterday: int
-    losses_yesterday: int
-    rank_week_ago: int
-    games_week_ago: int
-    elo_week_ago: int
-    score_week_ago: int
-    score_against_week_ago: int
-    wins_week_ago: int
-    losses_week_ago: int
-    rank_month_ago: int
-    games_month_ago: int
-    elo_month_ago: int
-    score_month_ago: int
-    score_against_month_ago: int
-    wins_month_ago: int
-    losses_month_ago: int
-
-
-class RatingForLocaleDict(TypedDict):
-    """The dictionary returned from EloModel.list_rating() function"""
-
-    rank: int
-    userid: str
-    elo: int
-
-
-@dataclass
-class EloDict:
-    """A class that encapsulates the Elo scores of a player"""
-
-    elo: int
-    human_elo: int
-    manual_elo: int
-
+# Type variables
+_T = TypeVar("_T", covariant=True)
+_T_Model = TypeVar("_T_Model", bound=ndb.Model)
 
 DEFAULT_ELO_DICT = EloDict(
     elo=DEFAULT_ELO, human_elo=DEFAULT_ELO, manual_elo=DEFAULT_ELO

@@ -262,7 +262,7 @@ def db_wsgi_middleware(wsgi_app: Any) -> Any:
 
     if manager.backend_type == "ndb":
         # For NDB, we also need the client context
-        import skrafldb
+        import skrafldb_ndb as skrafldb
 
         def middleware(environ: Any, start_response: Any) -> Any:
             with skrafldb.Client.get_context():

@@ -20,6 +20,7 @@ from typing import (
     Generic,
     Type,
     Callable,
+    cast,
 )
 from datetime import datetime, timezone
 import uuid
@@ -249,7 +250,7 @@ class UserRepository:
             yield UserPrefixInfo(
                 id=user.id,
                 nickname=user.nickname,
-                prefs=user.prefs,
+                prefs=cast(PrefsDict, user.prefs),
                 timestamp=user.timestamp,
                 ready=user.ready,
                 ready_timed=user.ready_timed,
@@ -390,7 +391,7 @@ class GameRepository:
                     elo_adj=elo_adj or 0,
                     human_elo_adj=human_elo_adj or 0,
                     manual_elo_adj=manual_elo_adj or 0,
-                    prefs=game.prefs,
+                    prefs=cast(Optional[PrefsDict], game.prefs),
                     locale=game.locale,
                 )
             )
@@ -430,7 +431,7 @@ class GameRepository:
                 my_turn=my_turn,
                 sc0=game.score0,
                 sc1=game.score1,
-                prefs=game.prefs,
+                prefs=cast(Optional[PrefsDict], game.prefs),
                 tile_count=game.tile_count or 0,
                 locale=game.locale,
             )
@@ -777,7 +778,7 @@ class ChallengeRepository:
 
         challenge = self._session.execute(stmt).scalars().first()
         if challenge:
-            return True, challenge.prefs
+            return True, cast(Optional[PrefsDict], challenge.prefs)
         return False, None
 
     def add_relation(
@@ -835,7 +836,7 @@ class ChallengeRepository:
         for c in self._session.execute(stmt).scalars():
             yield ChallengeInfo(
                 opp=c.dest_user_id,
-                prefs=c.prefs,
+                prefs=cast(Optional[PrefsDict], c.prefs),
                 ts=c.timestamp,
                 key=str(c.id),
             )
@@ -851,7 +852,7 @@ class ChallengeRepository:
         for c in self._session.execute(stmt).scalars():
             yield ChallengeInfo(
                 opp=c.src_user_id,
-                prefs=c.prefs,
+                prefs=cast(Optional[PrefsDict], c.prefs),
                 ts=c.timestamp,
                 key=str(c.id),
             )

@@ -39,7 +39,7 @@ class TestBlockCRUD:
     def test_block_user(self, backend: "DatabaseBackendProtocol") -> None:
         """Can block a user."""
         # Use unique user pair for this test
-        result = backend.blocks.block_user("block-user-1", "block-user-2")
+        backend.blocks.block_user("block-user-1", "block-user-2")
 
         # Returns True if newly blocked (first time)
         # Note: may already be blocked from previous test run
@@ -51,7 +51,7 @@ class TestBlockCRUD:
         """Blocking an already blocked user returns False."""
         # Use unique pair for this test to avoid interference
         # First block
-        first_result = backend.blocks.block_user("block-user-2", "block-user-1")
+        backend.blocks.block_user("block-user-2", "block-user-1")
         # Second block attempt should return False
         result = backend.blocks.block_user("block-user-2", "block-user-1")
 

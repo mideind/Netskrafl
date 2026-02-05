@@ -87,7 +87,7 @@ class TestStatsRetrieval:
         # Create multiple stats entries
         backend.stats.create(user_id="stats-retrieve-user")
         backend.stats.create(user_id="stats-retrieve-user")
-        newest = backend.stats.create(user_id="stats-retrieve-user")
+        backend.stats.create(user_id="stats-retrieve-user")
 
         loaded = backend.stats.newest_for_user("stats-retrieve-user")
 

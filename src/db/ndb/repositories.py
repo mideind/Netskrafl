@@ -21,9 +21,10 @@ from typing import (
 )
 from datetime import datetime
 
-# Import the NDB models - these imports happen at runtime
-# when the NDB backend is actually used
-import skrafldb
+# Import the NDB models directly from skrafldb_ndb to avoid circular
+# imports when DATABASE_BACKEND=postgresql (skrafldb would try to
+# import skrafldb_pg which doesn't need NDB)
+import skrafldb_ndb as skrafldb
 
 from ..protocols import (
     PrefsDict,

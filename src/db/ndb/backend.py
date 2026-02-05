@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from contextlib import contextmanager
 
-import skrafldb
+import skrafldb_ndb as skrafldb
 
 from .repositories import (
     UserRepository,
