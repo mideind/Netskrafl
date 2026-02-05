@@ -170,4 +170,3 @@ multiple languages through separate DAWG files and tile sets.
   are being run locally.* Also, adding comments to utility programs to this effect is useful.
 - `netskrafl_lint.py` is **not** a linter - it is a separate utility program.
   Do not invoke it for code quality checks. Only run it when specifically asked.
-

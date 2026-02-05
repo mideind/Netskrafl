@@ -37,6 +37,134 @@ This document details the migration path from Google Cloud Datastore (NDB) to Po
 
 ---
 
+## Implementation Status
+
+*Updated: February 2025*
+
+Phase 1 of the migration (creating the PostgreSQL backend parallel to NDB) is
+substantially complete. The implementation evolved beyond the original plan into
+a more robust protocol-based repository architecture. This section describes what
+was built and how it differs from the plan's proposals.
+
+### What Has Been Built
+
+The core infrastructure for running either NDB or PostgreSQL is operational:
+
+- **Protocol layer** (`src/db/protocols.py`, ~1,420 lines) — Interface contracts
+  defining 7 entity protocols, 18 repository protocols, and ~30 shared data types
+  (dataclasses and TypedDicts). Both backends implement these protocols via
+  structural subtyping (duck typing).
+
+- **PostgreSQL backend** (`src/db/postgresql/`, ~3,000 lines) — Complete
+  SQLAlchemy 2.0 ORM implementation with backend class, connection management,
+  entity wrappers, and 18 repository implementations.
+
+- **NDB backend adapter** (`src/db/ndb/`, ~1,700 lines) — Wraps the existing
+  `skrafldb_ndb.py` code to implement the same repository protocols, enabling
+  both backends to be used interchangeably via `get_db()`.
+
+- **Session management** (`src/db/session.py`, ~290 lines) — `SessionManager`
+  class providing request-scoped backends via thread-local storage, with WSGI
+  middleware for automatic transaction lifecycle (commit on success, rollback
+  on exception).
+
+- **Old API facade** (`skrafldb_pg.py`, ~2,100 lines) — NDB-compatible API
+  (`UserModel`, `GameModel`, etc.) delegating to the PostgreSQL repositories,
+  so that existing application code using `from skrafldb import UserModel`
+  works unchanged with either backend.
+
+- **Comprehensive test suite** (`tests/db/`, ~5,000 lines) — 16 test files
+  (one per repository) with multi-backend parametrization via `--backend=ndb`,
+  `--backend=postgresql`, or `--backend=both` CLI flags. Tests verify that
+  both backends produce identical results for all operations.
+
+### Key Architectural Differences from the Plan
+
+| Aspect | Plan | Actual |
+|--------|------|--------|
+| **Architecture** | Facade + NDB-compat wrappers | Protocol/Repository pattern with entity wrappers |
+| **Shared types** | Defined per-backend | Centralized in `protocols.py` |
+| **Session management** | `SessionLocal = sessionmaker()` | `SessionManager` with thread-local request scoping |
+| **Facades** | One (`skrafldb.py` → `db/__init__.py`) | Two: old API (`skrafldb.py` → `skrafldb_pg.py`) + new API (`get_db()`) |
+| **NDB code location** | Moved to `src/db/ndb/models.py` | Stays at `skrafldb_ndb.py`; `src/db/ndb/` wraps it |
+| **Transactions** | Simple context manager | Savepoint-based nested transactions |
+| **Composite keys** | UUID PK + unique constraint | Composite primary keys directly |
+| **SQLAlchemy style** | 1.x (`Column`, `declarative_base`) | 2.0 (`Mapped`, `mapped_column`, `DeclarativeBase`) |
+| **Entity access** | Direct ORM model exposure | `__slots__`-based entity wrappers implementing protocols |
+
+### Actual Directory Structure
+
+```
+src/
+  skrafldb.py              # Facade selector: imports from skrafldb_ndb or skrafldb_pg
+  skrafldb_ndb.py          # Original NDB implementation (~3,000 lines, unchanged)
+  skrafldb_pg.py           # PostgreSQL NDB-compatible facade (~2,100 lines)
+
+  db/
+    __init__.py            # Exports: init_session_manager, get_db, db_wsgi_middleware
+    config.py              # DatabaseConfig dataclass, get_config()
+    session.py             # SessionManager, request-scoped lifecycle, WSGI middleware
+    protocols.py           # All protocols, entity contracts, shared data types
+    testing.py             # Test infrastructure helpers
+
+    postgresql/
+      __init__.py          # Exports PostgreSQLBackend
+      backend.py           # PostgreSQLBackend class (implements DatabaseBackendProtocol)
+      connection.py        # create_db_engine() with UTC timezone and connection pooling
+      models.py            # SQLAlchemy 2.0 ORM model definitions
+      entities.py          # Entity wrappers (UserEntity, GameEntity, etc.)
+      repositories.py      # Repository implementations (18 repositories)
+
+    ndb/
+      __init__.py          # Exports NDBBackend
+      backend.py           # NDBBackend class (implements DatabaseBackendProtocol)
+      entities.py          # Entity wrappers around NDB model instances
+      repositories.py      # Repository implementations wrapping skrafldb_ndb
+
+tests/
+  db/
+    conftest.py            # Multi-backend test fixtures and CLI flags
+    test_user_repository.py
+    test_game_repository.py
+    test_elo_repository.py
+    ... (16 test files total)
+```
+
+### Dual API Design
+
+The implementation provides two APIs for database access:
+
+**Old API** (for existing application code, zero changes required):
+```python
+from skrafldb import UserModel, GameModel, Client
+um = UserModel.fetch("user-123")
+```
+`skrafldb.py` selects between `skrafldb_ndb` and `skrafldb_pg` based on
+`DATABASE_BACKEND`. The `skrafldb_pg` module delegates all operations to the
+PostgreSQL repositories via `get_db()`.
+
+**New API** (for new or refactored code):
+```python
+from src.db import get_db
+db = get_db()
+user = db.users.get_by_id("user-123")
+db.users.update(user, elo=1500)
+# Changes committed at request end by SessionManager
+```
+
+### What Remains To Be Done
+
+- **Data migration scripts** — `scripts/migrate_to_postgres.py` (Phase 3 of
+  the plan). The migration procedure described later in this document is still
+  the intended approach.
+- **Production database creation** with ICU collation (Phase 3).
+- **Integration testing** with the full application stack (Phase 2).
+- **Cutover** — Setting `DATABASE_BACKEND=postgresql` in production (Phase 4).
+- **NDB code removal** — Deleting `skrafldb_ndb.py`, `src/db/ndb/`, and
+  Google Cloud NDB dependencies (Phase 5).
+
+---
+
 ## Current Architecture Analysis
 
 ### NDB Model Inventory (18 Models)
@@ -195,45 +323,36 @@ The `cache.py` module provides a `RedisWrapper` class that:
 
 #### Connection Configuration
 
+> **Implementation note:** The actual connection management is in
+> `src/db/postgresql/connection.py`. It uses `DatabaseConfig` for all settings
+> and sets UTC timezone both via `connect_args` and an event listener.
+> Session management is handled by `SessionManager` in `src/db/session.py`
+> (see Source File Architecture section).
+
 ```python
-# src/database.py (new file)
-import os
+# src/db/postgresql/connection.py (actual implementation)
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import QueuePool
+from ..config import get_config
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://user:pass@localhost:5432/netskrafl"
-)
+def create_db_engine(database_url=None, ...):
+    config = get_config()
+    engine = create_engine(
+        database_url or config.database_url,
+        pool_size=config.pool_size,
+        max_overflow=config.max_overflow,
+        pool_timeout=config.pool_timeout,
+        pool_recycle=config.pool_recycle,
+        echo=config.echo_sql,
+        connect_args={"options": "-c timezone=utc"},
+    )
 
-engine = create_engine(
-    DATABASE_URL,
-    poolclass=QueuePool,
-    pool_size=5,           # Base connections
-    max_overflow=10,       # Additional connections under load
-    pool_timeout=30,       # Wait time for connection
-    pool_recycle=1800,     # Recycle connections after 30 min
-    pool_pre_ping=True,    # Check connection health
-)
+    @event.listens_for(engine, "connect")
+    def set_timezone(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET TIME ZONE 'UTC'")
+        cursor.close()
 
-# Ensure all connections use UTC timezone
-@event.listens_for(engine, "connect")
-def set_timezone(dbapi_connection, connection_record):
-    """Set session timezone to UTC for consistent timestamp handling"""
-    cursor = dbapi_connection.cursor()
-    cursor.execute("SET TIME ZONE 'UTC'")
-    cursor.close()
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def get_db() -> Session:
-    """Dependency for Flask request context"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    return engine
 ```
 
 #### Collation for Multilingual Text
@@ -292,569 +411,294 @@ PostgreSQL's `TIMESTAMP WITH TIME ZONE` type stores timestamps in UTC internally
 3. **Application level**: Always use timezone-aware datetime objects with UTC
 
 ```python
-# src/database.py - Connection with UTC timezone
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
-
-engine = create_engine(DATABASE_URL, ...)
+# src/db/postgresql/connection.py - Connection with UTC timezone
+engine = create_engine(
+    url,
+    connect_args={"options": "-c timezone=utc"},
+    ...
+)
 
 @event.listens_for(engine, "connect")
 def set_timezone(dbapi_connection, connection_record):
-    """Ensure all connections use UTC timezone"""
     cursor = dbapi_connection.cursor()
     cursor.execute("SET TIME ZONE 'UTC'")
     cursor.close()
 ```
 
-#### Base Model with Common Patterns
+#### Base Model and Patterns
+
+> **Implementation note:** The actual implementation uses SQLAlchemy 2.0's
+> `DeclarativeBase` with `Mapped` type annotations and `mapped_column()`
+> instead of the 1.x-style `Column()` and `declarative_base()` shown in
+> the original plan. The `UUIDMixin` and `TimestampMixin` were not used;
+> instead, tables use the primary key strategy most natural for each entity:
+> composite PKs for relationship/locale tables, string PKs for users and
+> games (preserving NDB key formats), and `gen_random_uuid()` server defaults
+> for entities that need auto-generated UUIDs.
+>
+> See `src/db/postgresql/models.py` for the actual definitions.
 
 ```python
-# src/models/base.py
-import uuid
-from datetime import UTC, datetime
-from sqlalchemy import Column, DateTime, func
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base
+# src/db/postgresql/models.py (actual implementation)
+from datetime import datetime, timezone
+from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Index, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-Base = declarative_base()
+UTC = timezone.utc
 
-def new_uuid() -> uuid.UUID:
-    """Generate a new UUID v7 (time-ordered) for use as primary key.
-
-    UUID v7 is preferred over UUID v4 for database primary keys because:
-    - Time-ordered: better B-tree index locality and performance
-    - Sortable: naturally orders by creation time
-    - Unique: same guarantees as UUID v4
-
-    Note: Existing data migrated from NDB uses UUID v1. Both UUID v1 and v7
-    are compatible and coexist in the same tables - they're all valid 128-bit UUIDs.
-
-    Requires Python 3.11+ for uuid.uuid7(), or use uuid7 package for earlier versions.
-    """
-    # Python 3.11+ has native uuid7 support
-    # For earlier versions, use: from uuid_extensions import uuid7
-    try:
-        return uuid.uuid7()
-    except AttributeError:
-        # Fallback for Python < 3.11: use uuid4 or install uuid7 package
-        # pip install uuid7
-        from uuid_extensions import uuid7
-        return uuid7()
-
-class TimestampMixin:
-    """Mixin for auto-managed UTC timestamps"""
-    # server_default uses database's now() which will be in UTC due to session timezone
-    created_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False
-    )
-    updated_at = Column(
-        DateTime(timezone=True),
-        onupdate=lambda: datetime.now(UTC)
-    )
-
-class UUIDMixin:
-    """Mixin for UUID primary key using UUID v7 (time-ordered)"""
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=new_uuid,
-        nullable=False
-    )
-
-# Helper for application-level timestamp creation
-def utc_now() -> datetime:
-    """Return current UTC timestamp for use in application code"""
+def utcnow() -> datetime:
+    """Return current UTC datetime."""
     return datetime.now(UTC)
+
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+    pass
 ```
 
 #### UserModel → User
 
-```python
-# src/models/user.py
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, Text, LargeBinary, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+> **Implementation note:** The actual User model uses `Mapped` type annotations,
+> stores `email` and `image` as non-nullable (empty string instead of NULL,
+> matching NDB behavior), uses `String(64)` for game FK references (not native
+> UUID), and uses JSONB for `prefs`. A `relationship()` to `elo_ratings` was
+> added for cascade deletion. See `src/db/postgresql/models.py`.
 
-class User(Base, TimestampMixin):
+```python
+class User(Base):
     __tablename__ = "users"
 
-    # User IDs remain VARCHAR as they come from OAuth providers (Google, Apple, Facebook)
-    id = Column(String(64), primary_key=True)  # OAuth provider user ID, not a UUID
-    nickname = Column(String(128), nullable=False, index=True)
-    email = Column(String(256), index=True)
-    image = Column(String(512))  # URL
-    image_blob = Column(LargeBinary)  # JPEG data
-    account = Column(String(256), index=True)  # OAuth2 account
-    plan = Column(String(32))  # Subscription plan
-    nick_lc = Column(String(128), index=True)  # Lowercase nickname
-    name_lc = Column(String(128), index=True)  # Lowercase full name
-    inactive = Column(Boolean, nullable=False, default=False)
-    locale = Column(String(10), default="is_IS")
-    location = Column(String(10), default="")
-    prefs = Column(JSON)  # PrefsDict
-    last_login = Column(DateTime(timezone=True))
-    ready = Column(Boolean, default=True)
-    ready_timed = Column(Boolean, default=True)
-    chat_disabled = Column(Boolean, default=False)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    nickname: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    inactive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email: Mapped[str] = mapped_column(String(256), nullable=False, default="", index=True)
+    image: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    image_blob: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    account: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
+    plan: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    nick_lc: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    name_lc: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
+    locale: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default="is_IS")
+    location: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default="")
+    prefs: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ready: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    ready_timed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    chat_disabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    elo: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    human_elo: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    manual_elo: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    highest_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    highest_score_game: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    best_word: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    best_word_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    best_word_game: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    games: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    # Legacy Elo scores (locale-independent, for backward compatibility)
-    # Real locale-specific Elo data is in the EloRating table
-    elo = Column(Integer, default=0, index=True)
-    human_elo = Column(Integer, default=0, index=True)
-    manual_elo = Column(Integer, default=0, index=True)
-
-    # Best scores
-    highest_score = Column(Integer, default=0, index=True)
-    highest_score_game = Column(
-        UUID(as_uuid=True),
-        ForeignKey("games.id", ondelete="SET NULL")
-    )
-    best_word = Column(String(32))
-    best_word_score = Column(Integer, default=0, index=True)
-    best_word_game = Column(
-        UUID(as_uuid=True),
-        ForeignKey("games.id", ondelete="SET NULL")
-    )
-    games = Column(Integer, default=0)  # Human game count
-
-    # Note: No SQLAlchemy relationship() definitions. The existing codebase uses
-    # explicit fetches (e.g., EloModel.load(user_id)) rather than ORM navigation.
-    # This keeps the migration simpler. Deletion cascades are handled by the
-    # ForeignKey ON DELETE clauses at the database level.
-
-    # Composite indexes from index.yaml
-    __table_args__ = (
-        # NDB: (locale, nick_lc) - for locale-filtered user search by nickname
-        Index("ix_users_locale_nick", "locale", "nick_lc"),
-        # NDB: (locale, name_lc) - for locale-filtered user search by name
-        Index("ix_users_locale_name", "locale", "name_lc"),
-        # NDB: (locale, human_elo, highest_score) - for leaderboard queries
-        # Note: NDB has two indexes with human_elo ASC and DESC. In PostgreSQL,
-        # a single B-tree index supports bidirectional scans, but only if ALL
-        # columns reverse together. The NDB indexes suggest mixed ordering
-        # (human_elo DESC with highest_score ASC), which requires a separate index.
-        # We define the DESC index via raw SQL after table creation - see Appendix.
-        Index("ix_users_locale_elo_score", "locale", "human_elo", "highest_score"),
+    elo_ratings: Mapped[List["EloRating"]] = relationship(
+        "EloRating", back_populates="user", cascade="all, delete-orphan"
     )
 ```
 
 #### EloModel → EloRating
 
-```python
-# src/models/elo.py
-from sqlalchemy import Column, String, Integer, ForeignKey, UniqueConstraint
+> **Implementation note:** Uses composite primary key `(user_id, locale)` instead
+> of the plan's UUID PK + unique constraint. This is simpler and more natural
+> for a table that is always looked up by user+locale. Includes a back-reference
+> `relationship()` to `User`.
 
-class EloRating(Base, UUIDMixin, TimestampMixin):
+```python
+class EloRating(Base):
     __tablename__ = "elo_ratings"
 
-    # id is UUID from UUIDMixin
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    locale = Column(String(10), nullable=False)
-    elo = Column(Integer, default=1200)
-    human_elo = Column(Integer, default=1200)
-    manual_elo = Column(Integer, default=1200)
+    # Composite primary key: user_id + locale
+    user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    locale: Mapped[str] = mapped_column(String(10), primary_key=True)
+    elo: Mapped[int] = mapped_column(Integer, nullable=False, default=1200, index=True)
+    human_elo: Mapped[int] = mapped_column(Integer, nullable=False, default=1200, index=True)
+    manual_elo: Mapped[int] = mapped_column(Integer, nullable=False, default=1200, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
-    # Indexes from index.yaml
+    user: Mapped["User"] = relationship("User", back_populates="elo_ratings")
+
     __table_args__ = (
-        # Unique constraint replaces NDB composite key (ancestor + locale)
-        UniqueConstraint("user_id", "locale", name="uq_user_locale"),
-        # NDB: (locale, elo DESC) - for locale-specific leaderboards
-        Index("ix_elo_locale_elo", "locale", "elo"),
-        # NDB: (locale, human_elo DESC) and (locale, human_elo ASC)
-        Index("ix_elo_locale_human_elo", "locale", "human_elo"),
-        # NDB: (locale, manual_elo DESC)
-        Index("ix_elo_locale_manual_elo", "locale", "manual_elo"),
+        Index("ix_elo_ratings_locale_elo", "locale", "elo"),
+        Index("ix_elo_ratings_locale_human_elo", "locale", "human_elo"),
+        Index("ix_elo_ratings_locale_manual_elo", "locale", "manual_elo"),
     )
 ```
 
-#### RobotModel → RobotRating
+#### RobotModel → Robot
+
+> **Implementation note:** Uses composite PK `(locale, level)` instead of UUID +
+> unique constraint. Table named `robots` (not `robot_ratings`).
 
 ```python
-class RobotRating(Base, UUIDMixin):
-    __tablename__ = "robot_ratings"
+class Robot(Base):
+    __tablename__ = "robots"
 
-    # id is UUID from UUIDMixin
-    level = Column(Integer, nullable=False)
-    locale = Column(String(10), nullable=False)
-    elo = Column(Integer, default=1200)
-
-    __table_args__ = (
-        UniqueConstraint("level", "locale", name="uq_robot_level_locale"),
-    )
+    locale: Mapped[str] = mapped_column(String(10), primary_key=True)
+    level: Mapped[int] = mapped_column(Integer, primary_key=True)
+    elo: Mapped[int] = mapped_column(Integer, nullable=False, default=1200)
 ```
 
 #### GameModel → Game (with JSONB moves)
 
-```python
-# src/models/game.py
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+> **Implementation note:** Game `id` is `String(64)` (not native UUID type),
+> preserving compatibility with NDB's string-based UUIDs. The model includes
+> `relationship()` definitions to `User` for `player0` and `player1`. Indexes
+> are per-player composites rather than the combined four-column index.
 
-class Game(Base, UUIDMixin):
+```python
+class Game(Base):
     __tablename__ = "games"
 
-    # id is UUID from UUIDMixin
-    # Existing games preserve their UUID v1 from NDB; new games use UUID v7
-    player0_id = Column(String(64), ForeignKey("users.id", ondelete="SET NULL"))
-    player1_id = Column(String(64), ForeignKey("users.id", ondelete="SET NULL"))
-    locale = Column(String(10))
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    player0_id: Mapped[Optional[str]] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    player1_id: Mapped[Optional[str]] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    locale: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    rack0: Mapped[str] = mapped_column(String(16), nullable=False)
+    rack1: Mapped[str] = mapped_column(String(16), nullable=False)
+    irack0: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    irack1: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    score0: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    score1: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    to_move: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    robot_level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    over: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    ts_last_move: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    moves: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    prefs: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    tile_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # ... Elo fields (elo0, elo1, elo0_adj, etc.) - same as plan
 
-    # Racks (current state) - not indexed, only used for game state
-    rack0 = Column(String(16), nullable=False)
-    rack1 = Column(String(16), nullable=False)
+    player0: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player0_id])
+    player1: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player1_id])
 
-    # Initial racks (for game replay) - not indexed
-    irack0 = Column(String(16))
-    irack1 = Column(String(16))
-
-    # Scores
-    score0 = Column(Integer, default=0)
-    score1 = Column(Integer, default=0)
-
-    # Game state
-    to_move = Column(Integer, default=0)  # 0 or 1
-    robot_level = Column(Integer, default=0)
-    over = Column(Boolean, nullable=False, default=False, index=True)
-    tile_count = Column(Integer)
-
-    # Timestamps
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    ts_last_move = Column(DateTime(timezone=True), index=True)
-
-    # Moves stored as JSONB array
-    # Each move: {"coord": "H8", "tiles": "HELLO", "score": 24, "rack": "ABC", "timestamp": "..."}
-    moves = Column(JSONB, default=list)
-
-    # Game preferences
-    prefs = Column(JSONB)  # PrefsDict
-
-    # Elo statistics (populated when game ends)
-    elo0 = Column(Integer)
-    elo1 = Column(Integer)
-    elo0_adj = Column(Integer)
-    elo1_adj = Column(Integer)
-    human_elo0 = Column(Integer)
-    human_elo1 = Column(Integer)
-    human_elo0_adj = Column(Integer)
-    human_elo1_adj = Column(Integer)
-    manual_elo0 = Column(Integer)
-    manual_elo1 = Column(Integer)
-    manual_elo0_adj = Column(Integer)
-    manual_elo1_adj = Column(Integer)
-
-    # Note: No relationship() definitions needed - the existing code pattern
-    # fetches users explicitly via UserModel.fetch(player0_id) rather than
-    # using ORM-style navigation. This keeps the migration simpler.
-
-    # Indexes for common queries (derived from index.yaml)
-    # Note: For DESC ordering in indexes, we define them after the class or use raw SQL
     __table_args__ = (
-        # Primary game list query: find active/finished games for both players, ordered by last move
-        # NDB: (over, player0, player1, ts_last_move DESC)
-        Index("ix_games_over_players_ts", "over", "player0_id", "player1_id", "ts_last_move"),
-        # Game list filtered by over status, ordered by last move
-        # NDB: (over, ts_last_move)
-        Index("ix_games_over_ts", "over", "ts_last_move"),
+        Index("ix_games_player0_over", "player0_id", "over"),
+        Index("ix_games_player1_over", "player1_id", "over"),
     )
 ```
 
 #### ImageModel → Image
 
+> **Implementation note:** Uses auto-generated UUID PK (`gen_random_uuid()`).
+> Column named `fmt` (not `format`) to avoid shadowing the Python builtin.
+> Unique index on `(user_id, fmt)`.
+
 ```python
-class Image(Base, UUIDMixin, TimestampMixin):
+class Image(Base):
     __tablename__ = "images"
 
-    # id is UUID from UUIDMixin
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    format = Column(String(16), nullable=False)  # 'jpeg', 'thumb384', 'thumb512'
-    image = Column(LargeBinary, nullable=False)
+    id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    user_id: Mapped[str] = mapped_column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    fmt: Mapped[str] = mapped_column(String(32), nullable=False)
+    image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "format", name="uq_user_format"),
+        Index("ix_images_user_fmt", "user_id", "fmt", unique=True),
     )
 ```
 
 #### FavoriteModel → Favorite
 
+> **Implementation note:** Uses composite PK `(src_user_id, dest_user_id)` —
+> no UUID PK needed for a pure relationship table.
+
 ```python
-class Favorite(Base, UUIDMixin, TimestampMixin):
+class Favorite(Base):
     __tablename__ = "favorites"
 
-    # id is UUID from UUIDMixin
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    dest_user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
-    __table_args__ = (
-        UniqueConstraint("user_id", "dest_user_id", name="uq_favorite_pair"),
-        Index("ix_favorites_user", "user_id"),
-        Index("ix_favorites_dest", "dest_user_id"),
+    src_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    dest_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
 ```
 
 #### ChallengeModel → Challenge
 
+> **Implementation note:** Uses auto-generated UUID PK. Column names are
+> `src_user_id`/`dest_user_id` (not `user_id`/`dest_user_id`).
+
 ```python
-class Challenge(Base, UUIDMixin):
+class Challenge(Base):
     __tablename__ = "challenges"
 
-    # id is UUID from UUIDMixin
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    dest_user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
-    prefs = Column(JSONB)  # PrefsDict
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Indexes from index.yaml (timestamp only queried via these composites)
-    __table_args__ = (
-        # NDB: (destuser, timestamp)
-        Index("ix_challenges_dest_ts", "dest_user_id", "timestamp"),
-        # NDB: ancestor + (timestamp) → user_id is the ancestor
-        Index("ix_challenges_user_ts", "user_id", "timestamp"),
+    id: Mapped[PyUUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    src_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    dest_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    prefs: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
 ```
 
 #### StatsModel → Stats
 
-```python
-class Stats(Base, UUIDMixin):
-    __tablename__ = "stats"
-
-    # id is UUID from UUIDMixin
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
-    robot_level = Column(Integer, default=0)  # Indexed via composite index only
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())  # Leading column in composites
-
-    games = Column(Integer, default=0)
-    human_games = Column(Integer, default=0)
-    manual_games = Column(Integer, default=0)
-
-    elo = Column(Integer, default=1200, index=True)
-    human_elo = Column(Integer, default=1200, index=True)
-    manual_elo = Column(Integer, default=1200, index=True)
-
-    score = Column(Integer, default=0)
-    human_score = Column(Integer, default=0)
-    manual_score = Column(Integer, default=0)
-
-    score_against = Column(Integer, default=0)
-    human_score_against = Column(Integer, default=0)
-    manual_score_against = Column(Integer, default=0)
-
-    wins = Column(Integer, default=0)
-    losses = Column(Integer, default=0)
-    human_wins = Column(Integer, default=0)
-    human_losses = Column(Integer, default=0)
-    manual_wins = Column(Integer, default=0)
-    manual_losses = Column(Integer, default=0)
-
-    # Indexes from index.yaml
-    __table_args__ = (
-        # NDB: (robot_level, user, timestamp DESC) - for user stats history
-        Index("ix_stats_robot_user_ts", "robot_level", "user_id", "timestamp"),
-        # NDB: (timestamp, elo DESC) - for leaderboards at a point in time
-        Index("ix_stats_ts_elo", "timestamp", "elo"),
-        # NDB: (timestamp, human_elo DESC)
-        Index("ix_stats_ts_human_elo", "timestamp", "human_elo"),
-        # NDB: (timestamp, manual_elo DESC)
-        Index("ix_stats_ts_manual_elo", "timestamp", "manual_elo"),
-    )
-```
+> **Implementation note:** Uses auto-generated UUID PK. Same field structure
+> as planned. See `src/db/postgresql/models.py` for actual definitions.
 
 #### RatingModel → Rating
 
+> **Implementation note:** Uses composite PK `(kind, rank)` instead of UUID +
+> unique constraint. Includes full historical snapshot fields (yesterday, week
+> ago, month ago). See `src/db/postgresql/models.py` for actual definitions.
+
+#### ChatModel → Chat
+
+> **Implementation note:** Table named `chats` (not `chat_messages`), class
+> named `Chat`. Column named `msg` (not `message`). Uses auto-generated UUID PK.
+> See `src/db/postgresql/models.py` for actual definitions.
+
+#### ZombieModel → Zombie
+
+> **Implementation note:** Table named `zombies`, class named `Zombie`. Uses
+> composite PK `(game_id, user_id)` instead of UUID + unique constraint.
+> `game_id` is `String(64)` (matching Game.id type), `user_id` (not `player_id`).
+
 ```python
-class Rating(Base, UUIDMixin):
-    __tablename__ = "ratings"
+class Zombie(Base):
+    __tablename__ = "zombies"
 
-    # id is UUID from UUIDMixin
-    kind = Column(String(16), nullable=False, index=True)  # 'all', 'human', 'manual'
-    rank = Column(Integer, nullable=False, index=True)
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="SET NULL"))
-    robot_level = Column(Integer, default=0)
-
-    # Current values
-    games = Column(Integer, default=0)
-    elo = Column(Integer, default=1200)
-    score = Column(Integer, default=0)
-    score_against = Column(Integer, default=0)
-    wins = Column(Integer, default=0)
-    losses = Column(Integer, default=0)
-
-    # Historical snapshots (yesterday, week ago, month ago)
-    # ... (same pattern as RatingModel)
-
-    __table_args__ = (
-        UniqueConstraint("kind", "rank", name="uq_rating_kind_rank"),
+    game_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("games.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
 ```
 
-#### ChatModel → ChatMessage
+#### PromoModel → Promo
 
-```python
-class ChatMessage(Base, UUIDMixin):
-    __tablename__ = "chat_messages"
+> **Implementation note:** Table named `promos`, class named `Promo`. Uses
+> auto-generated UUID PK. Column named `user_id` (not `player_id`).
+> See `src/db/postgresql/models.py` for actual definitions.
 
-    # id is UUID from UUIDMixin
-    channel = Column(String(128), nullable=False)  # Leading column in composite
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    recipient_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"))
-    message = Column(Text, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+#### Remaining Models
 
-    # Indexes from index.yaml (standalone indexes not needed - composites cover all queries)
-    __table_args__ = (
-        # NDB: (channel, timestamp DESC)
-        Index("ix_chat_channel_ts", "channel", "timestamp"),
-        # NDB: (user, timestamp DESC)
-        Index("ix_chat_user_ts", "user_id", "timestamp"),
-        # NDB: (recipient, timestamp DESC)
-        Index("ix_chat_recipient_ts", "recipient_id", "timestamp"),
-    )
-```
-
-#### ZombieModel → ZombieGame
-
-```python
-from sqlalchemy.dialects.postgresql import UUID
-
-class ZombieGame(Base, UUIDMixin, TimestampMixin):
-    __tablename__ = "zombie_games"
-
-    # id is UUID from UUIDMixin
-    game_id = Column(UUID(as_uuid=True), ForeignKey("games.id", ondelete="CASCADE"), nullable=False)
-    player_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
-    __table_args__ = (
-        UniqueConstraint("game_id", "player_id", name="uq_zombie_game_player"),
-        Index("ix_zombie_player", "player_id"),
-    )
-```
-
-#### PromoModel → Promotion
-
-```python
-class Promotion(Base, UUIDMixin):
-    __tablename__ = "promotions"
-
-    # id is UUID from UUIDMixin
-    player_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    promotion = Column(String(64), nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Index from index.yaml: (player, promotion, timestamp) - no standalone indexes needed
-    __table_args__ = (
-        Index("ix_promo_player_type_ts", "player_id", "promotion", "timestamp"),
-    )
-```
-
-#### CompletionModel → Completion
-
-```python
-class Completion(Base, UUIDMixin):
-    __tablename__ = "completions"
-
-    # id is UUID from UUIDMixin
-    proctype = Column(String(32), nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    ts_from = Column(DateTime(timezone=True), nullable=False)
-    ts_to = Column(DateTime(timezone=True), nullable=False)
-    success = Column(Boolean, nullable=False, default=True)
-    reason = Column(String(256), default="")
-
-    # Indexes for log viewing (ordered by timestamp, optionally filtered by success)
-    __table_args__ = (
-        Index("ix_completions_success_ts", "success", "timestamp"),
-    )
-```
-
-#### BlockModel → Block
-
-```python
-class Block(Base, UUIDMixin, TimestampMixin):
-    __tablename__ = "blocks"
-
-    # id is UUID from UUIDMixin
-    blocker_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    blocked_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-
-    __table_args__ = (
-        UniqueConstraint("blocker_id", "blocked_id", name="uq_block_pair"),
-        Index("ix_blocks_blocker", "blocker_id"),
-        Index("ix_blocks_blocked", "blocked_id"),
-    )
-```
-
-#### ReportModel → Report
-
-```python
-class Report(Base, UUIDMixin):
-    __tablename__ = "reports"
-
-    # id is UUID from UUIDMixin
-    reporter_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    reported_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    code = Column(Integer, nullable=False)
-    text = Column(Text, nullable=False, default="")
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-
-    __table_args__ = (
-        Index("ix_reports_reported", "reported_id"),
-    )
-```
-
-#### TransactionModel → Transaction
-
-```python
-class Transaction(Base, UUIDMixin):
-    __tablename__ = "transactions"
-
-    # id is UUID from UUIDMixin
-    # Existing transactions preserve their UUID v1 from NDB; new ones use UUID v7
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    plan = Column(String(32), nullable=False)
-    kind = Column(String(32), nullable=False)
-    op = Column(String(32), nullable=False)
-
-    # Index from index.yaml: (user, ts DESC) - for user transaction history
-    __table_args__ = (
-        Index("ix_transactions_user_ts", "user_id", "timestamp"),
-    )
-```
-
-#### SubmissionModel → Submission
-
-```python
-class Submission(Base, UUIDMixin):
-    __tablename__ = "submissions"
-
-    # id is UUID from UUIDMixin
-    # Note: This is a write-only table for word submissions; no indexes needed beyond PK and FK
-    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    locale = Column(String(10), nullable=False)
-    word = Column(String(64), nullable=False)
-    comment = Column(Text, default="")
-```
-
-#### RiddleModel → Riddle
-
-```python
-class Riddle(Base, UUIDMixin):
-    __tablename__ = "riddles"
-
-    # id is UUID from UUIDMixin
-    date = Column(String(10), nullable=False)  # YYYY-MM-DD
-    locale = Column(String(10), nullable=False)
-    riddle_json = Column(Text, nullable=False)
-    created = Column(DateTime(timezone=True), server_default=func.now())
-    version = Column(Integer, default=1)
-
-    __table_args__ = (
-        UniqueConstraint("date", "locale", name="uq_riddle_date_locale"),
-        Index("ix_riddle_date", "date"),
-    )
-```
+> **Implementation note:** The following models all use auto-generated UUID PKs
+> or composite PKs as appropriate. See `src/db/postgresql/models.py` for the
+> actual definitions. Key naming differences from the plan:
+>
+> - **Completion** — Uses auto-generated UUID PK. `reason` is `Text` (not `String(256)`).
+> - **Block** — Uses composite PK `(blocker_id, blocked_id)` instead of UUID + unique constraint.
+> - **Report** — Uses auto-generated UUID PK. Same structure as planned.
+> - **Transaction** — Uses auto-generated UUID PK. Timestamp column named `ts` (not `timestamp`).
+> - **Submission** — Uses auto-generated UUID PK. Timestamp column named `ts` (not `timestamp`).
+> - **Riddle** — Uses composite PK `(date, locale)` instead of UUID + unique constraint.
 
 ---
 
@@ -1046,66 +890,55 @@ def submit_move(uuid: str, movelist: List[Any], movecount: int, validate: bool) 
     return process_move(game, movelist, validate=validate)
 ```
 
-### SQLAlchemy Version with Clean Transaction Handling
+### Actual Transaction Architecture
+
+> **Implementation note:** The actual implementation uses a request-scoped
+> session managed by `SessionManager` (in `src/db/session.py`) rather than
+> the simple `db_transaction()` context manager proposed in the plan.
+
+The transaction lifecycle is:
+
+1. **Request-level transaction** — The WSGI middleware (`db_wsgi_middleware`)
+   wraps each HTTP request in a `SessionManager.request_context()`. This
+   creates a session, commits on success, and rolls back on exception.
+
+2. **Nested transactions (savepoints)** — For operations that need explicit
+   transaction boundaries within a request, `db.transaction()` creates a
+   PostgreSQL savepoint:
 
 ```python
-# Custom exception for expected validation errors (not bugs)
-class GameError(Exception):
-    """Expected game-related error with an error code for the client."""
-    def __init__(self, error_code: int):
-        self.error_code = error_code
+# PostgreSQL: savepoint-based nested transaction
+class PostgreSQLTransactionContext:
+    def __enter__(self):
+        self._savepoint = self._backend._session.begin_nested()
+        return self
 
-# Business logic - raises GameError on validation failure, Exception on bugs
-def submit_move(session: Session, uuid: str, movelist: List[Any], movecount: int, validate: bool) -> dict:
-    # Load game with row-level lock (SELECT FOR UPDATE)
-    game = session.query(Game).filter(Game.id == uuid).with_for_update().first()
-    if game is None:
-        raise GameError(Error.GAME_NOT_FOUND)
-
-    # Validation
-    if movecount != len(game.moves):
-        raise GameError(Error.OUT_OF_SYNC)
-    if game_player_id_to_move(game) != current_user_id():
-        raise GameError(Error.WRONG_USER)
-
-    # Process move (modifies game object)
-    return process_move(session, game, movelist, validate=validate)
-    # Note: No commit here - the context manager handles it
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self._savepoint.commit()   # Commit savepoint only
+        else:
+            self._savepoint.rollback() # Rollback to savepoint
 ```
 
-### Session Context Manager
+3. **Usage in application code** — Business logic uses the request-scoped
+   backend via `get_db()`. Changes accumulate in the session and are
+   committed at request end:
 
 ```python
-from contextlib import contextmanager
-
-@contextmanager
-def db_transaction():
-    """Provide a transactional scope - commits on success, rolls back on any exception."""
-    session = SessionLocal()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+# In application code
+db = get_db()
+game = db.games.get_by_id(uuid)
+db.games.update(game, moves=new_moves, score0=new_score)
+# Commit happens at request end via WSGI middleware
 ```
 
-### Flask Route
+For the `submit_move()` transaction specifically, the existing `@ndb.transactional()`
+decorator becomes a `with db.transaction():` block when using the PostgreSQL backend.
 
-```python
-@app.route("/api/submitmove", methods=["POST"])
-def submitmove_route():
-    try:
-        with db_transaction() as session:
-            result = submit_move(session, uuid, movelist, movecount, validate)
-            return jsonify(result)
-    except GameError as e:
-        # Expected validation error - return error code to client
-        return jsonify(result=e.error_code)
-    # Other exceptions propagate up (500 error)
-```
+**Key principles (unchanged from plan):**
+1. **Exceptions for control flow** — validation failures raise exceptions, ensuring rollback
+2. **Context manager owns the transaction** — always commits or rolls back
+3. **Business logic is transaction-agnostic** — doesn't call commit/rollback
 
 **Key principles:**
 1. **Exceptions for control flow** - GameError for validation failures ensures rollback
@@ -1156,32 +989,34 @@ Redis remains valuable for other purposes in the application:
 
 ### Simplified Data Access Pattern
 
-Without explicit caching, the data access layer becomes simpler:
+Without explicit caching, the data access layer becomes simpler. The actual
+implementation uses typed repository protocols (see `src/db/protocols.py`) with
+entity wrappers that hide ORM internals:
 
 ```python
-# src/repositories/user.py - Simple repository without caching
+# src/db/postgresql/repositories.py (simplified from actual implementation)
 
 class UserRepository:
-    """Repository for User entities"""
+    """Repository for User entities - implements UserRepositoryProtocol."""
 
     def __init__(self, session: Session):
         self._session = session
 
-    def get_by_id(self, user_id: str) -> Optional[User]:
-        """Get a user by ID"""
-        return self._session.get(User, user_id)
+    def get_by_id(self, user_id: str) -> Optional[UserEntity]:
+        model = self._session.get(User, user_id)
+        return UserEntity(model) if model else None
 
-    def get_by_account(self, account: str) -> Optional[User]:
-        """Get a user by OAuth account ID"""
-        return self._session.query(User).filter(User.account == account).first()
+    def get_by_account(self, account: str) -> Optional[UserEntity]:
+        model = self._session.query(User).filter(User.account == account).first()
+        return UserEntity(model) if model else None
 
-    def save(self, user: User) -> None:
-        """Save a user"""
-        self._session.add(user)
+    def update(self, user: UserEntityProtocol, **kwargs: Any) -> None:
+        model = self._session.get(User, user.key_id)
+        for key, value in kwargs.items():
+            setattr(model, key, value)
 
-    def delete(self, user: User) -> None:
-        """Delete a user"""
-        self._session.delete(user)
+    def delete(self, user_id: str) -> None:
+        self._session.query(User).filter(User.id == user_id).delete()
 ```
 
 ### Performance Optimization (If Needed Later)
@@ -1255,10 +1090,8 @@ These are migrated directly to PostgreSQL `TIMESTAMP WITH TIME ZONE` columns, wh
 also store in UTC. No timezone conversion is needed during migration.
 
 **Note on UUIDs**: The existing NDB data uses UUID v1 (time-based) for Game and Transaction
-primary keys. These are fully compatible with PostgreSQL's native `UUID` type and will be
-preserved as-is during migration. After migration, new records will be created with UUID v7
-(also time-ordered, but with improved randomness). Both UUID versions coexist without issues
-in the same table - they are all valid 128-bit UUIDs.
+primary keys. In the PostgreSQL schema, Game and Transaction IDs are stored as `VARCHAR(64)`
+(not native UUID type), so the UUID v1 strings are preserved as-is during migration.
 
 ```python
 # scripts/migrate_to_postgres.py
@@ -1397,30 +1230,24 @@ def verify_sample_data():
 
 **Problem**: NDB uses composite string keys like `{user_id}:{locale}`
 
-**Solution**: Use UUID v7 primary keys with unique constraints on the composite columns
+**Solution**: Use composite primary keys directly on the natural key columns.
+
+> **Implementation note:** The original plan proposed UUID v7 PKs with unique
+> constraints, but the implementation uses composite PKs instead. This is
+> simpler, avoids a surrogate key, and is more natural for tables that are
+> always looked up by their composite key.
 
 ```python
-# Preferred: UUID primary key + unique constraint
-class EloRating(Base, UUIDMixin):
-    # id is UUID v7 from UUIDMixin - time-ordered for good index performance
-    user_id = Column(String(64), nullable=False)
-    locale = Column(String(10), nullable=False)
-    __table_args__ = (UniqueConstraint("user_id", "locale"),)
-
-# Alternative: Keep composite string key (not recommended)
+# Composite primary key (what was actually implemented)
 class EloRating(Base):
-    id = Column(String(128), primary_key=True)  # "{uid}:{locale}"
+    user_id: Mapped[str] = mapped_column(String(64), ..., primary_key=True)
+    locale: Mapped[str] = mapped_column(String(10), primary_key=True)
 
-    @classmethod
-    def make_id(cls, user_id: str, locale: str) -> str:
-        return f"{user_id}:{locale}"
+# Similarly for: Favorite (src_user_id, dest_user_id),
+# Robot (locale, level), Zombie (game_id, user_id),
+# Block (blocker_id, blocked_id), Rating (kind, rank),
+# Riddle (date, locale)
 ```
-
-**Why UUID v7 is preferred:**
-- Time-ordered: maintains B-tree index locality (unlike random UUID v4)
-- No coordination needed: can generate IDs in application without database round-trip
-- Globally unique: safe for distributed systems and data migration
-- PostgreSQL native: efficient 16-byte storage with native `UUID` type
 
 ### 2. Parent-Child Relationships (Ancestor Keys)
 
@@ -1525,61 +1352,57 @@ q = session.query(User).filter(or_(User.locale == DEFAULT_LOCALE, User.locale.is
 
 ## Testing Strategy
 
-### Unit Tests with Test Database
+> **Implementation note:** The actual test infrastructure is significantly more
+> comprehensive than originally planned. See `tests/db/conftest.py` for the
+> full fixture setup.
 
-```python
-# tests/conftest.py
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from src.models import Base
+### Multi-Backend Test Framework
 
-TEST_DATABASE_URL = "postgresql://test:test@localhost:5432/netskrafl_test"
+The test suite supports running against either or both backends via CLI flags:
 
-@pytest.fixture(scope="session")
-def engine():
-    engine = create_engine(TEST_DATABASE_URL)
-    Base.metadata.create_all(engine)
-    yield engine
-    Base.metadata.drop_all(engine)
+```bash
+# Run against NDB only
+venv/bin/pytest tests/db/ --backend=ndb
 
-@pytest.fixture
-def session(engine):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    session.rollback()
-    session.close()
+# Run against PostgreSQL only
+venv/bin/pytest tests/db/ --backend=postgresql
+
+# Run against both backends (default)
+venv/bin/pytest tests/db/ --backend=both
 ```
 
-### Integration Tests
+Tests are parametrized to run against each backend, verifying that both
+produce identical results for all repository operations.
 
-```python
-# tests/test_user_repository.py
+### Test Database
 
-def test_user_crud(session):
-    repo = UserRepository(session, entity_cache)
+PostgreSQL tests use a local test database:
 
-    # Create
-    user = User(id="test123", nickname="TestUser", inactive=False)
-    repo.save(user)
-
-    # Read
-    loaded = repo.get_by_id("test123")
-    assert loaded.nickname == "TestUser"
-
-    # Update
-    loaded.nickname = "UpdatedUser"
-    repo.save(loaded)
-    reloaded = repo.get_by_id("test123")
-    assert reloaded.nickname == "UpdatedUser"
-
-    # Delete
-    repo.delete(loaded)
-    assert repo.get_by_id("test123") is None
+```
+postgresql://test:test@localhost:5432/netskrafl_test
 ```
 
-### Migration Verification Tests
+Tables are dropped and recreated at the start of each test session. Each
+test gets a clean backend via the `clean_backend` fixture, which rolls back
+changes after each test.
+
+### Test Coverage
+
+16 test files covering all 18 repositories (~5,000 lines total):
+
+- `test_user_repository.py` — CRUD, prefix search, similar Elo, multi-fetch
+- `test_game_repository.py` — CRUD, live/finished game listing, move management
+- `test_elo_repository.py` — Create, upsert, locale-specific ratings
+- `test_stats_repository.py` — Stats history, Elo-ordered listing
+- `test_chat_repository.py` — Messages, channels, history
+- `test_favorite_repository.py`, `test_challenge_repository.py`,
+  `test_block_repository.py`, `test_zombie_repository.py` — Relationship CRUD
+- `test_image_repository.py` — Binary data storage and retrieval
+- `test_rating_repository.py`, `test_riddle_repository.py` — Specialized queries
+- `test_misc_repositories.py` — Report, Promo, Transaction, Submission, Completion
+- `test_robot_repository.py` — Robot rating management
+
+### Migration Verification Tests (Future)
 
 ```python
 def test_migration_data_integrity():
@@ -1589,214 +1412,205 @@ def test_migration_data_integrity():
     # Verify relationship integrity
 ```
 
-### Performance Tests
-
-```python
-def test_query_performance():
-    """Ensure critical queries meet performance requirements"""
-    import time
-
-    start = time.time()
-    # Run the query being tested
-    games = session.query(Game).filter(
-        Game.player0_id == test_user_id,
-        Game.over == False
-    ).order_by(Game.ts_last_move.desc()).limit(20).all()
-    elapsed = time.time() - start
-
-    assert elapsed < 0.5, f"Query too slow: {elapsed}s"
-```
-
 ---
 
 ## Source File Architecture
+
+> **Implementation note:** This section has been updated to reflect the actual
+> architecture. The original plan proposed a simple facade + `compat.py`
+> NDB-wrapper approach. The implementation instead uses a protocol-based
+> repository architecture with entity wrappers, which provides stronger
+> contracts and better testability across backends.
 
 ### Design Goals
 
 1. **Drop-in replacement** - Existing imports (`from skrafldb import UserModel`) continue to work
 2. **Side-by-side operation** - Both NDB and PostgreSQL backends available during migration
-3. **Same API** - PostgreSQL models expose NDB-compatible methods
+3. **Same API** - PostgreSQL backend exposes NDB-compatible methods via `skrafldb_pg.py`
 4. **Backend switching** - Environment variable selects active backend
 5. **Clean separation** - Each backend in its own package
+6. **Protocol contracts** - Both backends implement the same typed interfaces
+7. **Dual API** - Old NDB API for existing code, new repository API for new/refactored code
 
-### Proposed Directory Structure
+### Directory Structure
 
 ```
 src/
-  skrafldb.py                  # Facade for backward compatibility (re-exports from db/)
+  skrafldb.py              # Facade: imports from skrafldb_ndb or skrafldb_pg
+  skrafldb_ndb.py          # Original NDB implementation (unchanged)
+  skrafldb_pg.py           # PostgreSQL NDB-compatible facade (~2,100 lines)
+                           # Delegates to PG repositories via get_db()
 
   db/
-    __init__.py                # Backend selector - exports models based on DATABASE_BACKEND
-    config.py                  # Backend selection, connection strings
-
-    ndb/
-      __init__.py              # Exports: UserModel, GameModel, etc.
-      models.py                # Current skrafldb.py content (moved here intact)
+    __init__.py            # Exports: init_session_manager, get_db, db_wsgi_middleware
+    config.py              # DatabaseConfig dataclass with from_env()
+    session.py             # SessionManager: request-scoped backends, WSGI middleware
+    protocols.py           # All protocols, entity contracts, shared data types (~1,420 lines)
+    testing.py             # Test infrastructure helpers
 
     postgresql/
-      __init__.py              # Exports: UserModel, GameModel, etc. (compat wrappers)
-      connection.py            # Engine, SessionLocal, db_transaction() context manager
-      models.py                # SQLAlchemy ORM model definitions
-      compat.py                # NDB-compatible API wrappers around SQLAlchemy models
+      __init__.py          # Exports PostgreSQLBackend
+      backend.py           # PostgreSQLBackend (implements DatabaseBackendProtocol)
+      connection.py        # create_db_engine() with UTC timezone
+      models.py            # SQLAlchemy 2.0 ORM definitions
+      entities.py          # Entity wrappers implementing entity protocols
+      repositories.py      # 18 repository implementations
+
+    ndb/
+      __init__.py          # Exports NDBBackend
+      backend.py           # NDBBackend (implements DatabaseBackendProtocol)
+      entities.py          # Entity wrappers around NDB model instances
+      repositories.py      # Repository implementations wrapping skrafldb_ndb
 ```
 
 ### Key Files
 
-#### `db/config.py` - Backend Configuration
+#### `db/config.py` — Backend Configuration
+
+A `DatabaseConfig` dataclass that reads from environment variables with defaults:
 
 ```python
-import os
+@dataclass
+class DatabaseConfig:
+    backend: str              # "ndb" or "postgresql"
+    database_url: Optional[str]
+    pool_size: int            # Default: 5
+    max_overflow: int         # Default: 10
+    pool_timeout: int         # Default: 30
+    pool_recycle: int         # Default: 1800
+    echo_sql: bool            # For debugging
 
-# Select database backend: "ndb" (default) or "postgresql"
-DATABASE_BACKEND = os.environ.get("DATABASE_BACKEND", "ndb")
-
-# PostgreSQL connection (only used when backend is "postgresql")
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://user:pass@localhost:5432/netskrafl"
-)
+    @classmethod
+    def from_env(cls) -> DatabaseConfig:
+        """Create configuration from environment variables."""
+        ...
 ```
 
-#### `db/__init__.py` - Backend Selector
+#### `db/session.py` — Session Management
+
+The `SessionManager` class provides request-scoped database backends using
+thread-local storage:
 
 ```python
-from db.config import DATABASE_BACKEND
+class SessionManager:
+    """Manages database sessions and backend lifecycle."""
 
-if DATABASE_BACKEND == "postgresql":
-    # PostgreSQL backend with NDB-compatible API
-    from db.postgresql.compat import (
-        UserModel,
-        GameModel,
-        EloModel,
-        # ... all model classes
-    )
-    from db.postgresql.connection import db_transaction, get_session
+    def __init__(self, backend_type=None, database_url=None): ...
+
+    def get_backend(self) -> DatabaseBackendProtocol:
+        """Get or create the request-scoped backend instance."""
+        ...
+
+    @contextmanager
+    def request_context(self) -> Iterator[DatabaseBackendProtocol]:
+        """Context manager: creates backend, yields it, commits/rolls back, cleans up."""
+        ...
+```
+
+Module-level functions for convenience:
+
+```python
+def init_session_manager(backend_type=None, database_url=None) -> SessionManager: ...
+def get_db() -> DatabaseBackendProtocol: ...
+def db_wsgi_middleware(wsgi_app) -> wsgi_app: ...
+```
+
+The WSGI middleware wraps each request with `request_context()`. For NDB, it
+also establishes the NDB client context. For PostgreSQL, the session is committed
+on success and rolled back on exception.
+
+#### `db/protocols.py` — Interface Contracts
+
+Defines all shared types and protocols:
+
+- **~30 data types**: `EloDict`, `MoveDict`, `PrefsDict`, `LiveGameInfo`,
+  `FinishedGameInfo`, `ZombieGameInfo`, `ChallengeInfo`, `ChatMessage`,
+  `RatingInfo`, `StatsInfo`, etc. (as dataclasses and TypedDicts)
+- **7 entity protocols**: `UserEntityProtocol`, `GameEntityProtocol`,
+  `EloEntityProtocol`, `StatsEntityProtocol`, `ChatEntityProtocol`,
+  `RiddleEntityProtocol`, plus base `EntityProtocol`
+- **18 repository protocols**: `UserRepositoryProtocol`,
+  `GameRepositoryProtocol`, `EloRepositoryProtocol`, etc.
+- **`DatabaseBackendProtocol`**: Top-level interface with properties for
+  each repository, plus `commit()`, `rollback()`, `close()`,
+  `transaction()` methods
+
+#### `skrafldb.py` — Old API Facade
+
+```python
+from src.db.config import get_config
+_config = get_config()
+if _config.backend == "postgresql":
+    from skrafldb_pg import *
 else:
-    # Original NDB backend
-    from db.ndb.models import (
-        UserModel,
-        GameModel,
-        EloModel,
-        # ... all model classes
-    )
+    from skrafldb_ndb import *
 ```
 
-#### `skrafldb.py` - Backward Compatibility Facade
+#### `skrafldb_pg.py` — PostgreSQL NDB-Compatible API
+
+This ~2,100-line module provides the same `UserModel`, `GameModel`, etc. classes
+as `skrafldb_ndb.py`, but delegates all operations to the PostgreSQL repositories
+via `get_db()`. Each model class method calls the appropriate repository method:
 
 ```python
-"""
-Database models and operations.
-
-This module is a facade that delegates to the active backend (NDB or PostgreSQL)
-based on the DATABASE_BACKEND environment variable. Existing code that imports
-from skrafldb continues to work unchanged.
-"""
-from db import *
-```
-
-#### `db/postgresql/compat.py` - NDB-Compatible Wrappers
-
-```python
-"""
-NDB-compatible API wrappers for SQLAlchemy models.
-
-These classes provide the same interface as the NDB models (get_by_id, fetch, put, query)
-so that existing application code works unchanged with the PostgreSQL backend.
-"""
-from __future__ import annotations
-from typing import Optional, List, Iterator, Any
-from db.postgresql.connection import db_transaction, get_session
-from db.postgresql.models import User, Game, EloRating  # SQLAlchemy models
-
-
 class UserModel:
-    """PostgreSQL User with NDB-compatible API."""
+    @staticmethod
+    def fetch(user_id: str) -> Optional[UserModel]:
+        db = _get_db()
+        entity = db.users.get_by_id(user_id)
+        return UserModel._from_entity(entity) if entity else None
 
-    def __init__(self, **kwargs):
-        self._entity = User(**kwargs)
-        # Expose attributes directly
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+    @staticmethod
+    def list_prefix(prefix, max_len=50, locale=None):
+        db = _get_db()
+        return list(db.users.list_prefix(prefix, max_len, locale))
+    # ... etc.
+```
 
-    @classmethod
-    def get_by_id(cls, user_id: str) -> Optional[UserModel]:
-        """Get user by primary key (NDB API)."""
-        with db_transaction() as session:
-            entity = session.get(User, user_id)
-            return cls._wrap(entity) if entity else None
+#### `db/postgresql/backend.py` — PostgreSQL Backend
 
-    @classmethod
-    def fetch(cls, user_id: str) -> Optional[UserModel]:
-        """Fetch user by ID - same as get_by_id for PostgreSQL."""
-        return cls.get_by_id(user_id)
+The `PostgreSQLBackend` class implements `DatabaseBackendProtocol`. It creates
+a SQLAlchemy session and exposes repository instances as properties:
 
-    @classmethod
-    def query(cls, *filters) -> Query:
-        """Return a query object (NDB-style)."""
-        return Query(cls, User, filters)
+```python
+class PostgreSQLBackend:
+    def __init__(self, database_url=None):
+        self._session = Session(bind=engine)
+        self._users = UserRepository(self._session)
+        self._games = GameRepository(self._session)
+        # ...
 
-    def put(self) -> None:
-        """Save entity to database (NDB API)."""
-        with db_transaction() as session:
-            session.merge(self._entity)
+    @property
+    def users(self) -> UserRepositoryProtocol: return self._users
+    @property
+    def games(self) -> GameRepositoryProtocol: return self._games
 
-    @classmethod
-    def _wrap(cls, entity: Optional[User]) -> Optional[UserModel]:
-        """Wrap a SQLAlchemy entity in the compatibility class."""
-        if entity is None:
-            return None
-        wrapper = cls.__new__(cls)
-        wrapper._entity = entity
-        # Copy attributes to wrapper for direct access
-        for column in User.__table__.columns:
-            setattr(wrapper, column.name, getattr(entity, column.name))
-        return wrapper
+    def transaction(self) -> PostgreSQLTransactionContext:
+        """Create a savepoint (nested transaction)."""
+        return PostgreSQLTransactionContext(self)
 
+    def commit(self): self._session.commit()
+    def rollback(self): self._session.rollback()
+    def close(self): self._session.close()
+```
 
-class Query:
-    """NDB-style query wrapper for SQLAlchemy."""
+#### `db/postgresql/entities.py` — Entity Wrappers
 
-    def __init__(self, wrapper_cls, model_cls, filters):
-        self._wrapper_cls = wrapper_cls
-        self._model_cls = model_cls
-        self._filters = list(filters)
-        self._order_by = []
-        self._limit = None
+Lightweight `__slots__`-based wrappers that implement entity protocols. These
+hide SQLAlchemy ORM internals from application code:
 
-    def filter(self, *conditions) -> Query:
-        """Add filter conditions."""
-        self._filters.extend(conditions)
-        return self
+```python
+class UserEntity:
+    __slots__ = ("_model",)
 
-    def order(self, *columns) -> Query:
-        """Add ordering (prefix with - for descending)."""
-        self._order_by.extend(columns)
-        return self
+    def __init__(self, model: UserModel) -> None:
+        self._model = model
 
-    def fetch(self, limit: Optional[int] = None) -> List[Any]:
-        """Execute query and return results."""
-        with db_transaction() as session:
-            q = session.query(self._model_cls)
-            for f in self._filters:
-                q = q.filter(f)
-            for o in self._order_by:
-                q = q.order_by(o)
-            if limit:
-                q = q.limit(limit)
-            return [self._wrapper_cls._wrap(e) for e in q.all()]
-
-    def get(self) -> Optional[Any]:
-        """Get first result or None."""
-        results = self.fetch(limit=1)
-        return results[0] if results else None
-
-    def count(self) -> int:
-        """Count matching entities."""
-        with db_transaction() as session:
-            q = session.query(self._model_cls)
-            for f in self._filters:
-                q = q.filter(f)
-            return q.count()
+    @property
+    def key_id(self) -> str: return self._model.id
+    @property
+    def nickname(self) -> str: return self._model.nickname
+    # ... all properties delegate to the ORM model
 ```
 
 ### Migration Path with This Structure
@@ -1821,83 +1635,58 @@ class Query:
 
 ## Implementation Phases
 
-### Phase 1: Create PostgreSQL Backend (Parallel to NDB)
+### Phase 1: Create PostgreSQL Backend (Parallel to NDB) — COMPLETE
 
-1. Create `src/db/` package structure
-2. Move current `skrafldb.py` content to `src/db/ndb/models.py`
-3. Create PostgreSQL connection management
-4. Create SQLAlchemy model definitions
-5. Create NDB-compatible wrapper classes
-6. Update `skrafldb.py` to be a facade
-7. Add unit tests for PostgreSQL backend
-8. No changes to production code paths yet
+The PostgreSQL backend infrastructure is fully implemented. What was actually
+built differs from the original plan in architecture (see Implementation Status
+section above), but achieves all the same goals.
 
-**Files to create:**
-```
-src/db/
-  __init__.py              # Backend selector
-  config.py                # DATABASE_BACKEND, DATABASE_URL
+**What was done:**
 
-  ndb/
-    __init__.py
-    models.py              # Content from current skrafldb.py
+1. Created `src/db/` package with protocol-based repository architecture
+2. Created `src/db/protocols.py` with all shared types, entity protocols,
+   and repository protocols (~1,420 lines)
+3. Created `src/db/session.py` with `SessionManager` and WSGI middleware
+4. Created `src/db/postgresql/` with SQLAlchemy 2.0 models, entity wrappers,
+   repositories, backend class, and connection management
+5. Created `src/db/ndb/` with backend class, entity wrappers, and
+   repositories wrapping `skrafldb_ndb.py`
+6. Created `skrafldb_pg.py` — NDB-compatible API delegating to PG repositories
+7. Refactored `skrafldb.py` into a facade selecting between `skrafldb_ndb`
+   and `skrafldb_pg`
+8. Created comprehensive test suite (`tests/db/`, ~5,000 lines, 16 test files)
+   with multi-backend parametrization
 
-  postgresql/
-    __init__.py
-    connection.py          # Engine, SessionLocal, db_transaction()
-    models.py              # SQLAlchemy ORM definitions
-    compat.py              # NDB-compatible API wrappers
-```
+**Key decision: NDB code stayed in place.** Rather than moving `skrafldb.py`
+to `src/db/ndb/models.py`, the original file was renamed to `skrafldb_ndb.py`
+and the `src/db/ndb/` package wraps it via the repository pattern. This
+minimized risk and kept the original code untouched.
 
-**Files to modify:**
-- `src/skrafldb.py` → becomes thin facade: `from db import *`
+### Phase 2: Testing and Integration — IN PROGRESS
 
-### Phase 2: Testing and Dual-Write (Optional)
+1. Repository-level tests pass against both backends (`--backend=both`)
+2. Full application integration testing with `DATABASE_BACKEND=postgresql`
+   still to be done
+3. Dual-write mode not yet needed — direct cutover may be sufficient given
+   the test coverage
 
-1. Test PostgreSQL backend locally with `DATABASE_BACKEND=postgresql`
-2. Run existing test suite against PostgreSQL backend
-3. Optionally implement dual-write mode for production validation
-4. Monitor for errors and data consistency
+### Phase 3: Migrate Data — NOT STARTED
 
-**Dual-write mode** (if needed): Modify `db/ndb/models.py` to shadow-write to PostgreSQL:
-
-```python
-# In db/ndb/models.py - add shadow writes
-def put(self):
-    # Primary write to NDB
-    super().put()
-    # Shadow write to PostgreSQL (fire-and-forget, log errors)
-    try:
-        from db.postgresql.compat import UserModel as PgUserModel
-        PgUserModel.from_ndb(self).put()
-    except Exception as e:
-        logging.warning(f"PostgreSQL shadow write failed: {e}")
-```
-
-### Phase 3: Migrate Data
-
-**Duration**: 1 week (depending on data volume)
-
-1. Create migration scripts
+1. Create migration scripts (`scripts/migrate_to_postgres.py`)
 2. Run migration in batches
 3. Verify data integrity
 4. Document any data issues found
 
-**Files to create:**
-- `scripts/migrate_to_postgres.py`
-- `scripts/verify_migration.py`
-
-### Phase 4: Switch to PostgreSQL
+### Phase 4: Switch to PostgreSQL — NOT STARTED
 
 1. Set `DATABASE_BACKEND=postgresql` in production environment
 2. Monitor application logs and performance
 3. Keep NDB code available for quick rollback (`DATABASE_BACKEND=ndb`)
 4. Run for 1-2 weeks to build confidence
 
-**No code changes required** - the backend switch is purely configuration:
+**No code changes required** — the backend switch is purely configuration:
 
 ```bash
-# Production environment variable
 DATABASE_BACKEND=postgresql
 ```
 
@@ -1906,25 +1695,17 @@ DATABASE_BACKEND=postgresql
 DATABASE_BACKEND=ndb  # Instantly reverts to NDB
 ```
 
-### Phase 5: Remove NDB Code
+### Phase 5: Remove NDB Code — NOT STARTED
 
 After PostgreSQL has been stable in production:
 
 1. Remove `src/db/ndb/` directory
-2. Simplify `src/db/__init__.py` to always use PostgreSQL
-3. Remove `google-cloud-ndb` from `requirements.txt`
-4. Remove NDB client initialization from `src/main.py`
-5. Update `skrafldb.py` to import directly from PostgreSQL backend
-6. Remove `DATABASE_BACKEND` configuration (no longer needed)
-
-**Files to delete:**
-- `src/db/ndb/` directory
-
-**Files to simplify:**
-- `src/db/__init__.py` - Remove backend selection logic
-- `src/skrafldb.py` - Direct imports from `db.postgresql.compat`
-- `requirements.txt` - Remove `google-cloud-ndb`
-- `src/main.py` - Remove NDB client setup
+2. Remove `skrafldb_ndb.py`
+3. Simplify `src/db/session.py` to always use PostgreSQL
+4. Remove `google-cloud-ndb` from `requirements.txt`
+5. Remove NDB client initialization from `src/main.py`
+6. Simplify `skrafldb.py` to import directly from `skrafldb_pg`
+7. Remove `DATABASE_BACKEND` configuration (no longer needed)
 
 ---
 
@@ -1943,6 +1724,9 @@ DB_MAX_OVERFLOW=10
 DB_POOL_TIMEOUT=30
 DB_POOL_RECYCLE=1800
 
+# SQL statement logging (optional, for debugging)
+DB_ECHO_SQL=false
+
 # Redis (unchanged from current setup)
 REDIS_URL=redis://localhost:6379
 # or legacy:
@@ -1954,7 +1738,17 @@ REDISPORT=6379
 
 ## Appendix: Database Schema SQL
 
-For reference, here is the complete PostgreSQL schema as raw SQL.
+> **Implementation note:** This SQL schema was written as part of the original plan
+> and has not yet been updated to match the actual SQLAlchemy models. The actual
+> schema is defined by `src/db/postgresql/models.py` and created via
+> `Base.metadata.create_all(engine)`. Key differences from this SQL include:
+> different table names (e.g., `robots` not `robot_ratings`, `chats` not
+> `chat_messages`, `zombies` not `zombie_games`), composite primary keys
+> instead of UUID PKs for several tables, and `VARCHAR(64)` instead of native
+> `UUID` type for Game IDs. The SQL below is retained for reference but should
+> not be used directly; use the SQLAlchemy models as the source of truth.
+
+For reference, here is the original planned PostgreSQL schema as raw SQL.
 
 **Important notes**:
 - All `TIMESTAMP WITH TIME ZONE` columns store values in UTC
@@ -1996,11 +1790,11 @@ GRANT ALL PRIVILEGES ON DATABASE netskrafl TO netskrafl;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Note on UUIDs:
--- - Existing data from NDB uses UUID v1 (preserved during migration)
--- - New records use UUID v7 (time-ordered, better index performance than UUID v4)
--- - Both UUID versions are compatible and coexist in the same tables
--- - Application generates UUIDs using Python's uuid.uuid7() (Python 3.11+)
---   or the uuid7 package for earlier versions
+-- - Existing data from NDB uses UUID v1 for Game and Transaction IDs
+--   (preserved during migration as VARCHAR(64) strings)
+-- - Tables that need auto-generated UUIDs use gen_random_uuid() server default
+-- - Many tables use composite primary keys instead of surrogate UUID PKs
+-- - User and Game IDs are VARCHAR(64), not native UUID type
 
 -- Users table
 -- Note: user IDs remain VARCHAR as they come from OAuth providers (Google, Apple, Facebook)
