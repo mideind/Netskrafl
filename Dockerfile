@@ -181,11 +181,11 @@ ENV PORT=8080 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src:/home/appuser/.local/lib/python3.11/site-packages \
-    PATH=/home/appuser/.local/lib/python3.11/site-packages/bin:$PATH
+    PATH=/home/appuser/.local/lib/python3.11/site-packages/bin:$PATH \
+    GRPC_DNS_RESOLVER=native
 
 # Health check using the /health/live endpoint
-# Note: --start-interval removed for compatibility with older Docker versions (e.g., Digital Ocean)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health/live || exit 1
 
 # Expose port

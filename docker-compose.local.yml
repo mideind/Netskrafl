@@ -29,9 +29,6 @@ services:
       # Setting false avoids the check_port_available() conflict and uses
       # the Docker/container logging path in main.py.
       RUNNING_LOCAL: "false"
-      # Work around known gRPC DNS resolution bug in Docker/local environments.
-      # Must be set before any gRPC library is imported by Python.
-      GRPC_DNS_RESOLVER: native
       # Version tag
       APP_VERSION: docker-local
       # Credentials (mounted below)
