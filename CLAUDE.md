@@ -8,7 +8,7 @@ code in this repository.
 Netskrafl is an Icelandic crossword game website and backend server built with:
 - **Backend**: Python 3.11 + Flask web server for Google App Engine
 - **Frontend**: HTML5/JavaScript/TypeScript client with Ajax communication
-- **Database**: Google Cloud NDB (schemaless NoSQL)
+- **Database**: Google Cloud NDB (schemaless NoSQL), but being migrated to PostgreSQL
 - **Build System**: Grunt for TypeScript/JavaScript/CSS compilation
 - **Testing**: pytest framework
 
@@ -52,7 +52,6 @@ configuration for each project:
 PROJECT_ID=explo-dev \
 GOOGLE_APPLICATION_CREDENTIALS="<path-to-explo-dev-credentials.json>" \
 GOOGLE_CLOUD_PROJECT=explo-dev \
-SERVER_SOFTWARE=Development \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
 REDISPORT=6379 \
@@ -64,7 +63,6 @@ venv/bin/pytest test/ -v
 PROJECT_ID=netskrafl \
 GOOGLE_APPLICATION_CREDENTIALS="<path-to-netskrafl-credentials.json>" \
 GOOGLE_CLOUD_PROJECT=netskrafl \
-SERVER_SOFTWARE=Development \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
 REDISPORT=6379 \
@@ -77,8 +75,6 @@ venv/bin/pytest test/test_elo.py
 # Type checking with pyright (preferred)
 venv/bin/pyright src/
 
-# Type checking with mypy
-mypy src/
 ```
 
 Note: The explo-dev configuration should be used for full test coverage as it supports
@@ -86,15 +82,6 @@ multiple locales. The netskrafl configuration only supports Icelandic (`is_IS`) 
 some tests that require other locales will fail.
 
 The actual values for credentials paths and Firebase URLs can be found in `.vscode/launch.json`.
-
-### Linting and Code Quality
-```bash
-# JavaScript linting (via Grunt)
-grunt jshint
-
-# TypeScript compilation
-cd static && tsc
-```
 
 ## Architecture Overview
 
@@ -145,6 +132,8 @@ multiple languages through separate DAWG files and tile sets.
 - Real-time gameplay uses WebSocket-like communication via Firebase
 - Elo rating system tracks player performance
 - Google App Engine deployment with multiple environments (Netskrafl/Explo, demo/live)
+- A project is underway to migrate from Google Cloud to a containerized deployment,
+  probably on Digital Ocean, with PostgreSQL replacing Google NDB
 
 ## Coding Standards
 
@@ -156,13 +145,15 @@ multiple languages through separate DAWG files and tile sets.
 - Use strict typing in all cases except where third party libraries do not support it.
   In that case, use `# type: ignore` to suppress type checking errors, but try to use
   `cast(T, ...)` liberally and immediately to limit propagation of 'Any' or 'Unknown' types.
+- Otherwise, avoid casts, type ignores and `Any` types as much as possible. If you find
+  yourself needing to use them, consider whether the code can be refactored to avoid them.
 - Python source files should end with an empty line (i.e., two newlines at the end - `\n\n`).
 - Use datetime.now(UTC) for timestamps, not datetime.now() or datetime.utcnow().
 - Empty lines should only contain newlines, no spaces or tabs.
 
 ## Gotchas
 
-- When running locally in development, a separate Redis instance is used for Cloud
+- When running locally in development, a separate local Redis instance is used for Cloud
   Datastore caching. *This may cause cache incoherency* with the production environment.
   Especially, if running local utility scripts that modify the production database,
   the production cache may need to be cleared via Google Cloud Console.

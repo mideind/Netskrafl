@@ -12,6 +12,10 @@ from typing import Optional
 from dataclasses import dataclass
 
 
+# Default test database URL - used when DATABASE_URL is not set in test environments
+DEFAULT_TEST_DATABASE_URL = "postgresql://test:test@localhost:5432/netskrafl_test"
+
+
 @dataclass
 class DatabaseConfig:
     """Database configuration settings."""
@@ -44,6 +48,18 @@ class DatabaseConfig:
             pool_recycle=int(os.environ.get("DB_POOL_RECYCLE", "1800")),
             echo_sql=os.environ.get("DB_ECHO_SQL", "").lower() in ("1", "true", "yes"),
         )
+
+    def get_database_url(self, default: Optional[str] = None) -> Optional[str]:
+        """Get the database URL, with optional default fallback.
+
+        Args:
+            default: Fallback URL if database_url is not set.
+                     Use DEFAULT_TEST_DATABASE_URL for test environments.
+
+        Returns:
+            The database URL, or None if not set and no default provided.
+        """
+        return self.database_url or default
 
 
 # Global configuration instance

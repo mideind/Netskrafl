@@ -24,7 +24,7 @@
 
 from __future__ import annotations
 
-from typing import List, NamedTuple, Optional, Tuple, Callable, cast
+from typing import List, NamedTuple, Optional, Tuple, Callable
 
 import getopt
 import os
@@ -60,7 +60,7 @@ from skraflplayer import (  # noqa: E402
 from autoplayers import autoplayer_create  # noqa: E402
 
 
-PlayerTuple = Tuple[str, Callable[[State], AutoPlayer]]
+PlayerTuple = Tuple[str, Optional[Callable[[State], AutoPlayer]]]
 PlayerList = List[PlayerTuple]
 
 
@@ -200,7 +200,11 @@ def test_game(players: PlayerList, silent: bool) -> GameResult:
     while not state.is_game_over():
 
         # Call the appropriate player creation function
-        apl = players[state.player_to_move()][1](state)
+        player_func = players[state.player_to_move()][1]
+        if player_func is None:
+            print(f"No player function defined for player {state.player_to_move()}")
+            return GameResult()
+        apl = player_func(state)
 
         g0 = time.time()
         move = apl.generate_move()
@@ -329,7 +333,7 @@ def test(num_games: int, opponent: str, silent: bool) -> None:
         """Create a minimax autoplayer instance"""
         return AutoPlayer_MiniMax(0, state)
 
-    players: PlayerList = cast(PlayerList, [None, None])
+    players: PlayerList = [("", None), ("", None)]
     opponent = opponent.lower()
     if opponent.startswith("robot-"):
         level = int(opponent[6:])

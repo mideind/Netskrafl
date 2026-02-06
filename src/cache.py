@@ -33,6 +33,8 @@ from datetime import UTC, datetime
 
 import redis
 
+from authmanager import running_local
+
 
 # A cache of imported modules, used to create fresh instances
 # when de-serializing JSON objects
@@ -354,7 +356,7 @@ class RedisWrapper:
 #
 # The local Redis may be tunneled via: ssh -fNL 6379:localhost:6379 user@host
 
-if os.environ.get("SERVER_SOFTWARE", "").startswith("Development"):
+if running_local:
     memcache = RedisWrapper(redis_host="127.0.0.1")
 else:
     memcache = RedisWrapper()

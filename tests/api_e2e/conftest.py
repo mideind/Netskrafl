@@ -22,8 +22,13 @@ from __future__ import annotations
 # the database session manager on import.
 import os
 
+# Import the test database URL constant early (src/db/config.py has no side effects)
+from src.db.config import DEFAULT_TEST_DATABASE_URL
+
 # Set database backend to PostgreSQL for API e2e tests
 os.environ["DATABASE_BACKEND"] = "postgresql"
+# Set default test database URL if not already set in environment
+os.environ.setdefault("DATABASE_URL", DEFAULT_TEST_DATABASE_URL)
 
 import random
 from contextlib import contextmanager
@@ -75,12 +80,10 @@ def _reset_postgresql_tables() -> Iterator[None]:
 
     This fixture drops and recreates all tables to ensure a clean state.
     """
+    from src.db.config import get_config, DEFAULT_TEST_DATABASE_URL
     from src.db.postgresql import PostgreSQLBackend
 
-    url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://test:test@localhost:5432/netskrafl_test",
-    )
+    url = get_config().get_database_url(DEFAULT_TEST_DATABASE_URL)
 
     # Reset tables at session start
     db = PostgreSQLBackend(database_url=url)
@@ -94,12 +97,10 @@ def _reset_postgresql_tables() -> Iterator[None]:
 @pytest.fixture(scope="session")
 def pg_backend(_reset_postgresql_tables: None) -> Iterator["DatabaseBackendProtocol"]:
     """Session-scoped PostgreSQL backend for database verification."""
+    from src.db.config import get_config, DEFAULT_TEST_DATABASE_URL
     from src.db.postgresql import PostgreSQLBackend
 
-    url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://test:test@localhost:5432/netskrafl_test",
-    )
+    url = get_config().get_database_url(DEFAULT_TEST_DATABASE_URL)
     db = PostgreSQLBackend(database_url=url)
     yield db
     db.close()

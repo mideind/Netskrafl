@@ -20,7 +20,6 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import pytest
 from typing import Iterator, TYPE_CHECKING, Tuple
 
@@ -79,13 +78,11 @@ def _create_postgresql_backend(
     database_url: str | None = None,
 ) -> "DatabaseBackendProtocol":
     """Create a PostgreSQL backend instance for testing."""
+    from src.db.config import get_config, DEFAULT_TEST_DATABASE_URL
     from src.db.postgresql import PostgreSQLBackend
 
-    # Use test database URL from environment or default
-    url = database_url or os.environ.get(
-        "DATABASE_URL",
-        "postgresql://test:test@localhost:5432/netskrafl_test",
-    )
+    # Use provided URL, or fall back to config (with test default)
+    url = database_url or get_config().get_database_url(DEFAULT_TEST_DATABASE_URL)
     return PostgreSQLBackend(database_url=url)
 
 
@@ -96,12 +93,10 @@ def _reset_postgresql_tables() -> Iterator[None]:
     This fixture is automatically used by all PostgreSQL-related fixtures.
     It drops and recreates all tables to ensure a clean state.
     """
+    from src.db.config import get_config, DEFAULT_TEST_DATABASE_URL
     from src.db.postgresql import PostgreSQLBackend
 
-    url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://test:test@localhost:5432/netskrafl_test",
-    )
+    url = get_config().get_database_url(DEFAULT_TEST_DATABASE_URL)
 
     # Reset tables at session start
     try:
