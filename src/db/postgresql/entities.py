@@ -8,7 +8,7 @@ the entity protocols defined in src/db/protocols.py.
 from __future__ import annotations
 
 from typing import Optional, List, Dict, Any, cast
-from datetime import datetime
+from datetime import UTC, datetime
 import json
 
 from .models import (
@@ -21,6 +21,19 @@ from .models import (
 )
 
 from ..protocols import MoveDict, PrefsDict
+
+
+def _parse_ts(val: Any) -> Optional[datetime]:
+    """Parse an ISO-format timestamp string from JSONB back to datetime."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val
+    # Parse ISO format string, ensuring UTC timezone
+    dt = datetime.fromisoformat(val)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
 
 
 class UserEntity:
@@ -213,7 +226,7 @@ class GameEntity:
                 tiles=m.get("tiles", ""),
                 score=m.get("score", 0),
                 rack=m.get("rack"),
-                timestamp=m.get("timestamp"),
+                timestamp=_parse_ts(m.get("timestamp")),
             )
             for m in (self._model.moves or [])
         ]

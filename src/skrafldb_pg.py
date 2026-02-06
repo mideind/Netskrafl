@@ -874,12 +874,17 @@ class MoveModel:
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> MoveModel:
         """Create from a dict (from JSONB)."""
+        ts = d.get("timestamp")
+        if isinstance(ts, str):
+            ts = datetime.fromisoformat(ts)
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=UTC)
         return cls(
             coord=d.get("coord", ""),
             tiles=d.get("tiles", ""),
             score=d.get("score", 0),
             rack=d.get("rack"),
-            timestamp=d.get("timestamp"),
+            timestamp=ts,
         )
 
     def put(self, **kwargs: Any) -> Key:
