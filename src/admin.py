@@ -203,8 +203,7 @@ def admin_setfriend() -> str:
 
 def admin_fetchgames() -> Response:
     """Return a JSON representation of all finished games"""
-    # pylint: disable=singleton-comparison
-    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)
+    q = GameModel.query(GameModel.over == True).order(GameModel.ts_last_move)  # noqa: E712
     gamelist: List[Dict[str, Any]] = []
     for gm in q.fetch():
         gamelist.append(

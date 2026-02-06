@@ -83,7 +83,7 @@ def _create_postgresql_backend(
 
     # Use test database URL from environment or default
     url = database_url or os.environ.get(
-        "TEST_DATABASE_URL",
+        "DATABASE_URL",
         "postgresql://test:test@localhost:5432/netskrafl_test",
     )
     return PostgreSQLBackend(database_url=url)
@@ -99,7 +99,7 @@ def _reset_postgresql_tables() -> Iterator[None]:
     from src.db.postgresql import PostgreSQLBackend
 
     url = os.environ.get(
-        "TEST_DATABASE_URL",
+        "DATABASE_URL",
         "postgresql://test:test@localhost:5432/netskrafl_test",
     )
 

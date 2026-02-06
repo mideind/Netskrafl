@@ -134,7 +134,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
             )
         )
         .order(GameModel.ts_last_move)
-        .filter(GameModel.over == True)
+        .filter(GameModel.over == True)  # noqa: E712
     )
 
     # The accumulated cache of user statistics

@@ -210,7 +210,7 @@ def backend(request) -> Iterator[DatabaseBackendProtocol]:
         from src.db.postgresql import PostgreSQLBackend
         # Use test database
         test_url = os.environ.get(
-            "TEST_DATABASE_URL",
+            "DATABASE_URL",
             "postgresql://test:test@localhost:5432/netskrafl_test"
         )
         db = PostgreSQLBackend(database_url=test_url)
@@ -244,7 +244,7 @@ def both_backends(request) -> Iterator[tuple[DatabaseBackendProtocol, DatabaseBa
 
     ndb = NDBBackend()
     test_url = os.environ.get(
-        "TEST_DATABASE_URL",
+        "DATABASE_URL",
         "postgresql://test:test@localhost:5432/netskrafl_test"
     )
     pg = PostgreSQLBackend(database_url=test_url)
@@ -1115,7 +1115,7 @@ jobs:
       - name: Run PostgreSQL tests
         run: pytest tests/db/ --backend=postgresql -v
         env:
-          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/netskrafl_test
+          DATABASE_URL: postgresql://test:test@localhost:5432/netskrafl_test
 
   test-comparison:
     name: Backend Comparison Tests
@@ -1142,7 +1142,7 @@ jobs:
         run: pytest tests/db/ --compare -v
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
-          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/netskrafl_test
+          DATABASE_URL: postgresql://test:test@localhost:5432/netskrafl_test
 ```
 
 ## Implementation Phases with Testing

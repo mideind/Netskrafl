@@ -24,15 +24,6 @@ import pytest
 SRC_PATH = os.path.join(os.path.dirname(__file__), "..", "src")
 sys.path.append(SRC_PATH)
 
-# Set up the environment for Explo-dev testing
-os.environ["PROJECT_ID"] = "explo-dev"
-os.environ[
-    "GOOGLE_APPLICATION_CREDENTIALS"
-] = "resources/Explo Development-414318fa79b8.json"
-os.environ["SERVER_SOFTWARE"] = "Development"
-os.environ["REDISHOST"] = "127.0.0.1"
-os.environ["REDISPORT"] = "6379"
-
 
 @pytest.fixture
 def client():
@@ -257,7 +248,7 @@ def test_block(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -288,7 +279,7 @@ def test_block(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -315,12 +306,12 @@ def test_block(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
     resp = client.post("/blockuser", data=dict(blocked=u2))
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -349,7 +340,7 @@ def test_block(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -419,14 +410,14 @@ def test_disable_chat(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u2 reports nonexisting user (which should return ok=False)
     resp = client.post("/reportuser", data=dict(reported="xxx", code=1))
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == False
+    assert resp.json["ok"]
 
     resp = client.post("/logout")
     assert resp.status_code == 200
@@ -598,7 +589,7 @@ def test_delete_user_1(client: FlaskClient, u1: str):
     resp = client.post("/delete_account")
     assert resp.status_code == 200
     assert resp.json is not None
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # Now the session cookie should be expired
     resp = client.post("/delete_account")
@@ -655,7 +646,7 @@ def test_delete_user_2(client: FlaskClient, u1: str, u2: str):
     resp = client.post("/delete_account")
     assert resp.status_code == 200
     assert resp.json is not None
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # Logout and log in the second user again
     resp = client.post("/logout")
@@ -682,11 +673,11 @@ def test_delete_user_2(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert resp.json["result"] == 0
-    assert resp.json["favorite"] == False
+    assert resp.json["favorite"]
     assert "list_favorites" not in resp.json
     assert resp.json["fullname"] == ""
     # assert resp.json["image"] == ""
-    assert resp.json["chat_disabled"] == True
+    assert resp.json["chat_disabled"]
 
     resp = client.post("/logout")
     assert resp.status_code == 200

@@ -9,7 +9,6 @@
 """
 
 from utils import CustomClient, login_user
-from utils import client, u1, u2, u3_gb  # type: ignore  # noqa: F401
 
 
 def test_block(client: CustomClient, u1: str, u2: str) -> None:
@@ -20,7 +19,7 @@ def test_block(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -51,7 +50,7 @@ def test_block(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -78,12 +77,12 @@ def test_block(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
     resp = client.post("/blockuser", data=dict(blocked=u2))
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -112,7 +111,7 @@ def test_block(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u1 queries the user stats (profile) of user u2
     resp = client.post("/userstats", data=dict(user=u2))
@@ -147,7 +146,7 @@ def test_report(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     resp = client.post("/logout")
 
@@ -158,14 +157,14 @@ def test_report(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # User u2 reports nonexisting user (which should return ok=False)
     resp = client.post("/reportuser", data=dict(reported="xxx", code=1))
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == False
+    assert resp.json["ok"]
 
     resp = client.post("/logout")
     assert resp.status_code == 200

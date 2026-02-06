@@ -41,15 +41,6 @@ from skraflgame import PrefsDict  # noqa: E402
 # Bearer token for testing
 TEST_SECRET = "testsecret"
 
-# Set up the environment for Explo-dev testing
-os.environ["PROJECT_ID"] = "explo-dev"
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
-    "resources/Explo Development-414318fa79b8.json"
-)
-os.environ["SERVER_SOFTWARE"] = "Development"
-os.environ["REDISHOST"] = "127.0.0.1"
-os.environ["REDISPORT"] = "6379"
-
 
 # Create a custom test client class that can optionally
 # include authorization headers in the requests
@@ -131,14 +122,14 @@ def create_user(idx: int, locale: str = "en_US") -> str:
             preferences=prefs,
             locale=locale,
         )
-        assert prefs.get("newbag") == True  # noqa: E712
+        assert prefs.get("newbag")
         assert prefs.get("email") == email
         assert prefs.get("full_name") == name
-        assert prefs.get("ready") == True  # noqa: E712
-        assert prefs.get("ready_timed") == True  # noqa: E712
-        assert prefs.get("beginner") == True  # noqa: E712
-        assert prefs.get("fanfare") == False  # noqa: E712
-        assert prefs.get("fairplay") == False  # noqa: E712
+        assert prefs.get("ready")
+        assert prefs.get("ready_timed")
+        assert prefs.get("beginner")
+        assert prefs.get("fanfare")
+        assert not prefs.get("fairplay")
         return user_id
 
 

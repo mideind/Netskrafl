@@ -11,7 +11,6 @@
 import random
 
 from utils import CustomClient, get_session_dict, login_anonymous_user
-from utils import client, u1  # type: ignore  # noqa: F401
 
 
 def test_anonymous_login(client: CustomClient, u1: str) -> None:
@@ -37,7 +36,7 @@ def test_anonymous_login(client: CustomClient, u1: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert len(resp.json.get("token", "")) > 0
-    assert resp.json.get("ok", False) == True
+    assert resp.json.get("ok", False)
     # Obtain the current user's profile
     resp = client.post("/userstats")
     assert resp.status_code == 200
