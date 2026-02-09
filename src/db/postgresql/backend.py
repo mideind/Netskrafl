@@ -7,7 +7,7 @@ DatabaseBackendProtocol using SQLAlchemy ORM.
 
 from __future__ import annotations
 
-from typing import Optional, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING, cast
 import uuid
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -153,26 +153,44 @@ class PostgreSQLBackend:
         self._init_repositories()
 
     def _init_repositories(self) -> None:
-        """Initialize repositories with the current session."""
+        """Initialize repositories with the current session.
+
+        Repositories are typed as protocol interfaces. cast() is needed
+        for the 5 repositories whose methods return ORM models, because
+        pyright cannot verify that SQLAlchemy Mapped[T] descriptors
+        satisfy protocol @property members (they do at runtime).
+        """
         session = self._session
-        self._users = UserRepository(session)
-        self._games = GameRepository(session)
-        self._elo = EloRepository(session)
-        self._stats = StatsRepository(session)
-        self._favorites = FavoriteRepository(session)
-        self._challenges = ChallengeRepository(session)
-        self._chat = ChatRepository(session)
-        self._blocks = BlockRepository(session)
-        self._zombies = ZombieRepository(session)
-        self._ratings = RatingRepository(session)
-        self._riddles = RiddleRepository(session)
-        self._images = ImageRepository(session)
-        self._reports = ReportRepository(session)
-        self._promos = PromoRepository(session)
-        self._transactions = TransactionRepository(session)
-        self._submissions = SubmissionRepository(session)
-        self._completions = CompletionRepository(session)
-        self._robots = RobotRepository(session)
+        # Repositories returning entity protocol types need cast()
+        self._users: "UserRepositoryProtocol" = cast(
+            "UserRepositoryProtocol", UserRepository(session)
+        )
+        self._games: "GameRepositoryProtocol" = cast(
+            "GameRepositoryProtocol", GameRepository(session)
+        )
+        self._elo: "EloRepositoryProtocol" = cast(
+            "EloRepositoryProtocol", EloRepository(session)
+        )
+        self._stats: "StatsRepositoryProtocol" = cast(
+            "StatsRepositoryProtocol", StatsRepository(session)
+        )
+        self._riddles: "RiddleRepositoryProtocol" = cast(
+            "RiddleRepositoryProtocol", RiddleRepository(session)
+        )
+        # Repositories without entity return types need no cast
+        self._favorites: "FavoriteRepositoryProtocol" = FavoriteRepository(session)
+        self._challenges: "ChallengeRepositoryProtocol" = ChallengeRepository(session)
+        self._chat: "ChatRepositoryProtocol" = ChatRepository(session)
+        self._blocks: "BlockRepositoryProtocol" = BlockRepository(session)
+        self._zombies: "ZombieRepositoryProtocol" = ZombieRepository(session)
+        self._ratings: "RatingRepositoryProtocol" = RatingRepository(session)
+        self._images: "ImageRepositoryProtocol" = ImageRepository(session)
+        self._reports: "ReportRepositoryProtocol" = ReportRepository(session)
+        self._promos: "PromoRepositoryProtocol" = PromoRepository(session)
+        self._transactions: "TransactionRepositoryProtocol" = TransactionRepository(session)
+        self._submissions: "SubmissionRepositoryProtocol" = SubmissionRepository(session)
+        self._completions: "CompletionRepositoryProtocol" = CompletionRepository(session)
+        self._robots: "RobotRepositoryProtocol" = RobotRepository(session)
 
     @property
     def users(self) -> "UserRepositoryProtocol":

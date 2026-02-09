@@ -31,6 +31,7 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    TYPE_CHECKING,
     TypeVar,
     cast,
 )
@@ -67,6 +68,15 @@ from skrafldb_ndb import (
     DEFAULT_ELO_DICT,  # noqa: F401 - re-exported via skrafldb.py
 )
 
+
+if TYPE_CHECKING:
+    from src.db.protocols import (
+        UserEntityProtocol,
+        GameEntityProtocol,
+        EloEntityProtocol,
+        StatsEntityProtocol,
+        RiddleEntityProtocol,
+    )
 
 _log = logging.getLogger(__name__)
 
@@ -428,12 +438,12 @@ class UserModel:
 
     def __init__(self, id: Optional[str] = None, **kwargs: Any) -> None:
         self._id = id or ""
-        self._entity: Any = None  # Wrapped entity from repository
+        self._entity: Optional[UserEntityProtocol] = None
         self._attrs: Dict[str, Any] = dict(kwargs)
 
     @classmethod
-    def _from_entity(cls, entity: Any) -> UserModel:
-        """Wrap a PG UserEntity as a UserModel facade."""
+    def _from_entity(cls, entity: UserEntityProtocol) -> UserModel:
+        """Wrap a PG User model as a UserModel facade."""
         um = cls.__new__(cls)
         um._id = entity.key_id
         um._entity = entity
@@ -664,12 +674,12 @@ class EloModel:
     """PostgreSQL facade for EloModel, delegating to EloRepository."""
 
     def __init__(self, **kwargs: Any) -> None:
-        self._entity: Any = None
+        self._entity: Optional[EloEntityProtocol] = None
         self._attrs: Dict[str, Any] = dict(kwargs)
         self._id = kwargs.get("id", "")
 
     @classmethod
-    def _from_entity(cls, entity: Any) -> EloModel:
+    def _from_entity(cls, entity: EloEntityProtocol) -> EloModel:
         em = cls.__new__(cls)
         em._entity = entity
         em._attrs = {}
@@ -928,12 +938,12 @@ class GameModel:
 
     def __init__(self, id: Optional[str] = None, **kwargs: Any) -> None:
         self._id = id or Unique.id()
-        self._entity: Any = None
+        self._entity: Optional[GameEntityProtocol] = None
         self._attrs: Dict[str, Any] = dict(kwargs)
         self._moves_list: Optional[List[MoveModel]] = None
 
     @classmethod
-    def _from_entity(cls, entity: Any) -> GameModel:
+    def _from_entity(cls, entity: GameEntityProtocol) -> GameModel:
         gm = cls.__new__(cls)
         gm._id = entity.key_id
         gm._entity = entity
@@ -1040,11 +1050,11 @@ class GameModel:
                 raw_moves = self._entity.moves  # List[MoveDict]
                 self._moves_list = [
                     MoveModel(
-                        coord=m.coord if hasattr(m, "coord") else m.get("coord", ""),
-                        tiles=m.tiles if hasattr(m, "tiles") else m.get("tiles", ""),
-                        score=m.score if hasattr(m, "score") else m.get("score", 0),
-                        rack=m.rack if hasattr(m, "rack") else m.get("rack"),
-                        timestamp=m.timestamp if hasattr(m, "timestamp") else m.get("timestamp"),
+                        coord=m.coord,
+                        tiles=m.tiles,
+                        score=m.score,
+                        rack=m.rack,
+                        timestamp=m.timestamp,
                     )
                     for m in raw_moves
                 ]
@@ -1296,11 +1306,11 @@ class StatsModel:
     MAX_STATS = 100
 
     def __init__(self, **kwargs: Any) -> None:
-        self._entity: Any = None
+        self._entity: Optional[StatsEntityProtocol] = None
         self._attrs: Dict[str, Any] = dict(kwargs)
 
     @classmethod
-    def _from_entity(cls, entity: Any) -> StatsModel:
+    def _from_entity(cls, entity: StatsEntityProtocol) -> StatsModel:
         sm = cls.__new__(cls)
         sm._entity = entity
         sm._attrs = {}
@@ -1349,19 +1359,19 @@ class StatsModel:
         """Persist to database."""
         db = _get_db()
         if self._entity is not None:
-            # Update the underlying PG model
-            model = cast(Any, self._entity)._pg_model
+            # Update the entity (which is the ORM model directly)
+            entity = self._entity
             for attr_name, value in self._attrs.items():
                 if attr_name == "user":
                     # Convert Key back to user_id string
                     if value is not None:
-                        model.user_id = value.id() if isinstance(value, Key) else value
+                        entity.user_id = value.id() if isinstance(value, Key) else value  # type: ignore[union-attr]
                     else:
-                        model.user_id = None
-                elif hasattr(model, attr_name):
-                    setattr(model, attr_name, value)
-                elif attr_name == "user_id" and hasattr(model, "user_id"):
-                    model.user_id = value
+                        entity.user_id = None  # type: ignore[assignment]
+                elif hasattr(entity, attr_name):
+                    setattr(entity, attr_name, value)
+                elif attr_name == "user_id" and hasattr(entity, "user_id"):
+                    entity.user_id = value  # type: ignore[union-attr]
             db.flush()
             self._attrs.clear()
         else:
@@ -1377,13 +1387,12 @@ class StatsModel:
                 robot_level=self._attrs.get("robot_level", 0),
             )
             self._entity = entity
-            # Now update all other attributes
-            model = cast(Any, entity)._pg_model
+            # Now update all other attributes on the entity directly
             for attr_name, value in self._attrs.items():
                 if attr_name in ("user", "robot_level"):
                     continue
-                if hasattr(model, attr_name):
-                    setattr(model, attr_name, value)
+                if hasattr(entity, attr_name):
+                    setattr(entity, attr_name, value)
             db.flush()
             self._attrs.clear()
         return self.key
@@ -2045,11 +2054,11 @@ class RiddleModel:
     """PostgreSQL facade for RiddleModel."""
 
     def __init__(self, **kwargs: Any) -> None:
-        self._entity: Any = None
+        self._entity: Optional[RiddleEntityProtocol] = None
         self._attrs: Dict[str, Any] = dict(kwargs)
 
     @classmethod
-    def _from_entity(cls, entity: Any) -> RiddleModel:
+    def _from_entity(cls, entity: RiddleEntityProtocol) -> RiddleModel:
         rm = cls.__new__(cls)
         rm._entity = entity
         rm._attrs = {}

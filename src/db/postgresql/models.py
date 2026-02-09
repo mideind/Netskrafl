@@ -7,8 +7,9 @@ features like JSONB, proper foreign keys, and UUID primary keys.
 
 from __future__ import annotations
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from datetime import datetime, timezone
+import json
 
 from uuid import UUID as PyUUID
 
@@ -31,6 +32,8 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+from ..protocols import MoveDict, PrefsDict
+
 # UTC timezone constant
 UTC = timezone.utc
 
@@ -38,6 +41,19 @@ UTC = timezone.utc
 def utcnow() -> datetime:
     """Return current UTC datetime."""
     return datetime.now(UTC)
+
+
+def _parse_ts(val: Any) -> Optional[datetime]:
+    """Parse an ISO-format timestamp string from JSONB back to datetime."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val
+    # Parse ISO format string, ensuring UTC timezone
+    dt = datetime.fromisoformat(val)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
 
 
 class Base(DeclarativeBase):
@@ -74,7 +90,7 @@ class User(Base):
     location: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default="")
 
     # Preferences stored as JSONB
-    prefs: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    prefs: Mapped[PrefsDict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Timestamps
     timestamp: Mapped[datetime] = mapped_column(
@@ -109,6 +125,10 @@ class User(Base):
         "EloRating", back_populates="user", cascade="all, delete-orphan"
     )
 
+    @property
+    def key_id(self) -> str:
+        return self.id
+
     def __repr__(self) -> str:
         return f"<User(id={self.id!r}, nickname={self.nickname!r})>"
 
@@ -142,6 +162,10 @@ class EloRating(Base):
         Index("ix_elo_ratings_locale_human_elo", "locale", "human_elo"),
         Index("ix_elo_ratings_locale_manual_elo", "locale", "manual_elo"),
     )
+
+    @property
+    def key_id(self) -> str:
+        return f"{self.user_id}:{self.locale}"
 
     def __repr__(self) -> str:
         return f"<EloRating(user_id={self.user_id!r}, locale={self.locale!r}, elo={self.elo})>"
@@ -207,13 +231,13 @@ class Game(Base):
         DateTime(timezone=True), nullable=True, index=True
     )
 
-    # Moves stored as JSONB array
-    moves: Mapped[List[Dict[str, Any]]] = mapped_column(
-        JSONB, nullable=False, default=list
+    # Moves stored as JSONB array (column name is "moves" in DB)
+    moves_json: Mapped[List[Dict[str, Any]]] = mapped_column(
+        "moves", JSONB, nullable=False, default=list
     )
 
     # Preferences
-    prefs: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    prefs: Mapped[Optional[PrefsDict]] = mapped_column(JSONB, nullable=True)
 
     # Tile count on board
     tile_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -242,6 +266,60 @@ class Game(Base):
         Index("ix_games_player0_over", "player0_id", "over"),
         Index("ix_games_player1_over", "player1_id", "over"),
     )
+
+    @property
+    def key_id(self) -> str:
+        return self.id
+
+    @property
+    def moves(self) -> List[MoveDict]:
+        """Convert JSONB moves to MoveDict list with lazy caching."""
+        cache: Optional[List[MoveDict]] = getattr(self, "_moves_cache", None)
+        if cache is not None:
+            return cache
+        result = [
+            MoveDict(
+                coord=m.get("coord", ""),
+                tiles=m.get("tiles", ""),
+                score=m.get("score", 0),
+                rack=m.get("rack"),
+                timestamp=_parse_ts(m.get("timestamp")),
+            )
+            for m in (self.moves_json or [])
+        ]
+        object.__setattr__(self, "_moves_cache", result)
+        return result
+
+    @moves.setter
+    def moves(self, value: List[Any]) -> None:
+        """Accept either dicts or MoveDicts and write to moves_json."""
+        converted: List[Dict[str, Any]] = []
+        for m in value:
+            if isinstance(m, dict):
+                converted.append(m)
+            else:
+                d: Dict[str, Any] = {
+                    "coord": m.coord,
+                    "tiles": m.tiles,
+                    "score": m.score,
+                }
+                if m.rack is not None:
+                    d["rack"] = m.rack
+                if m.timestamp is not None:
+                    d["timestamp"] = (
+                        m.timestamp.isoformat()
+                        if isinstance(m.timestamp, datetime)
+                        else m.timestamp
+                    )
+                converted.append(d)
+        self.moves_json = converted
+        # Invalidate cache
+        object.__setattr__(self, "_moves_cache", None)
+
+    def manual_wordcheck(self) -> bool:
+        """Check if manual wordcheck is enabled for this game."""
+        prefs = self.prefs or {}
+        return prefs.get("manual", False)
 
     def __repr__(self) -> str:
         return f"<Game(id={self.id!r}, over={self.over})>"
@@ -344,6 +422,10 @@ class Stats(Base):
     manual_wins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     manual_losses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    @property
+    def key_id(self) -> str:
+        return str(self.id)
+
 
 class Chat(Base):
     """Chat messages - mirrors NDB ChatModel."""
@@ -373,6 +455,10 @@ class Chat(Base):
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, index=True
     )
+
+    @property
+    def key_id(self) -> str:
+        return str(self.id)
 
 
 class Zombie(Base):
@@ -637,3 +723,20 @@ class Riddle(Base):
         DateTime(timezone=True), nullable=False, default=utcnow
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    @property
+    def key_id(self) -> str:
+        return f"{self.date}:{self.locale}"
+
+    @property
+    def riddle(self) -> Optional[Dict[str, Any]]:
+        """Parse riddle_json and return as dict with lazy caching."""
+        cache: Optional[Dict[str, Any]] = getattr(self, "_riddle_cache", None)
+        if cache is not None:
+            return cache
+        try:
+            result = json.loads(self.riddle_json)
+            object.__setattr__(self, "_riddle_cache", result)
+            return result
+        except (json.JSONDecodeError, TypeError):
+            return None

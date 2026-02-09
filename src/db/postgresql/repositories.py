@@ -19,7 +19,6 @@ from typing import (
     TypeVar,
     Generic,
     Type,
-    Callable,
     cast,
 )
 from datetime import datetime, timezone
@@ -47,14 +46,6 @@ from .models import (
     Completion,
     Rating,
     Riddle,
-)
-
-from .entities import (
-    UserEntity,
-    GameEntity,
-    EloEntity,
-    StatsEntity,
-    RiddleEntity,
 )
 
 from ..protocols import (
@@ -89,35 +80,32 @@ class UserRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_by_id(self, user_id: str) -> Optional[UserEntity]:
+    def get_by_id(self, user_id: str) -> Optional[User]:
         """Fetch a user by their ID."""
-        user = self._session.get(User, user_id)
-        return UserEntity(user) if user else None
+        return self._session.get(User, user_id)
 
-    def get_by_account(self, account: str) -> Optional[UserEntity]:
+    def get_by_account(self, account: str) -> Optional[User]:
         """Fetch a user by their OAuth2 account identifier."""
         if not account:
             return None
         stmt = select(User).where(User.account == account)
-        user = self._session.execute(stmt).scalar_one_or_none()
-        return UserEntity(user) if user else None
+        return self._session.execute(stmt).scalar_one_or_none()
 
     def get_by_nickname(
         self, nickname: str, ignore_case: bool = False
-    ) -> Optional[UserEntity]:
+    ) -> Optional[User]:
         """Fetch a user by their nickname."""
         if ignore_case:
             # Try lowercase first
             stmt = select(User).where(User.nick_lc == nickname.lower())
             user = self._session.execute(stmt).scalar_one_or_none()
             if user:
-                return UserEntity(user)
+                return user
         # Try exact match
         stmt = select(User).where(User.nickname == nickname)
-        user = self._session.execute(stmt).scalar_one_or_none()
-        return UserEntity(user) if user else None
+        return self._session.execute(stmt).scalar_one_or_none()
 
-    def get_by_email(self, email: str) -> Optional[UserEntity]:
+    def get_by_email(self, email: str) -> Optional[User]:
         """Fetch a user by their email address."""
         if not email:
             return None
@@ -127,10 +115,9 @@ class UserRepository:
             .where(and_(User.email == email.lower(), User.inactive == False))  # noqa: E712
             .order_by(desc(User.elo > 0), desc(User.timestamp))
         )
-        user = self._session.execute(stmt).scalars().first()
-        return UserEntity(user) if user else None
+        return self._session.execute(stmt).scalars().first()
 
-    def get_multi(self, user_ids: List[str]) -> List[Optional[UserEntity]]:
+    def get_multi(self, user_ids: List[str]) -> List[Optional[User]]:
         """Fetch multiple users by their IDs."""
         if not user_ids:
             return []
@@ -139,7 +126,7 @@ class UserRepository:
         users_by_id = {u.id: u for u in self._session.execute(stmt).scalars()}
         # Return in same order as requested, with None for missing
         return [
-            UserEntity(users_by_id[uid]) if uid in users_by_id else None
+            users_by_id.get(uid)
             for uid in user_ids
         ]
 
@@ -189,25 +176,24 @@ class UserRepository:
 
     def update(self, user: "UserEntityProtocol", **kwargs: Any) -> None:
         """Update a user's attributes."""
-        if not isinstance(user, UserEntity):
-            raise TypeError("Expected UserEntity from PostgreSQL backend")
-        model = user._pg_model
+        if not isinstance(user, User):
+            raise TypeError("Expected User model from PostgreSQL backend")
 
         for key, value in kwargs.items():
-            if hasattr(model, key):
-                setattr(model, key, value)
+            if hasattr(user, key):
+                setattr(user, key, value)
             else:
                 raise AttributeError(f"User has no attribute '{key}'")
 
         # Special handling for nick_lc when nickname changes
         if "nickname" in kwargs:
-            model.nick_lc = kwargs["nickname"].lower()
+            setattr(user, "nick_lc", kwargs["nickname"].lower())
 
         # Special handling for name_lc when prefs changes
         if "prefs" in kwargs:
             prefs = kwargs["prefs"]
             if isinstance(prefs, dict) and "full_name" in prefs:
-                model.name_lc = prefs["full_name"].lower()
+                setattr(user, "name_lc", prefs["full_name"].lower())
 
         self._session.flush()
 
@@ -299,9 +285,9 @@ class UserRepository:
             for u in combined[:max_len]
         ]
 
-    def query(self) -> "PostgreSQLQueryWrapper[UserEntity]":
+    def query(self) -> "PostgreSQLQueryWrapper[User]":
         """Return a query object for users."""
-        return PostgreSQLQueryWrapper(self._session, User, UserEntity)
+        return PostgreSQLQueryWrapper(self._session, User)
 
 
 class GameRepository:
@@ -310,28 +296,31 @@ class GameRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_by_id(self, game_id: str) -> Optional[GameEntity]:
+    def get_by_id(self, game_id: str) -> Optional[Game]:
         """Fetch a game by its UUID."""
-        game = self._session.get(Game, game_id)
-        return GameEntity(game) if game else None
+        return self._session.get(Game, game_id)
 
-    def create(self, **kwargs: Any) -> GameEntity:
+    def create(self, **kwargs: Any) -> Game:
         """Create a new game."""
         game_id = kwargs.pop("id", None) or _generate_id()
+        # Map "moves" kwarg to the "moves_json" column attribute
+        if "moves" in kwargs:
+            kwargs["moves_json"] = kwargs.pop("moves")
         game = Game(id=game_id, **kwargs)
         self._session.add(game)
         self._session.flush()
-        return GameEntity(game)
+        return game
 
     def update(self, game: "GameEntityProtocol", **kwargs: Any) -> None:
         """Update a game's attributes."""
-        if not isinstance(game, GameEntity):
-            raise TypeError("Expected GameEntity from PostgreSQL backend")
-        model = game._pg_model
+        if not isinstance(game, Game):
+            raise TypeError("Expected Game model from PostgreSQL backend")
 
         for key, value in kwargs.items():
-            if hasattr(model, key):
-                setattr(model, key, value)
+            # Map "moves" to the "moves_json" column attribute
+            attr = "moves_json" if key == "moves" else key
+            if hasattr(game, attr):
+                setattr(game, attr, value)
 
         self._session.flush()
 
@@ -444,9 +433,9 @@ class GameRepository:
         self._session.execute(stmt)
         self._session.flush()
 
-    def query(self) -> "PostgreSQLQueryWrapper[GameEntity]":
+    def query(self) -> "PostgreSQLQueryWrapper[Game]":
         """Return a query object for games."""
-        return PostgreSQLQueryWrapper(self._session, Game, GameEntity)
+        return PostgreSQLQueryWrapper(self._session, Game)
 
 
 class EloRepository:
@@ -455,14 +444,13 @@ class EloRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_for_user(self, locale: str, user_id: str) -> Optional[EloEntity]:
+    def get_for_user(self, locale: str, user_id: str) -> Optional[EloRating]:
         """Get Elo ratings for a user in a specific locale."""
-        elo = self._session.get(EloRating, (user_id, locale))
-        return EloEntity(elo) if elo else None
+        return self._session.get(EloRating, (user_id, locale))
 
     def create(
         self, locale: str, user_id: str, ratings: EloDict
-    ) -> Optional[EloEntity]:
+    ) -> Optional[EloRating]:
         """Create Elo ratings for a user in a locale."""
         if not locale or not user_id:
             return None
@@ -475,7 +463,7 @@ class EloRepository:
         )
         self._session.add(elo)
         self._session.flush()
-        return EloEntity(elo)
+        return elo
 
     def upsert(
         self,
@@ -488,10 +476,10 @@ class EloRepository:
         if existing is None:
             return self.create(locale, user_id, ratings) is not None
 
-        if not isinstance(existing, EloEntity):
-            raise TypeError("Expected EloEntity from PostgreSQL backend")
+        if not isinstance(existing, EloRating):
+            raise TypeError("Expected EloRating model from PostgreSQL backend")
+        model = cast(EloRating, existing)
 
-        model = existing._pg_model
         model.elo = ratings.elo
         model.human_elo = ratings.human_elo
         model.manual_elo = ratings.manual_elo
@@ -584,14 +572,14 @@ class StatsRepository:
 
     def create(
         self, user_id: Optional[str] = None, robot_level: int = 0
-    ) -> StatsEntity:
+    ) -> Stats:
         """Create a new stats entry."""
         stats = Stats(user_id=user_id, robot_level=robot_level)
         self._session.add(stats)
         self._session.flush()
-        return StatsEntity(stats)
+        return stats
 
-    def newest_for_user(self, user_id: str) -> Optional[StatsEntity]:
+    def newest_for_user(self, user_id: str) -> Optional[Stats]:
         """Get the most recent stats for a user."""
         stmt = (
             select(Stats)
@@ -599,12 +587,11 @@ class StatsRepository:
             .order_by(desc(Stats.timestamp))
             .limit(1)
         )
-        stats = self._session.execute(stmt).scalar_one_or_none()
-        return StatsEntity(stats) if stats else None
+        return self._session.execute(stmt).scalar_one_or_none()
 
     def newest_before(
         self, ts: datetime, user_id: str, robot_level: int = 0
-    ) -> StatsEntity:
+    ) -> Stats:
         """Get the most recent stats before a timestamp."""
         stmt = (
             select(Stats)
@@ -620,11 +607,11 @@ class StatsRepository:
         )
         stats = self._session.execute(stmt).scalar_one_or_none()
         if stats:
-            return StatsEntity(stats)
+            return stats
         # Return empty stats if none found
         return self.create(user_id, robot_level)
 
-    def last_for_user(self, user_id: str, days: int) -> List[StatsEntity]:
+    def last_for_user(self, user_id: str, days: int) -> List[Stats]:
         """Get stats entries for a user over the last N days."""
         from datetime import timedelta
 
@@ -634,7 +621,7 @@ class StatsRepository:
             .where(and_(Stats.user_id == user_id, Stats.timestamp >= cutoff))
             .order_by(desc(Stats.timestamp))
         )
-        return [StatsEntity(s) for s in self._session.execute(stmt).scalars()]
+        return list(self._session.execute(stmt).scalars())
 
     def list_elo(
         self, timestamp: Optional[datetime] = None, max_len: int = 100
@@ -1165,19 +1152,18 @@ class RiddleRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_riddle(self, date_str: str, locale: str) -> Optional[RiddleEntity]:
+    def get_riddle(self, date_str: str, locale: str) -> Optional[Riddle]:
         """Get a riddle by date and locale."""
-        riddle = self._session.get(Riddle, (date_str, locale))
-        return RiddleEntity(riddle) if riddle else None
+        return self._session.get(Riddle, (date_str, locale))
 
-    def get_riddles_for_date(self, date_str: str) -> Sequence[RiddleEntity]:
+    def get_riddles_for_date(self, date_str: str) -> Sequence[Riddle]:
         """Get all riddles for a date."""
         stmt = select(Riddle).where(Riddle.date == date_str)
-        return [RiddleEntity(r) for r in self._session.execute(stmt).scalars()]
+        return list(self._session.execute(stmt).scalars())
 
     def save_riddle(
         self, date_str: str, locale: str, riddle_json: str, version: int = 1
-    ) -> RiddleEntity:
+    ) -> Riddle:
         """Save a riddle."""
         riddle = self._session.get(Riddle, (date_str, locale))
         if riddle is None:
@@ -1187,7 +1173,7 @@ class RiddleRepository:
         riddle.version = version
         riddle.created = datetime.now(UTC)
         self._session.flush()
-        return RiddleEntity(riddle)
+        return riddle
 
 
 class ImageRepository:
@@ -1389,23 +1375,24 @@ T = TypeVar("T")
 
 
 class PostgreSQLQueryWrapper(Generic[T]):
-    """Wrapper to provide QueryProtocol interface for SQLAlchemy queries."""
+    """Wrapper to provide QueryProtocol interface for SQLAlchemy queries.
+
+    Returns ORM model instances directly (they satisfy the entity protocols).
+    """
 
     def __init__(
         self,
         session: Session,
-        model_class: Type[Any],
-        entity_class: Callable[[Any], T],
+        model_class: Type[T],
     ) -> None:
         self._session = session
         self._model_class = model_class
-        self._entity_class = entity_class
         self._stmt = select(model_class)
 
     def filter(self, *conditions: Any) -> "PostgreSQLQueryWrapper[T]":
         """Add filter conditions to the query."""
         wrapper: PostgreSQLQueryWrapper[T] = PostgreSQLQueryWrapper(
-            self._session, self._model_class, self._entity_class
+            self._session, self._model_class
         )
         wrapper._stmt = self._stmt.where(*conditions)
         return wrapper
@@ -1413,7 +1400,7 @@ class PostgreSQLQueryWrapper(Generic[T]):
     def order(self, *columns: Any) -> "PostgreSQLQueryWrapper[T]":
         """Add ordering to the query."""
         wrapper: PostgreSQLQueryWrapper[T] = PostgreSQLQueryWrapper(
-            self._session, self._model_class, self._entity_class
+            self._session, self._model_class
         )
         wrapper._stmt = self._stmt.order_by(*columns)
         return wrapper
@@ -1423,15 +1410,12 @@ class PostgreSQLQueryWrapper(Generic[T]):
         stmt = self._stmt
         if limit is not None:
             stmt = stmt.limit(limit)
-        return [
-            self._entity_class(m) for m in self._session.execute(stmt).scalars()
-        ]
+        return list(self._session.execute(stmt).scalars())
 
     def get(self) -> Optional[T]:
         """Execute the query and return the first result."""
         stmt = self._stmt.limit(1)
-        result = self._session.execute(stmt).scalar_one_or_none()
-        return self._entity_class(result) if result else None
+        return self._session.execute(stmt).scalar_one_or_none()
 
     def count(self) -> int:
         """Return the count of matching entities."""
@@ -1445,5 +1429,4 @@ class PostgreSQLQueryWrapper(Generic[T]):
         stmt = self._stmt
         if limit > 0:
             stmt = stmt.limit(limit)
-        for model in self._session.execute(stmt).scalars():
-            yield self._entity_class(model)
+        yield from self._session.execute(stmt).scalars()
