@@ -41,9 +41,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies with uv (uses cache mount for speed)
-COPY requirements.txt .
+# requirements-pg.txt pulls in requirements.txt + PostgreSQL deps (SQLAlchemy, psycopg2)
+COPY requirements.txt requirements-pg.txt ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --target /app/packages -r requirements.txt
+    uv pip install --system --target /app/packages -r requirements-pg.txt
 
 # =============================================================================
 # Stage 3: Download DAWG vocabulary files from CDN

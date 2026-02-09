@@ -1,0 +1,7 @@
+# PostgreSQL deployment requirements
+# Includes all base requirements plus SQLAlchemy and psycopg2 for PostgreSQL backend.
+# Used by Dockerfile and local development with DATABASE_BACKEND=postgresql.
+# App Engine deployments use requirements.txt (base only, no PostgreSQL deps).
+-r requirements.txt
+SQLAlchemy==2.0.36
+psycopg2-binary==2.9.10

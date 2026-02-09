@@ -67,6 +67,8 @@ services:
         # Rebuild on requirements change
         - action: rebuild
           path: ./requirements.txt
+        - action: rebuild
+          path: ./requirements-pg.txt
 
   # ===========================================================================
   # Redis cache
