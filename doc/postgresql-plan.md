@@ -39,7 +39,7 @@ This document details the migration path from Google Cloud Datastore (NDB) to Po
 
 ## Implementation Status
 
-*Updated: February 2025*
+*Updated: February 2026*
 
 Phase 1 of the migration (creating the PostgreSQL backend parallel to NDB) is
 substantially complete. The implementation evolved beyond the original plan into
@@ -55,9 +55,11 @@ The core infrastructure for running either NDB or PostgreSQL is operational:
   (dataclasses and TypedDicts). Both backends implement these protocols via
   structural subtyping (duck typing).
 
-- **PostgreSQL backend** (`src/db/postgresql/`, ~3,000 lines) — Complete
+- **PostgreSQL backend** (`src/db/postgresql/`, ~2,500 lines) — Complete
   SQLAlchemy 2.0 ORM implementation with backend class, connection management,
-  entity wrappers, and 18 repository implementations.
+  ORM models (which directly satisfy entity protocols), and 18 repository
+  implementations. The entity wrapper layer (`entities.py`) was eliminated —
+  repositories return ORM model instances directly.
 
 - **NDB backend adapter** (`src/db/ndb/`, ~1,700 lines) — Wraps the existing
   `skrafldb_ndb.py` code to implement the same repository protocols, enabling
@@ -90,7 +92,7 @@ The core infrastructure for running either NDB or PostgreSQL is operational:
 | **Transactions** | Simple context manager | Savepoint-based nested transactions |
 | **Composite keys** | UUID PK + unique constraint | Composite primary keys directly |
 | **SQLAlchemy style** | 1.x (`Column`, `declarative_base`) | 2.0 (`Mapped`, `mapped_column`, `DeclarativeBase`) |
-| **Entity access** | Direct ORM model exposure | `__slots__`-based entity wrappers implementing protocols |
+| **Entity access** | Direct ORM model exposure | ORM models satisfy entity protocols directly (entity wrappers eliminated) |
 
 ### Actual Directory Structure
 
@@ -111,14 +113,13 @@ src/
       __init__.py          # Exports PostgreSQLBackend
       backend.py           # PostgreSQLBackend class (implements DatabaseBackendProtocol)
       connection.py        # create_db_engine() with UTC timezone and connection pooling
-      models.py            # SQLAlchemy 2.0 ORM model definitions
-      entities.py          # Entity wrappers (UserEntity, GameEntity, etc.)
+      models.py            # SQLAlchemy 2.0 ORM models (satisfy entity protocols directly)
       repositories.py      # Repository implementations (18 repositories)
 
     ndb/
       __init__.py          # Exports NDBBackend
       backend.py           # NDBBackend class (implements DatabaseBackendProtocol)
-      entities.py          # Entity wrappers around NDB model instances
+      entities.py          # Entity wrappers adapting NDB models to entity protocols
       repositories.py      # Repository implementations wrapping skrafldb_ndb
 
 tests/
@@ -154,14 +155,41 @@ db.users.update(user, elo=1500)
 
 ### What Remains To Be Done
 
+- **Integration testing** with the full application stack (Phase 2).
 - **Data migration scripts** — `scripts/migrate_to_postgres.py` (Phase 3 of
   the plan). The migration procedure described later in this document is still
   the intended approach.
 - **Production database creation** with ICU collation (Phase 3).
-- **Integration testing** with the full application stack (Phase 2).
 - **Cutover** — Setting `DATABASE_BACKEND=postgresql` in production (Phase 4).
 - **NDB code removal** — Deleting `skrafldb_ndb.py`, `src/db/ndb/`, and
   Google Cloud NDB dependencies (Phase 5).
+
+### Deployment Variants
+
+Dependencies are split to support both App Engine (NDB) and Docker (PostgreSQL)
+deployments from the same codebase:
+
+- **`requirements.txt`** — Base dependencies only (no SQLAlchemy or psycopg2).
+  Used by App Engine, which reads `requirements.txt` directly.
+- **`requirements-pg.txt`** — Includes `requirements.txt` via `-r` plus
+  SQLAlchemy and psycopg2-binary. Used by the Dockerfile and for local
+  development with `DATABASE_BACKEND=postgresql`.
+
+This means App Engine deployments avoid installing ~20MB of unused PostgreSQL
+packages. The PostgreSQL libraries are never imported on the NDB code path,
+so they are safe to include but unnecessary.
+
+### Containerized Deployment
+
+A multi-stage `Dockerfile` and `docker-compose.yml` provide containerized
+deployment for the PostgreSQL backend:
+
+- **`docker-compose.yml`** — Standard deployment with app + Redis containers.
+  Uses NDB by default (no `DATABASE_BACKEND` set). Suitable for deploying the
+  current App Engine codebase in a container.
+- **`docker-compose.local.yml`** — Local development variant using host
+  networking to connect to PostgreSQL and Redis on localhost. Sets
+  `DATABASE_BACKEND=postgresql`.
 
 ---
 
@@ -1418,9 +1446,10 @@ def test_migration_data_integrity():
 
 > **Implementation note:** This section has been updated to reflect the actual
 > architecture. The original plan proposed a simple facade + `compat.py`
-> NDB-wrapper approach. The implementation instead uses a protocol-based
-> repository architecture with entity wrappers, which provides stronger
-> contracts and better testability across backends.
+> NDB-wrapper approach. The implementation uses a protocol-based repository
+> architecture. On the PostgreSQL side, ORM models satisfy entity protocols
+> directly (the original entity wrapper layer was eliminated). On the NDB side,
+> lightweight entity wrappers adapt NDB model instances to the same protocols.
 
 ### Design Goals
 
@@ -1452,14 +1481,13 @@ src/
       __init__.py          # Exports PostgreSQLBackend
       backend.py           # PostgreSQLBackend (implements DatabaseBackendProtocol)
       connection.py        # create_db_engine() with UTC timezone
-      models.py            # SQLAlchemy 2.0 ORM definitions
-      entities.py          # Entity wrappers implementing entity protocols
+      models.py            # SQLAlchemy 2.0 ORM models (satisfy entity protocols directly)
       repositories.py      # 18 repository implementations
 
     ndb/
       __init__.py          # Exports NDBBackend
       backend.py           # NDBBackend (implements DatabaseBackendProtocol)
-      entities.py          # Entity wrappers around NDB model instances
+      entities.py          # Entity wrappers adapting NDB models to entity protocols
       repositories.py      # Repository implementations wrapping skrafldb_ndb
 ```
 
@@ -1594,24 +1622,41 @@ class PostgreSQLBackend:
     def close(self): self._session.close()
 ```
 
-#### `db/postgresql/entities.py` — Entity Wrappers
+#### `db/postgresql/models.py` — ORM Models as Entity Implementations
 
-Lightweight `__slots__`-based wrappers that implement entity protocols. These
-hide SQLAlchemy ORM internals from application code:
+The SQLAlchemy ORM models directly satisfy the entity protocols defined in
+`protocols.py`, eliminating the need for a separate entity wrapper layer.
+This was achieved by adding `key_id` properties and a few computed properties
+to the ORM model classes:
 
 ```python
-class UserEntity:
-    __slots__ = ("_model",)
+class User(Base):
+    __tablename__ = "users"
 
-    def __init__(self, model: UserModel) -> None:
-        self._model = model
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    nickname: Mapped[str] = mapped_column(String(128), nullable=False)
+    # ... all columns as Mapped[T] descriptors
 
     @property
-    def key_id(self) -> str: return self._model.id
-    @property
-    def nickname(self) -> str: return self._model.nickname
-    # ... all properties delegate to the ORM model
+    def key_id(self) -> str:
+        return self.id
 ```
+
+For models with richer protocol requirements (e.g., `Game` with its `moves`
+property that converts JSONB dicts to `MoveDict` objects, or `Riddle` with
+its parsed `riddle` property), the computed properties and lazy caching are
+built into the ORM model class itself.
+
+Repositories return ORM model instances directly (e.g., `Optional[User]`
+instead of `Optional[UserEntity]`). The `backend.py` uses `cast()` for
+repository properties where pyright cannot statically verify that
+`Mapped[T]` descriptors satisfy `@property` protocol members (they do
+at runtime).
+
+**Benefits of this simplification:**
+- Eliminated ~540 lines of boilerplate wrapper code
+- Reduced the number of files to update per new column from 5 to 3
+- Removed an indirection layer, making debugging more straightforward
 
 ### Migration Path with This Structure
 
@@ -1647,8 +1692,8 @@ section above), but achieves all the same goals.
 2. Created `src/db/protocols.py` with all shared types, entity protocols,
    and repository protocols (~1,420 lines)
 3. Created `src/db/session.py` with `SessionManager` and WSGI middleware
-4. Created `src/db/postgresql/` with SQLAlchemy 2.0 models, entity wrappers,
-   repositories, backend class, and connection management
+4. Created `src/db/postgresql/` with SQLAlchemy 2.0 models, repositories,
+   backend class, and connection management
 5. Created `src/db/ndb/` with backend class, entity wrappers, and
    repositories wrapping `skrafldb_ndb.py`
 6. Created `skrafldb_pg.py` — NDB-compatible API delegating to PG repositories
@@ -1656,18 +1701,32 @@ section above), but achieves all the same goals.
    and `skrafldb_pg`
 8. Created comprehensive test suite (`tests/db/`, ~5,000 lines, 16 test files)
    with multi-backend parametrization
+9. Eliminated the PostgreSQL entity wrapper layer (`entities.py`) — ORM
+   models now satisfy entity protocols directly, reducing boilerplate
+10. Split `requirements.txt` into base (App Engine) and PostgreSQL (Docker)
+    variants to avoid unnecessary dependencies per deployment target
+11. Created `Dockerfile` and `docker-compose.yml` for containerized deployment
 
 **Key decision: NDB code stayed in place.** Rather than moving `skrafldb.py`
 to `src/db/ndb/models.py`, the original file was renamed to `skrafldb_ndb.py`
 and the `src/db/ndb/` package wraps it via the repository pattern. This
 minimized risk and kept the original code untouched.
 
+**Key simplification: No entity wrappers on the PostgreSQL side.** Initially,
+`__slots__`-based entity wrappers were created to insulate application code
+from SQLAlchemy internals. In practice, these wrappers were pure boilerplate
+— every property simply delegated to the underlying ORM model. By adding
+`key_id` properties and a few computed properties directly to the ORM models,
+the wrapper layer was eliminated entirely (~540 lines removed).
+
 ### Phase 2: Testing and Integration — IN PROGRESS
 
 1. Repository-level tests pass against both backends (`--backend=both`)
-2. Full application integration testing with `DATABASE_BACKEND=postgresql`
+2. Containerized deployment tested via `docker-compose.local.yml` with
+   `DATABASE_BACKEND=postgresql` against local PostgreSQL and Redis
+3. Full application integration testing with the production-like stack
    still to be done
-3. Dual-write mode not yet needed — direct cutover may be sufficient given
+4. Dual-write mode not yet needed — direct cutover may be sufficient given
    the test coverage
 
 ### Phase 3: Migrate Data — NOT STARTED
@@ -1703,9 +1762,12 @@ After PostgreSQL has been stable in production:
 2. Remove `skrafldb_ndb.py`
 3. Simplify `src/db/session.py` to always use PostgreSQL
 4. Remove `google-cloud-ndb` from `requirements.txt`
-5. Remove NDB client initialization from `src/main.py`
-6. Simplify `skrafldb.py` to import directly from `skrafldb_pg`
-7. Remove `DATABASE_BACKEND` configuration (no longer needed)
+5. Move SQLAlchemy and psycopg2-binary from `requirements-pg.txt` to
+   `requirements.txt` (no longer need separate variants)
+6. Remove `requirements-pg.txt`
+7. Remove NDB client initialization from `src/main.py`
+8. Simplify `skrafldb.py` to import directly from `skrafldb_pg`
+9. Remove `DATABASE_BACKEND` configuration (no longer needed)
 
 ---
 
