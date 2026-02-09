@@ -6,7 +6,7 @@
 # Prerequisites:
 #   1. PostgreSQL running on localhost:5432 with netskrafl_test database
 #   2. Redis running on localhost:6379
-#   3. GCP credentials at ./resources/Explo Development-414318fa79b8.json
+#   3. GCP credentials at ./credentials/explo-dev/service-account.json
 
 services:
 
@@ -36,5 +36,5 @@ services:
       # Listen port (use 3001 to avoid conflicts with other local services)
       PORT: "3001"
     volumes:
-      - "./resources/Explo Development-414318fa79b8.json:/app/credentials/service-account.json:ro"
+      - ./credentials/explo-dev/service-account.json:/app/credentials/service-account.json:ro
     restart: "no"

@@ -13,12 +13,9 @@ resources/*.text.dawg
 # DAWG trees in pickled form
 resources/*.dawg.pickle
 
-# Credential files
-resources/netskrafl-*.json
-resources/explo-*.json
-resources/Explo*.json
-resources/client_secret_*.json
+# Credential and secret files
 resources/secret_key.bin
+credentials/
 
 # Utility scripts
 utils/
@@ -92,5 +89,4 @@ docker-compose.yml
 .dockerignore
 crontab
 nginx.conf
-credentials/
 

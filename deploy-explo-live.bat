@@ -2,7 +2,7 @@
 ECHO Deploy an update to Explo Development App Server
 ECHO *** Run me from the Google Cloud SDK Shell! ***
 set PROJECT_ID=explo-live
-set GOOGLE_APPLICATION_CREDENTIALS="resources\explo-live-0d431e5fcf4a.json"
+set GOOGLE_APPLICATION_CREDENTIALS=credentials\explo-live\service-account.json
 :CHECKS
 IF /i "%1" EQU "SKRAFLSTATS" GOTO STATS
 IF /i "%1" EQU "STATS" GOTO STATS

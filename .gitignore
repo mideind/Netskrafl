@@ -24,15 +24,11 @@ pydev_startup.py
 resources/secret_key.bin
 resources/salescloud_key.bin
 
-# Client secrets, including Google, Facebook and Apple authentication secrets
+# Legacy client secret text files
 resources/client_secret*.txt
-resources/client_secret*.json
-resources/Explo Development-414318fa79b8.json
-resources/*.p8
 
-# Private GAE services key
-resources/netskrafl-*.json
-resources/explo-*.json
+# Apple push notification keys
+resources/*.p8
 
 # Test configuration (contains test user email)
 resources/test_config.json
@@ -75,9 +71,12 @@ static/NetskraflFacebookCover.jpg
 *.bak
 *.csv
 
-# Docker credentials directory (keep .gitkeep for structure)
+# Credentials directory (keep .gitkeep for structure)
 credentials/
 !credentials/.gitkeep
+!credentials/*/
+credentials/*/**
+!credentials/*/.gitkeep
 
 # Distribution / packaging / IDEs
 .Python

@@ -50,7 +50,7 @@ configuration for each project:
 ```bash
 # Run tests for explo-dev (multi-locale, full test coverage)
 PROJECT_ID=explo-dev \
-GOOGLE_APPLICATION_CREDENTIALS="<path-to-explo-dev-credentials.json>" \
+GOOGLE_APPLICATION_CREDENTIALS="credentials/explo-dev/service-account.json" \
 GOOGLE_CLOUD_PROJECT=explo-dev \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
@@ -61,7 +61,7 @@ venv/bin/pytest test/ -v
 
 # Run tests for netskrafl (Icelandic only - some multi-locale tests will fail)
 PROJECT_ID=netskrafl \
-GOOGLE_APPLICATION_CREDENTIALS="<path-to-netskrafl-credentials.json>" \
+GOOGLE_APPLICATION_CREDENTIALS="credentials/netskrafl/service-account.json" \
 GOOGLE_CLOUD_PROJECT=netskrafl \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \

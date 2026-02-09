@@ -145,7 +145,7 @@ def oauth2callback(request: Request) -> ResponseType:
 
     if not CLIENT:
         # Something is wrong in the internal setup of the server
-        # (missing setting in client_secret_*.json)
+        # (missing CLIENT setting in Secret Manager)
         # 500 - Internal server error
         return jsonify({"status": "invalid", "msg": "Missing CLIENT"}), 500
 

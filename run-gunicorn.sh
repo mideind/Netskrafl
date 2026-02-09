@@ -1,6 +1,6 @@
 # Run gunicorn
 PROJECT_ID="netskrafl" \
-GOOGLE_APPLICATION_CREDENTIALS="resources/netskrafl-0dd9fbdf9ab3.json" \
+GOOGLE_APPLICATION_CREDENTIALS="credentials/netskrafl/service-account.json" \
 GOOGLE_CLOUD_PROJECT="netskrafl" \
 GOOGLE_API_PYTHON_CLIENT_TIMEOUT="120" \
 RUNNING_LOCAL="True" \

@@ -1622,7 +1622,7 @@ def upload_dawgs_to_spaces() -> None:
     Requires:
         DO_SPACES_KEY: Access key for DO Spaces (environment variable)
         DO_SPACES_SECRET: Secret key for DO Spaces (environment variable,
-            or read from ../credentials/netskrafl-cdn.key)
+            or read from ../credentials/netskrafl/cdn.key)
 
     Optional environment variables:
         DO_SPACES_BUCKET: Bucket name (default: netskrafl-cdn)
@@ -1642,7 +1642,7 @@ def upload_dawgs_to_spaces() -> None:
 
     # Try to read secret from file if not in environment
     if not secret_key:
-        secret_file = os.path.join(base_path, "..", "credentials", "netskrafl-cdn.key")
+        secret_file = os.path.join(base_path, "..", "credentials", "netskrafl", "cdn.key")
         if os.path.exists(secret_file):
             with open(secret_file, "r") as f:
                 secret_key = f.read().strip()
@@ -1651,7 +1651,7 @@ def upload_dawgs_to_spaces() -> None:
     if not access_key or not secret_key:
         print("Error: DO_SPACES_KEY and DO_SPACES_SECRET are required")
         print("Set DO_SPACES_KEY as environment variable")
-        print("Set DO_SPACES_SECRET as environment variable or in credentials/netskrafl-cdn.key")
+        print("Set DO_SPACES_SECRET as environment variable or in credentials/netskrafl/cdn.key")
         sys.exit(1)
 
     bucket = os.environ.get("DO_SPACES_BUCKET", "netskrafl-cdn")
@@ -1758,7 +1758,7 @@ Examples:
 
 Environment variables for upload:
   DO_SPACES_KEY       Access key for Digital Ocean Spaces (required)
-  DO_SPACES_SECRET    Secret key (or put in credentials/netskrafl-cdn.key)
+  DO_SPACES_SECRET    Secret key (or put in credentials/netskrafl/cdn.key)
   DO_SPACES_BUCKET    Bucket name (default: netskrafl-cdn)
   DO_SPACES_REGION    Region (default: ams3)
   DO_SPACES_PATH      Path prefix in bucket (default: dawg)

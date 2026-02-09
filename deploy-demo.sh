@@ -2,7 +2,7 @@
 
 echo -e "Deploy an update to Netskrafl Demo App Server\n"
 
-export GOOGLE_APPLICATION_CREDENTIALS="./resources/netskrafl-0dd9fbdf9ab3.json"
+export GOOGLE_APPLICATION_CREDENTIALS=./credentials/netskrafl/service-account.json
 export PROJECT_ID=netskrafl
 
 cmd=$1

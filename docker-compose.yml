@@ -10,7 +10,7 @@
 #
 # Prerequisites:
 #   1. DAWG files must exist: python utils/dawgbuilder.py all
-#   2. GCP credentials file at ./credentials/service-account.json
+#   2. GCP credentials in ./credentials/{PROJECT_ID}/service-account.json
 #      (or set GOOGLE_CREDENTIALS_BASE64 environment variable)
 
 # No version key needed - Compose V2 infers it automatically
@@ -40,8 +40,8 @@ services:
       # Uncomment to use base64 credentials instead of mounted file:
       # GOOGLE_CREDENTIALS_BASE64: ${GOOGLE_CREDENTIALS_BASE64}
     volumes:
-      # Mount credentials directory (create ./credentials/service-account.json)
-      - ./credentials:/app/credentials:ro
+      # Mount project-specific credentials directory
+      - ./credentials/${PROJECT_ID:-netskrafl}:/app/credentials:ro
     depends_on:
       redis:
         condition: service_healthy
