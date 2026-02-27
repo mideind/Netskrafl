@@ -9,7 +9,6 @@
 """
 
 from utils import CustomClient, login_user
-from utils import client, u1, u2, u3_gb  # type: ignore  # noqa: F401
 
 
 def test_delete_user_1(client: CustomClient, u1: str) -> None:
@@ -25,7 +24,7 @@ def test_delete_user_1(client: CustomClient, u1: str) -> None:
     resp = client.post("/delete_account")
     assert resp.status_code == 200
     assert resp.json is not None
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # Now the session cookie should be expired
     resp = client.post("/delete_account")
@@ -82,7 +81,7 @@ def test_delete_user_2(client: CustomClient, u1: str, u2: str) -> None:
     resp = client.post("/delete_account")
     assert resp.status_code == 200
     assert resp.json is not None
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
 
     # Logout and log in the second user again
     resp = client.post("/logout")
@@ -109,11 +108,10 @@ def test_delete_user_2(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert resp.json["result"] == 0
-    assert resp.json["favorite"] == False
+    assert not resp.json["favorite"]
     assert "list_favorites" not in resp.json
     assert resp.json["fullname"] == ""
     # assert resp.json["image"] == ""
-    assert resp.json["chat_disabled"] == True
-
+    assert resp.json["chat_disabled"]
     resp = client.post("/logout")
     assert resp.status_code == 200

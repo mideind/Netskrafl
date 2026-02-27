@@ -1,7 +1,7 @@
 {
     "_comment": "Copy this file to test_config.json and fill in the values",
     "project_id": "your-gcp-project-id",
-    "credentials_file": "resources/your-service-account-key.json",
+    "credentials_file": "credentials/{project-id}/service-account.json",
     "test_user_email": "your-test-user@example.com",
     "default_locale": "is_IS"
 }

@@ -15,7 +15,6 @@
 
 from typing import Any, cast
 
-import os
 import json
 import time
 import logging
@@ -24,17 +23,10 @@ import base64
 
 # Import authmanager first to ensure credentials are set up
 # before any Google Cloud libraries are imported
-from authmanager import auth_manager
+from authmanager import auth_manager, running_local
 
 from google.cloud import secretmanager  # type: ignore
 from google.api_core.exceptions import GoogleAPICallError, DeadlineExceeded
-
-
-# We cannot use the variable from config.py here, as that would create a circular import
-running_local: bool = (
-    os.environ.get("SERVER_SOFTWARE", "").startswith("Development")
-    or os.environ.get("RUNNING_LOCAL", "").lower() in ("1", "true", "yes")
-)
 
 
 class SecretManager:

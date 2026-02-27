@@ -15,7 +15,6 @@ from datetime import UTC, datetime, timedelta
 import functools
 
 from utils import CustomClient, login_user
-from utils import client, client1, client2, u1, u2, u3_gb  # type: ignore  # noqa: F401
 
 from skraflgame import ClientStateDict
 
@@ -150,7 +149,7 @@ def play_game(
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
     assert "uuid" in resp.json
     game_uuid = resp.json["uuid"]
     # Ascertain that the game was initiated with the correct locale
@@ -209,7 +208,7 @@ def play_game(
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"] == True
+    assert resp.json["ok"]
     assert "game" in resp.json
     game: ClientStateDict = resp.json["game"]
     # The game should be over now

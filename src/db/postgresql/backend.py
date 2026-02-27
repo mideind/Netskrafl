@@ -1,0 +1,344 @@
+"""
+PostgreSQL Backend implementation.
+
+This module provides the main PostgreSQLBackend class that implements
+DatabaseBackendProtocol using SQLAlchemy ORM.
+"""
+
+from __future__ import annotations
+
+from typing import Optional, Any, TYPE_CHECKING, cast
+import uuid
+
+from sqlalchemy.orm import Session, sessionmaker
+
+from .connection import create_db_engine
+from .models import Base
+from .repositories import (
+    UserRepository,
+    GameRepository,
+    EloRepository,
+    StatsRepository,
+    FavoriteRepository,
+    ChallengeRepository,
+    ChatRepository,
+    BlockRepository,
+    ZombieRepository,
+    RatingRepository,
+    RiddleRepository,
+    ImageRepository,
+    ReportRepository,
+    PromoRepository,
+    TransactionRepository,
+    SubmissionRepository,
+    CompletionRepository,
+    RobotRepository,
+)
+
+if TYPE_CHECKING:
+    from ..protocols import (
+        UserRepositoryProtocol,
+        GameRepositoryProtocol,
+        EloRepositoryProtocol,
+        StatsRepositoryProtocol,
+        FavoriteRepositoryProtocol,
+        ChallengeRepositoryProtocol,
+        ChatRepositoryProtocol,
+        BlockRepositoryProtocol,
+        ZombieRepositoryProtocol,
+        RatingRepositoryProtocol,
+        RiddleRepositoryProtocol,
+        ImageRepositoryProtocol,
+        ReportRepositoryProtocol,
+        PromoRepositoryProtocol,
+        TransactionRepositoryProtocol,
+        SubmissionRepositoryProtocol,
+        CompletionRepositoryProtocol,
+        RobotRepositoryProtocol,
+    )
+
+
+class PostgreSQLTransactionContext:
+    """Transaction context manager for PostgreSQL.
+
+    When used within an existing request-scoped session, this creates
+    a savepoint (nested transaction). On exception, only changes within
+    this context are rolled back; the outer transaction continues.
+
+    Usage:
+        with db.transaction():
+            # All operations here are in a savepoint
+            db.users.update(...)
+            # Commits savepoint on success, rolls back on exception
+    """
+
+    def __init__(self, backend: "PostgreSQLBackend") -> None:
+        self._backend = backend
+        self._savepoint: Any = None  # SQLAlchemy nested transaction
+
+    def __enter__(self) -> "PostgreSQLTransactionContext":
+        """Begin a nested transaction (savepoint)."""
+        self._savepoint = self._backend._session.begin_nested()
+        self._backend._in_transaction = True
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+        """End the nested transaction - commit or rollback savepoint."""
+        self._backend._in_transaction = False
+        if exc_type is None:
+            # Commit the savepoint (not the main transaction)
+            self._savepoint.commit()
+        else:
+            # Rollback to the savepoint
+            self._savepoint.rollback()
+        return False  # Don't suppress exceptions
+
+
+class PostgreSQLBackend:
+    """PostgreSQL implementation of DatabaseBackendProtocol.
+
+    This class provides a PostgreSQL backend using SQLAlchemy ORM.
+
+    Usage:
+        # Standalone (tests, scripts): creates its own engine and pool
+        db = PostgreSQLBackend(database_url="postgresql://...")
+
+        # Shared pool (production): receives a pre-created sessionmaker
+        db = PostgreSQLBackend(session_factory=shared_session_factory)
+
+        # Simple operations (auto-commit per operation)
+        user = db.users.get_by_id("user-123")
+
+        # Transactional operations
+        with db.transaction():
+            db.users.update(user, elo=new_elo)
+            db.games.update(game, over=True)
+    """
+
+    def __init__(
+        self,
+        database_url: Optional[str] = None,
+        session_factory: Optional[sessionmaker] = None,
+    ) -> None:
+        """Initialize the PostgreSQL backend.
+
+        Args:
+            database_url: PostgreSQL connection URL. Used to create a
+                          standalone engine (for tests/scripts). Ignored
+                          if session_factory is provided.
+            session_factory: Pre-created sessionmaker with a shared engine
+                          and connection pool. Preferred for production use
+                          to avoid creating a new pool per request.
+        """
+        if session_factory is not None:
+            # Shared pool mode: use the provided sessionmaker
+            self._engine = None  # Not owned by this instance
+            self._session_factory = session_factory
+        else:
+            # Standalone mode: create our own engine and pool
+            self._engine = create_db_engine(database_url)
+            self._session_factory = sessionmaker(
+                bind=self._engine,
+                expire_on_commit=False,
+            )
+
+        # Create the request-scoped session
+        # This session will be used by all repositories
+        self._session: Session = self._session_factory()
+
+        # Track nested transaction context (for explicit transactions)
+        self._in_transaction: bool = False
+
+        # Initialize repositories with the session
+        self._init_repositories()
+
+    def _init_repositories(self) -> None:
+        """Initialize repositories with the current session.
+
+        Repositories are typed as protocol interfaces. cast() is needed
+        for the 5 repositories whose methods return ORM models, because
+        pyright cannot verify that SQLAlchemy Mapped[T] descriptors
+        satisfy protocol @property members (they do at runtime).
+        """
+        session = self._session
+        # Repositories returning entity protocol types need cast()
+        self._users: "UserRepositoryProtocol" = cast(
+            "UserRepositoryProtocol", UserRepository(session)
+        )
+        self._games: "GameRepositoryProtocol" = cast(
+            "GameRepositoryProtocol", GameRepository(session)
+        )
+        self._elo: "EloRepositoryProtocol" = cast(
+            "EloRepositoryProtocol", EloRepository(session)
+        )
+        self._stats: "StatsRepositoryProtocol" = cast(
+            "StatsRepositoryProtocol", StatsRepository(session)
+        )
+        self._riddles: "RiddleRepositoryProtocol" = cast(
+            "RiddleRepositoryProtocol", RiddleRepository(session)
+        )
+        # Repositories without entity return types need no cast
+        self._favorites: "FavoriteRepositoryProtocol" = FavoriteRepository(session)
+        self._challenges: "ChallengeRepositoryProtocol" = ChallengeRepository(session)
+        self._chat: "ChatRepositoryProtocol" = ChatRepository(session)
+        self._blocks: "BlockRepositoryProtocol" = BlockRepository(session)
+        self._zombies: "ZombieRepositoryProtocol" = ZombieRepository(session)
+        self._ratings: "RatingRepositoryProtocol" = RatingRepository(session)
+        self._images: "ImageRepositoryProtocol" = ImageRepository(session)
+        self._reports: "ReportRepositoryProtocol" = ReportRepository(session)
+        self._promos: "PromoRepositoryProtocol" = PromoRepository(session)
+        self._transactions: "TransactionRepositoryProtocol" = TransactionRepository(session)
+        self._submissions: "SubmissionRepositoryProtocol" = SubmissionRepository(session)
+        self._completions: "CompletionRepositoryProtocol" = CompletionRepository(session)
+        self._robots: "RobotRepositoryProtocol" = RobotRepository(session)
+
+    @property
+    def users(self) -> "UserRepositoryProtocol":
+        """Access the User repository."""
+        return self._users
+
+    @property
+    def games(self) -> "GameRepositoryProtocol":
+        """Access the Game repository."""
+        return self._games
+
+    @property
+    def elo(self) -> "EloRepositoryProtocol":
+        """Access the Elo repository."""
+        return self._elo
+
+    @property
+    def stats(self) -> "StatsRepositoryProtocol":
+        """Access the Stats repository."""
+        return self._stats
+
+    @property
+    def favorites(self) -> "FavoriteRepositoryProtocol":
+        """Access the Favorite repository."""
+        return self._favorites
+
+    @property
+    def challenges(self) -> "ChallengeRepositoryProtocol":
+        """Access the Challenge repository."""
+        return self._challenges
+
+    @property
+    def chat(self) -> "ChatRepositoryProtocol":
+        """Access the Chat repository."""
+        return self._chat
+
+    @property
+    def blocks(self) -> "BlockRepositoryProtocol":
+        """Access the Block repository."""
+        return self._blocks
+
+    @property
+    def zombies(self) -> "ZombieRepositoryProtocol":
+        """Access the Zombie repository."""
+        return self._zombies
+
+    @property
+    def ratings(self) -> "RatingRepositoryProtocol":
+        """Access the Rating repository."""
+        return self._ratings
+
+    @property
+    def riddles(self) -> "RiddleRepositoryProtocol":
+        """Access the Riddle repository."""
+        return self._riddles
+
+    @property
+    def images(self) -> "ImageRepositoryProtocol":
+        """Access the Image repository."""
+        return self._images
+
+    @property
+    def reports(self) -> "ReportRepositoryProtocol":
+        """Access the Report repository."""
+        return self._reports
+
+    @property
+    def promos(self) -> "PromoRepositoryProtocol":
+        """Access the Promo repository."""
+        return self._promos
+
+    @property
+    def transactions(self) -> "TransactionRepositoryProtocol":
+        """Access the Transaction repository."""
+        return self._transactions
+
+    @property
+    def submissions(self) -> "SubmissionRepositoryProtocol":
+        """Access the Submission repository."""
+        return self._submissions
+
+    @property
+    def completions(self) -> "CompletionRepositoryProtocol":
+        """Access the Completion repository."""
+        return self._completions
+
+    @property
+    def robots(self) -> "RobotRepositoryProtocol":
+        """Access the Robot repository."""
+        return self._robots
+
+    def transaction(self) -> PostgreSQLTransactionContext:
+        """Begin a database transaction.
+
+        Usage:
+            with db.transaction():
+                db.users.update(user, elo=new_elo)
+                db.games.update(game, over=True)
+                # Commits on success, rolls back on exception
+        """
+        return PostgreSQLTransactionContext(self)
+
+    def flush(self) -> None:
+        """Flush pending changes to the database without committing.
+
+        This writes changes to the database so they become visible
+        within the same transaction, but the transaction remains open
+        and changes can still be rolled back.
+        """
+        self._session.flush()
+
+    def commit(self) -> None:
+        """Commit the current transaction, making all changes permanent."""
+        self._session.commit()
+
+    def rollback(self) -> None:
+        """Roll back the current transaction, discarding all changes."""
+        self._session.rollback()
+
+    def close(self) -> None:
+        """Close the session, returning the connection to the pool.
+
+        In shared pool mode, only the session is closed (the connection
+        goes back to the shared pool). In standalone mode, the engine
+        is also disposed, closing all pooled connections.
+        """
+        self._session.close()
+        if self._engine is not None:
+            # Standalone mode: we own the engine, so dispose it
+            self._engine.dispose()
+
+    def generate_id(self) -> str:
+        """Generate a new unique ID for entities."""
+        return str(uuid.uuid1())
+
+    def create_tables(self) -> None:
+        """Create all database tables.
+
+        This should only be called during initial setup or testing.
+        For production, use proper migrations (e.g., Alembic).
+        """
+        engine = self._engine or self._session.get_bind()
+        Base.metadata.create_all(engine)
+
+    def drop_tables(self) -> None:
+        """Drop all database tables.
+
+        WARNING: This deletes all data! Only use for testing.
+        """
+        engine = self._engine or self._session.get_bind()
+        Base.metadata.drop_all(engine)

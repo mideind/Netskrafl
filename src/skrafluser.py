@@ -382,7 +382,7 @@ class User:
         """Initialize a fresh User instance"""
         self._user_id = uid
         self._account = account
-        self._email: Optional[str] = None
+        self._email = ""
         self._nickname = ""
         self._inactive: bool = False
         self._plan: Optional[str] = None
@@ -403,7 +403,7 @@ class User:
         self._favorites: Optional[Set[str]] = None
         # Set of blocked users, only loaded upon demand
         self._blocks: Optional[Set[str]] = None
-        self._image: str = ""
+        self._image = ""
         self._has_image_blob: bool = False
         self._timestamp = datetime.now(UTC)
         # The user location is typically an ISO country code

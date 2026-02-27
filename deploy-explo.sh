@@ -2,7 +2,7 @@
 
 echo -e "Deploy an update to Explo Development App Server\n"
 
-export GOOGLE_APPLICATION_CREDENTIALS=./resources/Explo\ Development-414318fa79b8.json
+export GOOGLE_APPLICATION_CREDENTIALS=./credentials/explo-dev/service-account.json
 export PROJECT_ID=explo-dev
 
 cmd=$1

@@ -714,6 +714,9 @@ def challenge_api() -> ResponseType:
         duration = 90
 
     if action == "issue":
+        # Verify the destination user exists before issuing the challenge
+        if UserModel.fetch(destuser) is None:
+            return jsonify(result=Error.WRONG_USER)
         user.issue_challenge(
             destuser,
             {
