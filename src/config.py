@@ -191,14 +191,20 @@ CLIENT_SECRET = WEB_CLIENT.get("secret", "")
 assert CLIENT_ID, f"CLIENT.web.id not set correctly in {CLIENT_SECRET_ID}"
 assert CLIENT_SECRET, f"CLIENT.web.secret not set correctly in {CLIENT_SECRET_ID}"
 
-# Explo client secret, used as a key for signing our own JWTs
-# that are used to extend the validity of third party auth tokens
-EXPLO_CLIENT: Mapping[str, str] = CLIENT.get("explo", {})
-EXPLO_CLIENT_SECRET = EXPLO_CLIENT.get("secret", "")
-
-# Málstaður client secret, used as a key for signing JWTs
-MALSTADUR_CLIENT: Mapping[str, str] = CLIENT.get("malstadur", {})
-MALSTADUR_JWT_SECRET = MALSTADUR_CLIENT.get("secret", "")
+# JWT signing/verification secret for our own tokens.
+# Netskrafl uses the 'malstadur' secret (tokens exchanged with Málstaður),
+# while Explo uses its own 'explo' secret (tokens exchanged with the Explo app).
+# The two are mutually exclusive: a backend instance is always either
+# netskrafl or explo-dev/explo-live, determined by PROJECT_ID.
+if NETSKRAFL:
+    _JWT_CLIENT: Mapping[str, str] = CLIENT.get("malstadur", {})
+else:
+    _JWT_CLIENT: Mapping[str, str] = CLIENT.get("explo", {})
+TOKEN_SECRET: str = _JWT_CLIENT.get("secret", "")
+assert TOKEN_SECRET, (
+    f"CLIENT.{'malstadur' if NETSKRAFL else 'explo'}.secret "
+    f"not set correctly in {CLIENT_SECRET_ID}"
+)
 
 OAUTH_CONF_URL = WEB_CLIENT.get("auth_uri", DEFAULT_OAUTH_CONF_URL)
 

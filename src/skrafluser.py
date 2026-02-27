@@ -46,9 +46,8 @@ from flask.helpers import url_for
 
 from config import (
     ANONYMOUS_PREFIX,
-    EXPLO_CLIENT_SECRET,
+    TOKEN_SECRET,
     FIREBASE_API_KEY,
-    MALSTADUR_JWT_SECRET,
     DEFAULT_LOCALE,
     NETSKRAFL,
     PROJECT_ID,
@@ -194,22 +193,23 @@ MAX_NICKNAME_LENGTH = 15
 # Default login token lifetime
 DEFAULT_TOKEN_LIFETIME = timedelta(days=30)
 
-# Key ID for the client secret key used to sign our own tokens
-# Change this if the key is rotated or the token structure is updated
+# Key IDs for the client secret key used to sign our own tokens.
+# Change these if the key is rotated or the token structure is updated.
+# Netskrafl and Explo use different KIDs since they use different secrets.
 EXPLO_KID_1 = "2022-02-08:1"
 EXPLO_KID_2 = "2025-02-21:1"
-
-# All potentially valid KIDs
-EXPLO_KIDS = frozenset((EXPLO_KID_1, EXPLO_KID_2))
-
-# This is the currently issued KID
-EXPLO_KID = EXPLO_KID_2
 
 # Remember to change Málstaður:src/app/api/netskrafl/token/route.tsx if this changes!
 MALSTADUR_KID = "2025-02-27:1"
 
-# All potentially valid KIDs
-MALSTADUR_KIDS = frozenset((MALSTADUR_KID,))
+# The currently issued KID and the set of all accepted KIDs,
+# depending on whether we're running as Netskrafl or Explo
+if NETSKRAFL:
+    CURRENT_KID = MALSTADUR_KID
+    ACCEPTED_KIDS = frozenset((MALSTADUR_KID,))
+else:
+    CURRENT_KID = EXPLO_KID_2
+    ACCEPTED_KIDS = frozenset((EXPLO_KID_1, EXPLO_KID_2))
 
 # Algorithm: HMAC using SHA-256
 JWT_ALGORITHM = "HS256"
@@ -254,9 +254,9 @@ def make_login_dict(
         }
         token = jwt.encode(
             cast(Dict[str, Any], claims),
-            EXPLO_CLIENT_SECRET,
+            TOKEN_SECRET,
             algorithm=JWT_ALGORITHM,
-            headers={"kid": EXPLO_KID},
+            headers={"kid": CURRENT_KID},
         )
     result: UserLoginDict = {
         "user_id": user_id,
@@ -279,9 +279,10 @@ def is_token_blacklisted(jti: str) -> bool:
     return False
 
 
-def verify_explo_token(token: str) -> Optional[JWTClaims]:
-    """Verify a JWT-encoded Explo token and return its claims,
-    or None if verification fails"""
+def verify_token(token: str) -> Optional[JWTClaims]:
+    """Verify a JWT-encoded session token and return its claims,
+    or None if verification fails. This verifies tokens that we
+    ourselves have issued via make_login_dict()."""
     try:
         headers: Mapping[str, str] = cast(Any, jwt).get_unverified_header(token)
         if (typ := headers.get("typ")) != "JWT":
@@ -289,16 +290,16 @@ def verify_explo_token(token: str) -> Optional[JWTClaims]:
         if (alg := headers.get("alg")) != JWT_ALGORITHM:
             raise ValueError(f"Unexpected algorithm: {alg}")
         kid = headers.get("kid", "")
-        if kid not in EXPLO_KIDS:
+        if kid not in ACCEPTED_KIDS:
             raise ValueError(f"Unexpected key id: {kid}")
         # So far, so good. Now verify the JWT and its claims.
         # This will raise an exception if the token is invalid.
         claims: JWTClaims
-        if kid == EXPLO_KID:
+        if kid == CURRENT_KID:
             # Current key identifier and token format, with a specified audience
             claims = jwt.decode(
                 token,
-                EXPLO_CLIENT_SECRET,
+                TOKEN_SECRET,
                 algorithms=[JWT_ALGORITHM],
                 issuer=PROJECT_ID,
                 audience=JWT_AUDIENCE,
@@ -309,10 +310,10 @@ def verify_explo_token(token: str) -> Optional[JWTClaims]:
                 return None
         elif kid == EXPLO_KID_1:
             # The older KID_1 tokens are still accepted without an audience check,
-            # but no longer issued for new logins
+            # but no longer issued for new logins (Explo only)
             claims = jwt.decode(
                 token,
-                EXPLO_CLIENT_SECRET,
+                TOKEN_SECRET,
                 algorithms=[JWT_ALGORITHM],
                 issuer=PROJECT_ID,
             )
@@ -320,8 +321,12 @@ def verify_explo_token(token: str) -> Optional[JWTClaims]:
             return None
         return claims
     except (jwt.InvalidTokenError, ValueError) as e:
-        logging.warning(f"Failed to verify Explo token: {e}")
+        logging.warning(f"Failed to verify token: {e}")
         return None
+
+
+# Backwards-compatible alias
+verify_explo_token = verify_token
 
 
 def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
@@ -335,7 +340,7 @@ def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
         if (alg := headers.get("alg")) != JWT_ALGORITHM:
             raise ValueError(f"Unexpected algorithm: {alg}")
         kid = headers.get("kid", "")
-        if kid not in MALSTADUR_KIDS:
+        if kid not in ACCEPTED_KIDS:
             raise ValueError(f"Unexpected key id: {kid}")
         # So far, so good. Now verify the JWT and its claims.
         # This will raise an exception if the token is invalid.
@@ -344,7 +349,7 @@ def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
             # Current key identifier and token format
             claims = jwt.decode(
                 token,
-                MALSTADUR_JWT_SECRET,
+                TOKEN_SECRET,
                 algorithms=[JWT_ALGORITHM],
                 issuer="malstadur",
                 audience="netskrafl",
