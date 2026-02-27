@@ -82,6 +82,7 @@ v311/
 
 # Test stuff
 test/
+tests/
 
 # Docker files (not needed for GAE deployment)
 Dockerfile
