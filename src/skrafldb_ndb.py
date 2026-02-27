@@ -108,7 +108,7 @@ from authmanager import auth_manager
 
 
 # Shared type definitions - canonical definitions are in src.db.protocols
-from src.db.protocols import (
+from db.protocols import (
     PrefsDict,
     ChallengeTuple,
     StatsDict,

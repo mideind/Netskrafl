@@ -70,7 +70,7 @@ from skrafldb_ndb import (
 
 
 if TYPE_CHECKING:
-    from src.db.protocols import (
+    from db.protocols import (
         UserEntityProtocol,
         GameEntityProtocol,
         EloEntityProtocol,
@@ -106,7 +106,7 @@ def transactional(**_kw: Any) -> Any:
 
 def _get_db():
     """Get the current request-scoped PostgreSQL backend."""
-    from src.db import get_db
+    from db import get_db
     return get_db()
 
 

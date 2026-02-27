@@ -131,12 +131,12 @@ init_firebase_app()
 app = FlaskWithCaching(__name__, static_folder=STATIC_FOLDER)
 
 # Wrap the WSGI app with the appropriate database middleware
-from src.db.config import get_config as _get_db_config  # noqa: E402
+from db.config import get_config as _get_db_config  # noqa: E402
 
 _db_config = _get_db_config()
 if _db_config.backend == "postgresql":
     # PostgreSQL: use the session-managed WSGI middleware
-    from src.db import init_session_manager, db_wsgi_middleware
+    from db import init_session_manager, db_wsgi_middleware
 
     init_session_manager("postgresql", _db_config.database_url)
     app.wsgi_app = db_wsgi_middleware(app.wsgi_app)  # type: ignore[assignment]

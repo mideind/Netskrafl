@@ -94,7 +94,7 @@ class NDBBackend:
     a backend-agnostic interface for database operations.
 
     Usage:
-        from src.db.ndb import NDBBackend
+        from db.ndb import NDBBackend
 
         db = NDBBackend()
         user = db.users.get_by_id("user-123")
