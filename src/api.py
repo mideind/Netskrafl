@@ -79,6 +79,7 @@ from skraflmechanics import BOARD_SIZE
 from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
+    AppVersionModel,
     ChatModel,
     ImageModel,
     ZombieModel,
@@ -1424,11 +1425,26 @@ def inituser_api() -> ResponseType:
     except Exception:
         return jsonify(ok=False)
 
+    # Fetch app version requirements from the datastore
+    app_version: dict[str, str] | None = None
+    try:
+        av = AppVersionModel.get_versions()
+        if av is not None:
+            app_version = {
+                "min_supported_version": av.min_supported_version,
+                "latest_version": av.latest_version,
+            }
+            if av.update_message:
+                app_version["update_message"] = av.update_message
+    except Exception:
+        pass
+
     return jsonify(
         ok=True,
         userprefs=uf.as_dict(),
         userstats=us,
         firebase_token=token,
+        app_version=app_version,
     )
 
 

@@ -2104,3 +2104,17 @@ class RiddleModel:
         if len(parts) != 2:
             return None
         return cls.get_riddle(parts[0], parts[1])
+
+
+class AppVersionModel:
+    """PostgreSQL facade for AppVersionModel."""
+
+    min_supported_version: str = ""
+    latest_version: str = ""
+    update_message: Optional[str] = None
+
+    @classmethod
+    def get_versions(cls) -> Optional["AppVersionModel"]:
+        """Retrieve the app version config.
+        Not yet implemented for PostgreSQL backend."""
+        return None

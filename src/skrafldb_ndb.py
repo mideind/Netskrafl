@@ -2906,3 +2906,19 @@ class RiddleModel(Model["RiddleModel"]):
         if not self.riddle_json:
             return None
         return json.loads(self.riddle_json)
+
+
+class AppVersionModel(Model["AppVersionModel"]):
+    """Models the minimum supported and latest app version"""
+
+    # Minimum version that the app must have to function
+    min_supported_version = Model.Str()
+    # Latest available version of the app
+    latest_version = Model.Str()
+    # Optional custom message to display in the update prompt
+    update_message = Model.OptionalStr()
+
+    @classmethod
+    def get_versions(cls) -> Optional["AppVersionModel"]:
+        """Retrieve the app version entity"""
+        return cls.get_by_id("app_version")
