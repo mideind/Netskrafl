@@ -28,6 +28,7 @@ from sqlalchemy import select, delete, and_, or_, func, desc, asc
 from sqlalchemy.orm import Session
 
 from .models import (
+    AppVersion,
     User,
     Game,
     EloRating,
@@ -1365,6 +1366,17 @@ class RobotRepository:
             self._session.add(robot)
         self._session.flush()
         return True
+
+
+class AppVersionRepository:
+    """PostgreSQL implementation of AppVersionRepositoryProtocol."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_versions(self) -> Optional[AppVersion]:
+        """Retrieve the app version entity."""
+        return self._session.get(AppVersion, "app_version")
 
 
 # =============================================================================

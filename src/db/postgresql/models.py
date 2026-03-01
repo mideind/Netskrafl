@@ -740,3 +740,27 @@ class Riddle(Base):
             return result
         except (json.JSONDecodeError, TypeError):
             return None
+
+
+class AppVersion(Base):
+    """App version requirements - mirrors NDB AppVersionModel."""
+
+    __tablename__ = "app_versions"
+
+    # Singleton row, always "app_version"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    # Minimum version the app must have to function
+    min_supported_version: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    # Latest available version of the app
+    latest_version: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    # Optional custom message to display in the update prompt
+    update_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<AppVersion(min={self.min_supported_version!r}, "
+            f"latest={self.latest_version!r})>"
+        )
