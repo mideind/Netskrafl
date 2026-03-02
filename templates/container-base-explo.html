@@ -8,8 +8,11 @@
   var choice = localStorage.getItem('{{ transition_key }}');
   if (choice === 'malstadur') {
     window.location.replace('https://malstadur.mideind.is/netskrafl');
-  } else if (!choice && window.location.pathname !== '/transition') {
-    window.location.replace('/transition');
+  } else {
+    localStorage.removeItem('{{ transition_key }}');
+    if (window.location.pathname !== '/transition') {
+      window.location.replace('/transition');
+    }
   }
 })();
 </script>
