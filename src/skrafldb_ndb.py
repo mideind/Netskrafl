@@ -1458,8 +1458,9 @@ class GameModel(Model["GameModel"]):
         return self.prefs is not None and self.prefs.get("manual", False)
 
     @classmethod
-    def count_live_games(cls, user_id: str) -> int:
-        """Return the number of live (active) games for a user."""
+    def count_live_games(cls, user_id: str, max_count: int = 0) -> int:
+        """Return the number of live (active) games for a user.
+        If max_count > 0, stop counting once that threshold is reached."""
         if not user_id:
             return 0
         k: Key[UserModel] = Key(UserModel, user_id)
@@ -1471,6 +1472,11 @@ class GameModel(Model["GameModel"]):
             cls.query(GameModel.player1 == k)
             .filter(GameModel.over == False)  # noqa: E712
         )
+        if max_count > 0:
+            c0 = q0.count(limit=max_count)
+            if c0 >= max_count:
+                return c0
+            return c0 + q1.count(limit=max_count - c0)
         return q0.count() + q1.count()
 
     @classmethod

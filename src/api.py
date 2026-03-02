@@ -1453,7 +1453,7 @@ def initgame_api() -> ResponseType:
 
     # Enforce game count limit for non-paying users
     if not user.has_paid():
-        if GameModel.count_live_games(uid) >= MAX_FREE_GAMES:
+        if GameModel.count_live_games(uid, max_count=MAX_FREE_GAMES + 1) >= MAX_FREE_GAMES:
             return jsonify(ok=False, err="game_limit_reached")
 
     if NETSKRAFL:

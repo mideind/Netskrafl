@@ -425,11 +425,11 @@ class GameRepository:
                 locale=game.locale,
             )
 
-    def count_live_games(self, user_id: str) -> int:
-        """Return the number of live (active) games for a user."""
-        stmt = (
-            select(func.count())
-            .select_from(Game)
+    def count_live_games(self, user_id: str, max_count: int = 0) -> int:
+        """Return the number of live (active) games for a user.
+        If max_count > 0, stop counting once that threshold is reached."""
+        base = (
+            select(Game.id)
             .where(
                 and_(
                     Game.over == False,  # noqa: E712
@@ -437,6 +437,9 @@ class GameRepository:
                 )
             )
         )
+        if max_count > 0:
+            base = base.limit(max_count)
+        stmt = select(func.count()).select_from(base.subquery())
         return self._session.execute(stmt).scalar_one()
 
     def delete_for_user(self, user_id: str) -> None:

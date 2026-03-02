@@ -1166,12 +1166,13 @@ class GameModel:
             )
 
     @classmethod
-    def count_live_games(cls, user_id: str) -> int:
-        """Return the number of live (active) games for a user."""
+    def count_live_games(cls, user_id: str, max_count: int = 0) -> int:
+        """Return the number of live (active) games for a user.
+        If max_count > 0, stop counting once that threshold is reached."""
         if not user_id:
             return 0
         db = _get_db()
-        return db.games.count_live_games(user_id)
+        return db.games.count_live_games(user_id, max_count)
 
     @classmethod
     def delete_for_user(cls, uid: str) -> None:
