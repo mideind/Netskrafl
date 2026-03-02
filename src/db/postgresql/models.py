@@ -759,6 +759,10 @@ class AppVersion(Base):
     # Optional custom message to display in the update prompt
     update_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    @property
+    def key_id(self) -> str:
+        return self.id
+
     def __repr__(self) -> str:
         return (
             f"<AppVersion(min={self.min_supported_version!r}, "

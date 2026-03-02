@@ -891,3 +891,14 @@ class NDBQueryWrapper:
         """Iterate over query results."""
         for item in skrafldb.iter_q(self._query, limit=limit):
             yield self._entity_class(item)
+
+
+class AppVersionRepository:
+    """NDB implementation of AppVersionRepositoryProtocol."""
+
+    def get_versions(self) -> Optional[Any]:
+        """Retrieve the app version entity."""
+        from .entities import AppVersionEntity
+
+        model = skrafldb.AppVersionModel.get_by_id("app_version")
+        return AppVersionEntity(model) if model is not None else None

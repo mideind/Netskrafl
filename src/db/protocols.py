@@ -1241,10 +1241,23 @@ class CompletionRepositoryProtocol(Protocol):
         ...
 
 
+class AppVersionEntityProtocol(EntityProtocol, Protocol):
+    """Protocol for AppVersion entities."""
+
+    @property
+    def min_supported_version(self) -> str: ...
+
+    @property
+    def latest_version(self) -> str: ...
+
+    @property
+    def update_message(self) -> Optional[str]: ...
+
+
 class AppVersionRepositoryProtocol(Protocol):
     """Protocol for app version repository operations."""
 
-    def get_versions(self) -> Optional[Any]:
+    def get_versions(self) -> Optional[AppVersionEntityProtocol]:
         """Retrieve the app version entity."""
         ...
 

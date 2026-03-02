@@ -1437,7 +1437,7 @@ def inituser_api() -> ResponseType:
             if av.update_message:
                 app_version["update_message"] = av.update_message
     except Exception:
-        pass
+        return jsonify(ok=False)
 
     return jsonify(
         ok=True,
