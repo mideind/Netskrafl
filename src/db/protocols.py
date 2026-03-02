@@ -852,6 +852,10 @@ class GameRepositoryProtocol(Protocol):
         """Iterate over live (active) games for a user."""
         ...
 
+    def count_live_games(self, user_id: str) -> int:
+        """Return the number of live (active) games for a user."""
+        ...
+
     def delete_for_user(self, user_id: str) -> None:
         """Delete all games for a user."""
         ...

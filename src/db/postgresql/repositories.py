@@ -425,6 +425,20 @@ class GameRepository:
                 locale=game.locale,
             )
 
+    def count_live_games(self, user_id: str) -> int:
+        """Return the number of live (active) games for a user."""
+        stmt = (
+            select(func.count())
+            .select_from(Game)
+            .where(
+                and_(
+                    Game.over == False,  # noqa: E712
+                    or_(Game.player0_id == user_id, Game.player1_id == user_id),
+                )
+            )
+        )
+        return self._session.execute(stmt).scalar_one()
+
     def delete_for_user(self, user_id: str) -> None:
         """Delete all games for a user."""
         stmt = delete(Game).where(

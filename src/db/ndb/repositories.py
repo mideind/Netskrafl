@@ -271,6 +271,10 @@ class GameRepository:
                 locale=r.get("locale") or "",
             )
 
+    def count_live_games(self, user_id: str) -> int:
+        """Return the number of live (active) games for a user."""
+        return skrafldb.GameModel.count_live_games(user_id)
+
     def delete_for_user(self, user_id: str) -> None:
         """Delete all games for a user."""
         skrafldb.GameModel.delete_for_user(user_id)

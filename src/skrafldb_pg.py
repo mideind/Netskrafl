@@ -1166,6 +1166,14 @@ class GameModel:
             )
 
     @classmethod
+    def count_live_games(cls, user_id: str) -> int:
+        """Return the number of live (active) games for a user."""
+        if not user_id:
+            return 0
+        db = _get_db()
+        return db.games.count_live_games(user_id)
+
+    @classmethod
     def delete_for_user(cls, uid: str) -> None:
         """Delete all game entities for a user."""
         if not uid:

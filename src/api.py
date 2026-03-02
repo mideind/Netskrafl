@@ -82,6 +82,7 @@ from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
     ChatModel,
+    GameModel,
     ImageModel,
     ZombieModel,
     PrefsDict,
@@ -1452,8 +1453,7 @@ def initgame_api() -> ResponseType:
 
     # Enforce game count limit for non-paying users
     if not user.has_paid():
-        games = gamelist(uid, include_zombies=False)
-        if len(games) >= MAX_FREE_GAMES:
+        if GameModel.count_live_games(uid) >= MAX_FREE_GAMES:
             return jsonify(ok=False, err="game_limit_reached")
 
     if NETSKRAFL:
