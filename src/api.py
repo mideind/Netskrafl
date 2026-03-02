@@ -1453,7 +1453,7 @@ def initgame_api() -> ResponseType:
 
     # Enforce game count limit for non-paying users
     if not user.has_paid():
-        if GameModel.count_live_games(uid, max_count=MAX_FREE_GAMES + 1) >= MAX_FREE_GAMES:
+        if GameModel.count_live_games(uid, max_count=MAX_FREE_GAMES) >= MAX_FREE_GAMES:
             return jsonify(ok=False, err="game_limit_reached")
 
     if NETSKRAFL:
@@ -1469,7 +1469,10 @@ def initgame_api() -> ResponseType:
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
-        robot_level = int(opp[6:])
+        try:
+            robot_level = int(opp[6:])
+        except ValueError:
+            return jsonify(ok=False)
         # Check whether this robot requires a subscription
         apl = autoplayer_for_level(user.locale, robot_level)
         if apl.premium and not user.has_paid():
