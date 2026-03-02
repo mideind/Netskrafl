@@ -49,6 +49,7 @@ from werkzeug.utils import redirect
 
 from config import (
     NETSKRAFL,
+    MAX_FREE_GAMES,
     RC_WEBHOOK_AUTH,
     RouteType,
     RouteFunc,
@@ -57,6 +58,7 @@ from config import (
     ResponseType,
     Error,
 )
+from autoplayers import autoplayer_for_level
 from basics import (
     is_mobile_client,
     jsonify,
@@ -1448,6 +1450,12 @@ def initgame_api() -> ResponseType:
         # Unknown opponent
         return jsonify(ok=False)
 
+    # Enforce game count limit for non-paying users
+    if not user.has_paid():
+        games = gamelist(uid, include_zombies=False)
+        if len(games) >= MAX_FREE_GAMES:
+            return jsonify(ok=False, err="game_limit_reached")
+
     if NETSKRAFL:
         board_type = rq.get("board_type", current_board_type())
     else:
@@ -1462,6 +1470,10 @@ def initgame_api() -> ResponseType:
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
         robot_level = int(opp[6:])
+        # Check whether this robot requires a subscription
+        apl = autoplayer_for_level(user.locale, robot_level)
+        if apl.premium and not user.has_paid():
+            return jsonify(ok=False, err="premium_required")
         # The game is always in the user's locale
         prefs = PrefsDict(newbag=True, locale=user.locale)
         prefs["board_type"] = board_type

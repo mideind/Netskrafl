@@ -212,6 +212,7 @@ class UserListDict(TypedDict):
     ready_timed: bool
     live: bool
     image: str
+    premium: bool
 
 
 UserList = List[UserListDict]
@@ -791,6 +792,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready_timed=False,  # Timed games are not available for robots
                     live=True,  # Robots are always online
                     image="",
+                    premium=r.premium,
                 )
             )
         # That's it; we're done (no sorting required)
@@ -860,6 +862,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready_timed=lu.is_ready_timed(),
                     live=True,
                     image=lu.thumbnail(),
+                    premium=False,
                 )
             )
 
@@ -897,6 +900,7 @@ def userlist(query: str, spec: str) -> UserList:
                         ready=fu.is_ready(),
                         ready_timed=fu.is_ready_timed(),
                         image=fu.thumbnail(),
+                        premium=False,
                     )
                 )
 
@@ -947,6 +951,7 @@ def userlist(query: str, spec: str) -> UserList:
                         ready=au.is_ready(),
                         ready_timed=au.is_ready_timed(),
                         image=au.thumbnail(),
+                        premium=False,
                     )
                 )
 
@@ -988,6 +993,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready_timed=True,
                     live=True,
                     image=user.thumbnail(),
+                    premium=False,
                 )
             )
 
@@ -1042,6 +1048,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready=ud["ready"] or False,
                     ready_timed=ud["ready_timed"] or False,
                     image=User.thumbnail_url(uid, ud["image"], ud["has_image_blob"]),
+                    premium=False,
                 )
             )
 

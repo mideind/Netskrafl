@@ -262,6 +262,11 @@ if not NETSKRAFL:
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))
 
+# Maximum number of concurrent games for non-paying users
+MAX_FREE_GAMES: int = 3
+# Maximum number of concurrent games for paying users
+MAX_GAMES: int = 50
+
 # How many games a player plays as a provisional player
 # before becoming an established one
 ESTABLISHED_MARK: int = 10
