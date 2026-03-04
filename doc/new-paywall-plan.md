@@ -77,8 +77,8 @@ No migration needed. Premium/limit checks only apply when **starting new games**
 
 ## Deployment Order
 
-1. **Backend first** — `premium` field is additive (old frontends ignore it); server-side enforcement immediately effective
-2. **netskrafl-react second** — lock UI and updated limits
+1. **Frontend first** (netskrafl-react via Málstaður) — gracefully degrades without backend changes (no lock icons, no server enforcement); avoids silent failures for free users
+2. **Backend second** — server-side enforcement activates; frontend already handles `err` codes and shows paywall
 3. Legacy frontend skipped (users redirected to Málstaður)
 
 ## Verification

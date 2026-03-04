@@ -1473,8 +1473,10 @@ def initgame_api() -> ResponseType:
             robot_level = int(opp[6:])
         except ValueError:
             return jsonify(ok=False)
-        # Check whether this robot requires a subscription
+        # Normalize to the canonical autoplayer level
         apl = autoplayer_for_level(user.locale, robot_level)
+        robot_level = apl.level
+        # Check whether this robot requires a subscription
         if apl.premium and not user.has_paid():
             return jsonify(ok=False, err="premium_required")
         # The game is always in the user's locale

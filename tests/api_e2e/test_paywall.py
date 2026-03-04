@@ -10,15 +10,12 @@ from __future__ import annotations
 import pytest
 from flask.testing import FlaskClient
 
-from tests.api_e2e.conftest import (
-    AuthHelper,
-    DatabaseVerifier,
-)
+from tests.api_e2e.conftest import AuthHelper
 
 
-def _set_user_paid(db: DatabaseVerifier, user_id: str, paid: bool) -> None:
+def _set_user_paid(user_id: str, paid: bool) -> None:
     """Set the has_paid and friend status of a test user via the User model."""
-    from src.skrafluser import User
+    from skrafluser import User
 
     user = User.load_if_exists(user_id)
     assert user is not None, f"User {user_id} not found"
@@ -37,7 +34,7 @@ class TestAutoplayerDefinitions:
 
     def test_icelandic_robots_count_and_premium(self) -> None:
         """Icelandic locale should have 4 robots with correct premium flags."""
-        from src.autoplayers import autoplayer_for_locale
+        from autoplayers import autoplayer_for_locale
 
         robots = autoplayer_for_locale("is")
         assert len(robots) == 4
@@ -50,7 +47,7 @@ class TestAutoplayerDefinitions:
 
     def test_english_robots_premium(self) -> None:
         """English locale should have 4 robots with correct premium flags."""
-        from src.autoplayers import autoplayer_for_locale
+        from autoplayers import autoplayer_for_locale
 
         robots = autoplayer_for_locale("en")
         assert len(robots) == 4
@@ -63,7 +60,7 @@ class TestAutoplayerDefinitions:
 
     def test_autoplayer_is_premium_helper(self) -> None:
         """The autoplayer_is_premium helper should return correct values."""
-        from src.autoplayers import autoplayer_is_premium
+        from autoplayers import autoplayer_is_premium
 
         # Icelandic: level 0 (Fullsterkur) and 8 (Miðlungur) are premium
         assert autoplayer_is_premium("is", 0) is True
@@ -74,7 +71,7 @@ class TestAutoplayerDefinitions:
 
     def test_all_locales_have_four_robots(self) -> None:
         """Every locale should have exactly 4 robots."""
-        from src.autoplayers import autoplayer_for_locale
+        from autoplayers import autoplayer_for_locale
 
         for locale in ["is", "en", "en_US", "nb", "nn", "pl"]:
             robots = autoplayer_for_locale(locale)
@@ -82,7 +79,7 @@ class TestAutoplayerDefinitions:
 
     def test_all_locales_premium_pattern(self) -> None:
         """Every locale should have 2 premium and 2 free robots."""
-        from src.autoplayers import autoplayer_for_locale
+        from autoplayers import autoplayer_for_locale
 
         for locale in ["is", "en", "en_US", "nb", "nn", "pl"]:
             robots = autoplayer_for_locale(locale)
@@ -166,7 +163,6 @@ class TestPremiumRobotEnforcement:
         self,
         client: FlaskClient,
         auth: AuthHelper,
-        db: DatabaseVerifier,
     ) -> None:
         """Free user should get premium_required when starting premium robot game."""
         login_data = auth.login_user(
@@ -176,7 +172,7 @@ class TestPremiumRobotEnforcement:
         )
         user_id = login_data["user_id"]
         # Ensure user is not a paying user
-        _set_user_paid(db, user_id, False)
+        _set_user_paid(user_id, False)
 
         # Try to start a game against Fullsterkur (level 0, premium)
         response = client.post("/initgame", json={"opp": "robot-0"})
@@ -192,7 +188,6 @@ class TestPremiumRobotEnforcement:
         self,
         client: FlaskClient,
         auth: AuthHelper,
-        db: DatabaseVerifier,
     ) -> None:
         """Free user should get premium_required for Miðlungur (level 8)."""
         login_data = auth.login_user(
@@ -201,7 +196,7 @@ class TestPremiumRobotEnforcement:
             email="freeuser2@example.com",
         )
         user_id = login_data["user_id"]
-        _set_user_paid(db, user_id, False)
+        _set_user_paid(user_id, False)
 
         response = client.post("/initgame", json={"opp": "robot-8"})
         data = response.get_json()
@@ -214,7 +209,6 @@ class TestPremiumRobotEnforcement:
         self,
         client: FlaskClient,
         auth: AuthHelper,
-        db: DatabaseVerifier,
     ) -> None:
         """Free user should be able to start games against free robots."""
         login_data = auth.login_user(
@@ -223,7 +217,7 @@ class TestPremiumRobotEnforcement:
             email="freeuser3@example.com",
         )
         user_id = login_data["user_id"]
-        _set_user_paid(db, user_id, False)
+        _set_user_paid(user_id, False)
 
         # Hálfdrættingur (level 15) is free
         response = client.post("/initgame", json={"opp": "robot-15"})
@@ -237,7 +231,6 @@ class TestPremiumRobotEnforcement:
         self,
         client: FlaskClient,
         auth: AuthHelper,
-        db: DatabaseVerifier,
     ) -> None:
         """Paid user should be able to start games against premium robots."""
         login_data = auth.login_user(
@@ -246,7 +239,7 @@ class TestPremiumRobotEnforcement:
             email="paiduser@example.com",
         )
         user_id = login_data["user_id"]
-        _set_user_paid(db, user_id, True)
+        _set_user_paid(user_id, True)
 
         # Fullsterkur (level 0, premium) should work for paid users
         response = client.post("/initgame", json={"opp": "robot-0"})
@@ -276,10 +269,9 @@ class TestGameCountLimit:
         self,
         client: FlaskClient,
         auth: AuthHelper,
-        db: DatabaseVerifier,
     ) -> None:
         """Free user should be blocked after reaching the game limit."""
-        from src.config import MAX_FREE_GAMES
+        from config import MAX_FREE_GAMES
 
         login_data = auth.login_user(
             sub="paywall-limit-001",
@@ -287,7 +279,7 @@ class TestGameCountLimit:
             email="limituser@example.com",
         )
         user_id = login_data["user_id"]
-        _set_user_paid(db, user_id, False)
+        _set_user_paid(user_id, False)
 
         # Start MAX_FREE_GAMES games (using free robots)
         for i in range(MAX_FREE_GAMES):
@@ -309,10 +301,9 @@ class TestGameCountLimit:
         self,
         client: FlaskClient,
         auth: AuthHelper,
-        db: DatabaseVerifier,
     ) -> None:
         """Paid user should not be limited by MAX_FREE_GAMES."""
-        from src.config import MAX_FREE_GAMES
+        from config import MAX_FREE_GAMES
 
         login_data = auth.login_user(
             sub="paywall-nolimit-001",
@@ -320,7 +311,7 @@ class TestGameCountLimit:
             email="nolimituser@example.com",
         )
         user_id = login_data["user_id"]
-        _set_user_paid(db, user_id, True)
+        _set_user_paid(user_id, True)
 
         # Start more games than the free limit allows
         for i in range(MAX_FREE_GAMES + 1):
@@ -336,10 +327,9 @@ class TestGameCountLimit:
         self,
         client: FlaskClient,
         auth: AuthHelper,
-        db: DatabaseVerifier,
     ) -> None:
         """Game limit should be checked before premium robot check."""
-        from src.config import MAX_FREE_GAMES
+        from config import MAX_FREE_GAMES
 
         login_data = auth.login_user(
             sub="paywall-order-001",
@@ -347,7 +337,7 @@ class TestGameCountLimit:
             email="orderuser@example.com",
         )
         user_id = login_data["user_id"]
-        _set_user_paid(db, user_id, False)
+        _set_user_paid(user_id, False)
 
         # Fill up the game slots with free robot games
         for _ in range(MAX_FREE_GAMES):
