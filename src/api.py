@@ -49,6 +49,7 @@ from werkzeug.utils import redirect
 
 from config import (
     NETSKRAFL,
+    MAX_FREE_GAMES,
     RC_WEBHOOK_AUTH,
     RouteType,
     RouteFunc,
@@ -57,6 +58,7 @@ from config import (
     ResponseType,
     Error,
 )
+from autoplayers import autoplayer_for_level
 from basics import (
     is_mobile_client,
     jsonify,
@@ -80,6 +82,7 @@ from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
     ChatModel,
+    GameModel,
     ImageModel,
     ZombieModel,
     PrefsDict,
@@ -1448,6 +1451,11 @@ def initgame_api() -> ResponseType:
         # Unknown opponent
         return jsonify(ok=False)
 
+    # Enforce game count limit for non-paying users
+    if not user.has_paid():
+        if GameModel.count_live_games(uid, max_count=MAX_FREE_GAMES) >= MAX_FREE_GAMES:
+            return jsonify(ok=False, err="game_limit_reached")
+
     if NETSKRAFL:
         board_type = rq.get("board_type", current_board_type())
     else:
@@ -1461,7 +1469,16 @@ def initgame_api() -> ResponseType:
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
-        robot_level = int(opp[6:])
+        try:
+            robot_level = int(opp[6:])
+        except ValueError:
+            return jsonify(ok=False)
+        # Normalize to the canonical autoplayer level
+        apl = autoplayer_for_level(user.locale, robot_level)
+        robot_level = apl.level
+        # Check whether this robot requires a subscription
+        if apl.premium and not user.has_paid():
+            return jsonify(ok=False, err="premium_required")
         # The game is always in the user's locale
         prefs = PrefsDict(newbag=True, locale=user.locale)
         prefs["board_type"] = board_type

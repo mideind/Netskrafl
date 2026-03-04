@@ -852,6 +852,11 @@ class GameRepositoryProtocol(Protocol):
         """Iterate over live (active) games for a user."""
         ...
 
+    def count_live_games(self, user_id: str, max_count: int = 0) -> int:
+        """Return the number of live (active) games for a user.
+        If max_count > 0, stop counting once that threshold is reached."""
+        ...
+
     def delete_for_user(self, user_id: str) -> None:
         """Delete all games for a user."""
         ...
