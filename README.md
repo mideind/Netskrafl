@@ -6,7 +6,7 @@
 
 This repository contains the implementation of an Icelandic crossword game
 in the genre of SCRABBLE®. The game, which is free-to-play, is accessible
-on the web at [https://netskrafl.is](https://netskrafl.is).
+on the web at [https://malstadur.mideind.is/netskrafl](https://malstadur.mideind.is/netskrafl).
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
