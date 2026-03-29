@@ -98,7 +98,9 @@ GAE_INSTANCE: str = "" if running_local else os.environ.get("GAE_INSTANCE", "")
 # Configure logging based on environment
 if running_local:
     # Local development: logging configured in config.py
-    check_port_available(host, int(port))
+    if not os.environ.get("WERKZEUG_RUN_MAIN"):
+        # Only check port on the initial process, not the reloader child
+        check_port_available(host, int(port))
     logging.info(f"{PROJECT_ID} server running with DEBUG set to True")
     # Disable Werkzeug's default request logging to avoid duplicate logs,
     # since we are logging web requests ourselves
