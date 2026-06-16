@@ -182,3 +182,6 @@ $RECYCLE.BIN/
 *.msp
 .env
 CLAUDE.local.md
+
+# Claude Code local (personal) settings
+.claude/settings.local.json
