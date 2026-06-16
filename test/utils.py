@@ -128,7 +128,8 @@ def create_user(idx: int, locale: str = "en_US") -> str:
         assert prefs.get("ready")
         assert prefs.get("ready_timed")
         assert prefs.get("beginner")
-        assert prefs.get("fanfare")
+        # fanfare defaults to off (matches UserModel.create in both backends)
+        assert not prefs.get("fanfare")
         assert not prefs.get("fairplay")
         return user_id
 

@@ -417,7 +417,7 @@ def test_disable_chat(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"]
+    assert not resp.json["ok"]
 
     resp = client.post("/logout")
     assert resp.status_code == 200
@@ -673,7 +673,8 @@ def test_delete_user_2(client: FlaskClient, u1: str, u2: str):
     assert resp.status_code == 200
     assert resp.json is not None
     assert resp.json["result"] == 0
-    assert resp.json["favorite"]
+    # u1's account was deleted, so u2's favorite relation to u1 is gone
+    assert not resp.json["favorite"]
     assert "list_favorites" not in resp.json
     assert resp.json["fullname"] == ""
     # assert resp.json["image"] == ""

@@ -25,7 +25,9 @@ from datetime import datetime, timezone
 import uuid
 
 from sqlalchemy import select, delete, and_, or_, func, desc, asc
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
+
+from config import DEFAULT_LOCALE
 
 from .models import (
     User,
@@ -212,40 +214,52 @@ class UserRepository:
     def list_prefix(
         self, prefix: str, max_len: int = 50, locale: Optional[str] = None
     ) -> Iterator[UserPrefixInfo]:
-        """List users whose nicknames start with the given prefix."""
+        """List users whose nickname OR full name starts with the prefix.
+        Matches NDB list_prefix: nickname matches first (ordered by nick_lc),
+        then full-name matches (ordered by name_lc), de-duplicated by id, with
+        max_len applied across the combined stream."""
         if not prefix:
             return
 
         prefix_lc = prefix.lower()
-        stmt = select(User).where(
-            and_(
-                or_(
-                    User.nick_lc.startswith(prefix_lc),
-                    User.name_lc.startswith(prefix_lc),
-                ),
-                User.inactive == False,  # noqa: E712
+
+        def make(u: User) -> UserPrefixInfo:
+            return UserPrefixInfo(
+                id=u.id,
+                nickname=u.nickname,
+                prefs=cast(PrefsDict, u.prefs),
+                timestamp=u.timestamp,
+                ready=u.ready,
+                ready_timed=u.ready_timed,
+                elo=u.elo,
+                human_elo=u.human_elo,
+                manual_elo=u.manual_elo,
+                image=u.image,
+                has_image_blob=u.image_blob is not None,
             )
-        )
 
-        if locale:
-            stmt = stmt.where(User.locale == locale)
-
-        stmt = stmt.order_by(User.nick_lc).limit(max_len)
-
-        for user in self._session.execute(stmt).scalars():
-            yield UserPrefixInfo(
-                id=user.id,
-                nickname=user.nickname,
-                prefs=cast(PrefsDict, user.prefs),
-                timestamp=user.timestamp,
-                ready=user.ready,
-                ready_timed=user.ready_timed,
-                elo=user.elo,
-                human_elo=user.human_elo,
-                manual_elo=user.manual_elo,
-                image=user.image,
-                has_image_blob=user.image_blob is not None,
+        def build_stmt(col: Any):
+            s = select(User).where(
+                and_(col.startswith(prefix_lc), User.inactive == False)  # noqa: E712
             )
+            if locale:
+                s = s.where(User.locale == locale)
+            return s.order_by(col).limit(max_len)
+
+        seen: Set[str] = set()
+        count = 0
+        # Nickname matches first, then full-name matches
+        for col in (User.nick_lc, User.name_lc):
+            if max_len and count >= max_len:
+                break
+            for user in self._session.execute(build_stmt(col)).scalars():
+                if user.id in seen:
+                    continue
+                seen.add(user.id)
+                yield make(user)
+                count += 1
+                if max_len and count >= max_len:
+                    break
 
     def list_similar_elo(
         self, elo: int, max_len: int = 40, locale: Optional[str] = None
@@ -253,10 +267,17 @@ class UserRepository:
         """List users with similar Elo ratings."""
         half = max_len // 2
 
-        # Get users with lower Elo
+        # Get users with lower Elo (only users who have played: highest_score > 0,
+        # matching NDB list_similar_elo)
         stmt_lower = (
             select(User)
-            .where(and_(User.human_elo < elo, User.inactive == False))  # noqa: E712
+            .where(
+                and_(
+                    User.human_elo < elo,
+                    User.inactive == False,  # noqa: E712
+                    User.highest_score > 0,
+                )
+            )
             .order_by(desc(User.human_elo))
             .limit(half)
         )
@@ -266,7 +287,13 @@ class UserRepository:
         # Get users with higher or equal Elo
         stmt_higher = (
             select(User)
-            .where(and_(User.human_elo >= elo, User.inactive == False))  # noqa: E712
+            .where(
+                and_(
+                    User.human_elo >= elo,
+                    User.inactive == False,  # noqa: E712
+                    User.highest_score > 0,
+                )
+            )
             .order_by(asc(User.human_elo))
             .limit(half)
         )
@@ -356,18 +383,24 @@ class GameRepository:
 
         results = []
         for game in self._session.execute(stmt).scalars():
-            # Determine opponent and player index
+            # Determine opponent and orient scores/elo to the querying user.
+            # sc0/elo_adj are always the querying user's; sc1 the opponent's
+            # (matches NDB GameModel.list_finished_games).
             if game.player0_id == user_id:
                 opp = game.player1_id
+                sc0, sc1 = game.score0, game.score1
                 elo_adj = game.elo0_adj
                 human_elo_adj = game.human_elo0_adj
                 manual_elo_adj = game.manual_elo0_adj
             else:
                 opp = game.player0_id
+                sc0, sc1 = game.score1, game.score0
                 elo_adj = game.elo1_adj
                 human_elo_adj = game.human_elo1_adj
                 manual_elo_adj = game.manual_elo1_adj
 
+            prefs = cast(Optional[PrefsDict], game.prefs)
+            locale = game.locale or (prefs or {}).get("locale") or DEFAULT_LOCALE
             results.append(
                 FinishedGameInfo(
                     uuid=game.id,
@@ -375,13 +408,13 @@ class GameRepository:
                     ts_last_move=game.ts_last_move,
                     opp=opp,
                     robot_level=game.robot_level,
-                    sc0=game.score0,
-                    sc1=game.score1,
+                    sc0=sc0,
+                    sc1=sc1,
                     elo_adj=elo_adj or 0,
                     human_elo_adj=human_elo_adj or 0,
                     manual_elo_adj=manual_elo_adj or 0,
-                    prefs=cast(Optional[PrefsDict], game.prefs),
-                    locale=game.locale,
+                    prefs=prefs,
+                    locale=locale,
                 )
             )
 
@@ -404,25 +437,30 @@ class GameRepository:
         )
 
         for game in self._session.execute(stmt).scalars():
-            # Determine opponent and whose turn
+            # Determine opponent and whose turn, orienting scores to the
+            # querying user (sc0 = user's score). Matches NDB.
             if game.player0_id == user_id:
                 opp = game.player1_id
+                sc0, sc1 = game.score0, game.score1
                 my_turn = game.to_move == 0
             else:
                 opp = game.player0_id
+                sc0, sc1 = game.score1, game.score0
                 my_turn = game.to_move == 1
 
+            prefs = cast(Optional[PrefsDict], game.prefs)
+            locale = game.locale or (prefs or {}).get("locale") or DEFAULT_LOCALE
             yield LiveGameInfo(
                 uuid=game.id,
-                ts=game.timestamp,
+                ts=game.ts_last_move or game.timestamp,
                 opp=opp,
                 robot_level=game.robot_level,
                 my_turn=my_turn,
-                sc0=game.score0,
-                sc1=game.score1,
-                prefs=cast(Optional[PrefsDict], game.prefs),
+                sc0=sc0,
+                sc1=sc1,
+                prefs=prefs,
                 tile_count=game.tile_count or 0,
-                locale=game.locale,
+                locale=locale,
             )
 
     def count_live_games(self, user_id: str, max_count: int = 0) -> int:
@@ -596,6 +634,38 @@ class StatsRepository:
         self._session.flush()
         return stats
 
+    def _default_stats(
+        self, user_id: Optional[str], robot_level: int = 0
+    ) -> Stats:
+        """Build an in-memory default Stats entity WITHOUT persisting it.
+        Mirrors NDB StatsModel.create / newest_before, which returns an
+        unpersisted default (Elo 1200, zero counters) when no record exists.
+        Note: SQLAlchemy column defaults are only applied at flush, so we set
+        the fields explicitly here since this object is never flushed."""
+        return Stats(
+            user_id=user_id,
+            robot_level=robot_level,
+            timestamp=datetime.now(UTC),
+            games=0,
+            human_games=0,
+            manual_games=0,
+            elo=1200,
+            human_elo=1200,
+            manual_elo=1200,
+            score=0,
+            human_score=0,
+            manual_score=0,
+            score_against=0,
+            human_score_against=0,
+            manual_score_against=0,
+            wins=0,
+            losses=0,
+            human_wins=0,
+            human_losses=0,
+            manual_wins=0,
+            manual_losses=0,
+        )
+
     def newest_for_user(self, user_id: str) -> Optional[Stats]:
         """Get the most recent stats for a user."""
         stmt = (
@@ -609,14 +679,16 @@ class StatsRepository:
     def newest_before(
         self, ts: datetime, user_id: str, robot_level: int = 0
     ) -> Stats:
-        """Get the most recent stats before a timestamp."""
+        """Get the most recent stats at or before a timestamp."""
+        # Inclusive bound (<=) to match NDB StatsModel.newest_before; the
+        # leaderboard false-positive correction relies on the record AT `ts`.
         stmt = (
             select(Stats)
             .where(
                 and_(
                     Stats.user_id == user_id,
                     Stats.robot_level == robot_level,
-                    Stats.timestamp < ts,
+                    Stats.timestamp <= ts,
                 )
             )
             .order_by(desc(Stats.timestamp))
@@ -625,18 +697,27 @@ class StatsRepository:
         stats = self._session.execute(stmt).scalar_one_or_none()
         if stats:
             return stats
-        # Return empty stats if none found
-        return self.create(user_id, robot_level)
+        # No record: return an unpersisted default (NDB does not write here)
+        return self._default_stats(user_id, robot_level)
 
     def last_for_user(self, user_id: str, days: int) -> List[Stats]:
-        """Get stats entries for a user over the last N days."""
-        from datetime import timedelta
-
-        cutoff = datetime.now(UTC) - timedelta(days=days)
+        """Get the newest `days` human (robot_level == 0) stats rows for a
+        user, newest first. Matches NDB StatsModel.last_for_user, where `days`
+        is a ROW COUNT limit (not a calendar window) and robot stats are
+        excluded."""
+        if not user_id or days <= 0:
+            return []
         stmt = (
             select(Stats)
-            .where(and_(Stats.user_id == user_id, Stats.timestamp >= cutoff))
+            .where(
+                and_(
+                    Stats.user_id == user_id,
+                    Stats.robot_level == 0,
+                    Stats.timestamp <= datetime.now(UTC),
+                )
+            )
             .order_by(desc(Stats.timestamp))
+            .limit(days)
         )
         return list(self._session.execute(stmt).scalars())
 
@@ -661,13 +742,29 @@ class StatsRepository:
     def _list_by_elo(
         self, elo_field: str, timestamp: Optional[datetime], max_len: int
     ) -> Tuple[List[StatsInfo], Optional[datetime]]:
-        """List stats ordered by specified Elo field."""
-        order_col = getattr(Stats, elo_field)
-
-        stmt = select(Stats).order_by(desc(order_col)).limit(max_len)
-
+        """List stats ordered by the specified Elo field, newest snapshot per
+        user. The stats table holds periodic snapshots per user, so we must
+        first reduce to the latest snapshot per (user, robot_level) at or
+        before `timestamp` (None => now), then rank by Elo. This matches NDB
+        _list_by, which dedups to one (newest) record per user. Postgres can do
+        the dedup exactly via DISTINCT ON, so the NDB false-positive safety
+        buffer is unnecessary here."""
+        # DISTINCT ON (user_id, robot_level) keeps the newest snapshot per user
+        latest = (
+            select(Stats)
+            .order_by(Stats.user_id, Stats.robot_level, desc(Stats.timestamp))
+            .distinct(Stats.user_id, Stats.robot_level)
+        )
         if timestamp:
-            stmt = stmt.where(Stats.timestamp <= timestamp)
+            latest = latest.where(Stats.timestamp <= timestamp)
+        subq = latest.subquery()
+        s_alias = aliased(Stats, subq)
+
+        stmt = (
+            select(s_alias)
+            .order_by(desc(getattr(s_alias, elo_field)))
+            .limit(max_len)
+        )
 
         results = []
         for rank, s in enumerate(self._session.execute(stmt).scalars(), 1):
@@ -968,41 +1065,79 @@ class ChatRepository:
     def chat_history(
         self, for_user: str, max_len: int = 20, blocked_users: Optional[Set[str]] = None
     ) -> Sequence[ChatHistoryEntry]:
-        """Get chat history for a user."""
+        """Get the chat history (newest message per counterparty) for a user,
+        excluding blocked counterparties. Faithfully mirrors NDB
+        ChatModel.chat_history, including read-marker (empty-message) handling:
+        an empty message is a 'read marker' that marks a conversation as read
+        without itself showing as a history entry."""
         blocked = blocked_users or set()
+        # Going far back is expensive; cap the scan per direction (matches NDB)
+        HISTORY_LIMIT = 500
 
-        # This is a simplified implementation
-        # Get recent unique conversations for this user
-        stmt = (
+        # Messages where this user is the originator, newest first
+        q_sent = (
             select(Chat)
-            .where(or_(Chat.user_id == for_user, Chat.recipient_id == for_user))
+            .where(Chat.user_id == for_user)
             .order_by(desc(Chat.timestamp))
-            .limit(max_len * 10)  # Fetch more to account for duplicates
+            .limit(HISTORY_LIMIT)
         )
+        # Messages where this user is the recipient, newest first
+        q_recv = (
+            select(Chat)
+            .where(Chat.recipient_id == for_user)
+            .order_by(desc(Chat.timestamp))
+            .limit(HISTORY_LIMIT)
+        )
+        sent = list(self._session.execute(q_sent).scalars())
+        recv = list(self._session.execute(q_recv).scalars())
+        # Merge both streams newest-first
+        merged = sorted(sent + recv, key=lambda c: c.timestamp, reverse=True)
 
-        seen_users: Set[str] = set()
-        results: List[ChatHistoryEntry] = []
+        result: Dict[str, ChatHistoryEntry] = {}
 
-        for msg in self._session.execute(stmt).scalars():
-            # Determine the other user
-            other = msg.recipient_id if msg.user_id == for_user else msg.user_id
-            if not other or other in seen_users or other in blocked:
-                continue
-
-            seen_users.add(other)
-            results.append(
-                ChatHistoryEntry(
-                    user=other,
-                    ts=msg.timestamp,
-                    last_msg=msg.msg[:100],  # Truncate
-                    unread=msg.recipient_id == for_user,
+        def consider(cm: Chat, counterparty: str) -> int:
+            """Maybe add/upgrade a history entry for `counterparty`. Returns 1
+            if a proper (non-empty) entry was added, else 0."""
+            ch = result.get(counterparty)
+            if ch is None:
+                if counterparty in blocked:
+                    # Don't include blocked counterparties
+                    return 0
+                result[counterparty] = ChatHistoryEntry(
+                    user=counterparty,
+                    ts=cm.timestamp,
+                    last_msg=cm.msg,
+                    # Messages originated by this user are never unread
+                    unread=cm.user_id != for_user,
                 )
-            )
+                # An empty message is a read marker: don't count it yet
+                return 1 if cm.msg else 0
+            # Already seen this counterparty. Only act if the stored entry is a
+            # read marker (empty) and this older message is a real message.
+            if not ch.last_msg and cm.msg:
+                ch.last_msg = cm.msg
+                ch.ts = cm.timestamp
+                # A newer read marker existed, so the conversation is read
+                ch.unread = False
+                return 1
+            return 0
 
-            if len(results) >= max_len:
+        count = 0
+        for cm in merged:
+            if count >= max_len:
                 break
+            if cm.user_id == for_user:
+                # This user is the originator; counterparty is the recipient
+                if cm.recipient_id is not None:
+                    count += consider(cm, cm.recipient_id)
+            else:
+                # This user is the recipient; counterparty is the originator
+                count += consider(cm, cm.user_id)
 
-        return results
+        # Keep only entries that have an actual message, newest first
+        rlist = [r for r in result.values() if r.last_msg]
+        rlist.sort(key=lambda r: r.ts, reverse=True)
+        return rlist
 
 
 class BlockRepository:
@@ -1091,16 +1226,25 @@ class ZombieRepository:
             .where(Zombie.user_id == user_id)
         )
         for zombie, game in self._session.execute(stmt):
-            # Determine opponent
-            opp = game.player1_id if game.player0_id == user_id else game.player0_id
+            # Determine opponent and orient scores to the querying user
+            # (sc0 = user's score), with last-move time and locale fallback.
+            # Matches NDB ZombieModel.list_games.
+            if game.player0_id == user_id:
+                opp = game.player1_id
+                sc0, sc1 = game.score0, game.score1
+            else:
+                opp = game.player0_id
+                sc0, sc1 = game.score1, game.score0
+            prefs = cast(Optional[PrefsDict], game.prefs)
+            locale = game.locale or (prefs or {}).get("locale") or DEFAULT_LOCALE
             yield ZombieGameInfo(
                 uuid=game.id,
-                ts=game.timestamp,
+                ts=game.ts_last_move or game.timestamp,
                 opp=opp,
                 robot_level=game.robot_level,
-                sc0=game.score0,
-                sc1=game.score1,
-                locale=game.locale,
+                sc0=sc0,
+                sc1=sc1,
+                locale=locale,
             )
 
 
@@ -1120,12 +1264,24 @@ class RatingRepository:
         return rating
 
     def list_rating(self, kind: str) -> Iterator[RatingInfo]:
-        """List all ratings of a kind."""
-        stmt = select(Rating).where(Rating.kind == kind).order_by(Rating.rank)
+        """List the top ratings of a kind, ascending by rank, capped at 100
+        (matches NDB RatingModel.list_rating)."""
+        stmt = (
+            select(Rating)
+            .where(Rating.kind == kind)
+            .order_by(Rating.rank)
+            .limit(100)
+        )
         for r in self._session.execute(stmt).scalars():
+            # Encode the user id the way clients expect: a real user id, else
+            # "robot-N" for a robot (robot_level >= 0), else "" (matches NDB).
+            if r.user_id is None:
+                userid = "" if r.robot_level < 0 else f"robot-{r.robot_level}"
+            else:
+                userid = r.user_id
             yield RatingInfo(
                 rank=r.rank,
-                userid=r.user_id,
+                userid=userid,
                 robot_level=r.robot_level,
                 games=r.games,
                 elo=r.elo,
@@ -1232,7 +1388,14 @@ class ReportRepository:
     def report_user(
         self, reporter_id: str, reported_id: str, code: int, text: str
     ) -> bool:
-        """Report a user. Returns True if successful."""
+        """Report a user. Returns True if successful, False if either id is
+        empty or the reported user does not exist (matches the NDB backend,
+        see ReportModel.report_user in skrafldb_ndb.py)."""
+        if not reporter_id or not reported_id:
+            return False
+        # The reported user must exist
+        if self._session.get(User, reported_id) is None:
+            return False
         report = Report(
             reporter_id=reporter_id,
             reported_id=reported_id,
@@ -1369,11 +1532,18 @@ class RobotRepository:
 
     def get_elo(self, locale: str, level: int) -> Optional[int]:
         """Get the Elo rating for a robot at a level."""
+        # Reject invalid keys up front (matches NDB robot_elo)
+        if not locale or level < 0:
+            return None
         robot = self._session.get(Robot, (locale, level))
         return robot.elo if robot else None
 
     def upsert_elo(self, locale: str, level: int, elo: int) -> bool:
         """Create or update robot Elo. Returns True if successful."""
+        # A robot Elo entry requires a non-empty locale (matches NDB, which
+        # asserts locale; we return False rather than raise)
+        if not locale or level < 0:
+            return False
         robot = self._session.get(Robot, (locale, level))
         if robot:
             robot.elo = elo

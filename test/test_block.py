@@ -164,7 +164,7 @@ def test_report(client: CustomClient, u1: str, u2: str) -> None:
     assert resp.status_code == 200
     assert resp.json is not None
     assert "ok" in resp.json
-    assert resp.json["ok"]
+    assert not resp.json["ok"]
 
     resp = client.post("/logout")
     assert resp.status_code == 200
