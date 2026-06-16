@@ -1723,10 +1723,14 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        # q.fetch() returns all matching challenges oldest-first; take the
-        # newest max_len and yield them newest-first.
-        for cm in reversed(q.fetch()[-max_len:]):
-            yield ch_callback(cm)
+        # Fetch keys only (cheap) in ascending order, then load just the newest
+        # max_len entities, so we don't pull a large backlog into memory.
+        keys = q.fetch(keys_only=True)
+        newest = keys[-max_len:] if max_len > 0 else keys
+        entities = cast(List[Optional[ChallengeModel]], ndb.get_multi(newest))
+        for cm in reversed(entities):
+            if cm is not None:
+                yield ch_callback(cm)
 
     @classmethod
     def list_received(
@@ -1754,10 +1758,14 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        # q.fetch() returns all matching challenges oldest-first; take the
-        # newest max_len and yield them newest-first.
-        for cm in reversed(q.fetch()[-max_len:]):
-            yield ch_callback(cm)
+        # Fetch keys only (cheap) in ascending order, then load just the newest
+        # max_len entities, so we don't pull a large backlog into memory.
+        keys = q.fetch(keys_only=True)
+        newest = keys[-max_len:] if max_len > 0 else keys
+        entities = cast(List[Optional[ChallengeModel]], ndb.get_multi(newest))
+        for cm in reversed(entities):
+            if cm is not None:
+                yield ch_callback(cm)
 
 
 class StatsModel(Model["StatsModel"]):

@@ -244,13 +244,17 @@ class UserRepository:
             )
             if locale:
                 s = s.where(User.locale == locale)
-            return s.order_by(col).limit(max_len)
+            s = s.order_by(col)
+            # max_len <= 0 means "no limit" (matches NDB's `0 < max_len`)
+            if max_len > 0:
+                s = s.limit(max_len)
+            return s
 
         seen: Set[str] = set()
         count = 0
         # Nickname matches first, then full-name matches
         for col in (User.nick_lc, User.name_lc):
-            if max_len and count >= max_len:
+            if max_len > 0 and count >= max_len:
                 break
             for user in self._session.execute(build_stmt(col)).scalars():
                 if user.id in seen:
@@ -258,7 +262,7 @@ class UserRepository:
                 seen.add(user.id)
                 yield make(user)
                 count += 1
-                if max_len and count >= max_len:
+                if max_len > 0 and count >= max_len:
                     break
 
     def list_similar_elo(

@@ -121,18 +121,31 @@ def main() -> int:
                 # Would the recipient actually SEE this challenge?
                 if cm.destuser is not None:
                     did = cm.destuser.id()
+                    CAP = 20  # display cap (max_len) for received challenges
                     recv_count = ChallengeModel.query(
                         ChallengeModel.destuser == cm.destuser
                     ).count()
+                    # Received challenges are shown newest-first, capped at CAP.
+                    # This challenge is visible only if it is among the newest
+                    # CAP, i.e. fewer than CAP newer challenges sit ahead of it.
+                    newer_count = (
+                        ChallengeModel.query(ChallengeModel.destuser == cm.destuser)
+                        .filter(ChallengeModel.timestamp > cm.timestamp)
+                        .count()
+                    )
                     they_block = BlockModel.is_blocking(did, uid)
-                    visible = (not they_block) and recv_count <= 20
+                    visible = (not they_block) and newer_count < CAP
                     note = []
                     if they_block:
-                        note.append("RECIPIENT HAS BLOCKED HER")
-                    if recv_count > 20:
-                        note.append(f"recipient has {recv_count} received challenges (>20 cap, oldest-first => newer ones hidden)")
+                        note.append("RECIPIENT HAS BLOCKED SENDER")
+                    if newer_count >= CAP:
+                        note.append(
+                            f"{newer_count} newer challenges ahead of this one "
+                            f"(>{CAP} cap => hidden)"
+                        )
                     print(
                         f"        recipient_received_total={recv_count} "
+                        f"newer_than_this={newer_count} "
                         f"recipient_blocks_sender={they_block} "
                         f"=> VISIBLE_TO_RECIPIENT={visible}"
                         + (f"  [{'; '.join(note)}]" if note else "")
