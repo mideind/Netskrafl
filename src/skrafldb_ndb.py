@@ -1723,14 +1723,13 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        # Fetch keys only (cheap) in ascending order, then load just the newest
-        # max_len entities, so we don't pull a large backlog into memory.
-        keys = q.fetch(keys_only=True)
-        newest = keys[-max_len:] if max_len > 0 else keys
-        entities = cast(List[Optional[ChallengeModel]], ndb.get_multi(newest))
-        for cm in reversed(entities):
-            if cm is not None:
-                yield ch_callback(cm)
+        # Fetch all matching challenges (oldest-first) in a single query and
+        # yield the newest max_len, newest-first. ChallengeModel entities are
+        # small and the count per user is bounded (typically <5, rarely ~100),
+        # so one query/roundtrip is cheaper than a keys-only fetch followed by
+        # a get_multi (two roundtrips).
+        for cm in reversed(q.fetch()[-max_len:]):
+            yield ch_callback(cm)
 
     @classmethod
     def list_received(
@@ -1758,14 +1757,13 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        # Fetch keys only (cheap) in ascending order, then load just the newest
-        # max_len entities, so we don't pull a large backlog into memory.
-        keys = q.fetch(keys_only=True)
-        newest = keys[-max_len:] if max_len > 0 else keys
-        entities = cast(List[Optional[ChallengeModel]], ndb.get_multi(newest))
-        for cm in reversed(entities):
-            if cm is not None:
-                yield ch_callback(cm)
+        # Fetch all matching challenges (oldest-first) in a single query and
+        # yield the newest max_len, newest-first. ChallengeModel entities are
+        # small and the count per user is bounded (typically <5, rarely ~100),
+        # so one query/roundtrip is cheaper than a keys-only fetch followed by
+        # a get_multi (two roundtrips).
+        for cm in reversed(q.fetch()[-max_len:]):
+            yield ch_callback(cm)
 
 
 class StatsModel(Model["StatsModel"]):
