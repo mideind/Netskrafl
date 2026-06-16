@@ -873,6 +873,11 @@ class User:
         assert sid is not None
         self._load_favorites()
         assert self._favorites is not None
+        if destuser_id in self._favorites:
+            # Already a favorite: don't write a duplicate relation. (NDB's
+            # FavoriteModel.add_relation has no uniqueness guard, unlike the
+            # PostgreSQL backend's composite PK, so guard here at the call site.)
+            return
         self._favorites.add(destuser_id)
         FavoriteModel.add_relation(sid, destuser_id)
 

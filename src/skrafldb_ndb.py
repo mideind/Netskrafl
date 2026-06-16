@@ -1706,7 +1706,14 @@ class ChallengeModel(Model["ChallengeModel"]):
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
-        # List issued challenges in ascending order by timestamp (oldest first)
+        # We want the newest max_len challenges, in newest-first order, because
+        # the list is capped: showing the newest ensures recent challenges are
+        # visible rather than buried behind an old, never-cleaned-up backlog.
+        # We deliberately reuse the existing ascending (ancestor, timestamp)
+        # index and reverse in memory, rather than adding a descending-timestamp
+        # index (which would require a disruptive production index rebuild).
+        # The number of challenges per user is small in practice.
+        # (The PostgreSQL backend orders by timestamp DESC directly.)
         q = cls.query(ancestor=k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
@@ -1716,7 +1723,12 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        for cm in q.fetch(max_len):
+        # Fetch all matching challenges (oldest-first) in a single query and
+        # yield the newest max_len, newest-first. ChallengeModel entities are
+        # small and the count per user is bounded (typically <5, rarely ~100),
+        # so one query/roundtrip is cheaper than a keys-only fetch followed by
+        # a get_multi (two roundtrips).
+        for cm in reversed(q.fetch()[-max_len:]):
             yield ch_callback(cm)
 
     @classmethod
@@ -1727,7 +1739,14 @@ class ChallengeModel(Model["ChallengeModel"]):
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
-        # List received challenges in ascending order by timestamp (oldest first)
+        # We want the newest max_len challenges, in newest-first order, because
+        # the list is capped: showing the newest ensures recent challenges are
+        # visible rather than buried behind an old, never-cleaned-up backlog.
+        # We deliberately reuse the existing ascending (destuser, timestamp)
+        # index and reverse in memory, rather than adding a descending-timestamp
+        # index (which would require a disruptive production index rebuild).
+        # The number of challenges per user is small in practice.
+        # (The PostgreSQL backend orders by timestamp DESC directly.)
         q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
@@ -1738,7 +1757,12 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        for cm in q.fetch(max_len):
+        # Fetch all matching challenges (oldest-first) in a single query and
+        # yield the newest max_len, newest-first. ChallengeModel entities are
+        # small and the count per user is bounded (typically <5, rarely ~100),
+        # so one query/roundtrip is cheaper than a keys-only fetch followed by
+        # a get_multi (two roundtrips).
+        for cm in reversed(q.fetch()[-max_len:]):
             yield ch_callback(cm)
 
 
@@ -2841,8 +2865,16 @@ class ReportModel(Model["ReportModel"]):
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ReportModel.reported == k)
-        for bm in q.fetch(limit=max_len):
-            yield bm.reporter.id()
+        # De-duplicate reporters and return at most max_len distinct ones,
+        # matching the PostgreSQL backend (SELECT DISTINCT ... LIMIT).
+        seen: Set[str] = set()
+        for bm in iter_q(q, chunk_size=max_len):
+            rid = bm.reporter.id()
+            if rid not in seen:
+                seen.add(rid)
+                yield rid
+                if len(seen) >= max_len:
+                    return
 
 
 class TransactionModel(Model["TransactionModel"]):

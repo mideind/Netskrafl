@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 import uuid
-from typing import TYPE_CHECKING
+from typing import Iterator, TYPE_CHECKING
 from datetime import datetime, timezone
 
 from src.db.testing import DualBackendRunner, compare_entities
@@ -763,8 +763,9 @@ class TestGameComparison:
     @pytest.fixture
     def comparison_users(
         self, both_backends: tuple["DatabaseBackendProtocol", "DatabaseBackendProtocol"]
-    ) -> tuple[str, str]:
-        """Create test users on both backends for game comparison tests."""
+    ) -> Iterator[tuple[str, str]]:
+        """Create test users on both backends for game comparison tests, and
+        clean up their games before and after each test (see _cleanup_games)."""
         ndb, pg = both_backends
 
         user_ids = ["compare-game-player0", "compare-game-player1"]
@@ -789,7 +790,23 @@ class TestGameComparison:
                     locale="is_IS",
                 )
 
-        return tuple(user_ids)  # type: ignore
+        def _cleanup_games() -> None:
+            # Delete every game belonging to the comparison users on BOTH
+            # backends. The NDB dev Datastore is shared/persistent, so without
+            # this each run would accumulate games for these fixed user ids;
+            # once a user has more than `list_*` max_len games, the freshly
+            # created ones are no longer reliably in the capped result and the
+            # equivalence comparison breaks. This also removes any pollution
+            # left by earlier runs and leaves the dev DB clean afterwards.
+            for be in (ndb, pg):
+                for user_id in user_ids:
+                    be.games.delete_for_user(user_id)
+
+        _cleanup_games()  # start from a clean slate (and clear old pollution)
+        try:
+            yield tuple(user_ids)  # type: ignore
+        finally:
+            _cleanup_games()  # don't leave test games behind in the dev DB
 
     @pytest.mark.comparison
     def test_create_retrieve_game_equivalence(
