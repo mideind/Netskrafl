@@ -1246,6 +1246,27 @@ class CompletionRepositoryProtocol(Protocol):
         ...
 
 
+class AppVersionEntityProtocol(EntityProtocol, Protocol):
+    """Protocol for AppVersion entities."""
+
+    @property
+    def min_supported_version(self) -> str: ...
+
+    @property
+    def latest_version(self) -> str: ...
+
+    @property
+    def update_message(self) -> Optional[str]: ...
+
+
+class AppVersionRepositoryProtocol(Protocol):
+    """Protocol for app version repository operations."""
+
+    def get_versions(self) -> Optional[AppVersionEntityProtocol]:
+        """Retrieve the app version entity."""
+        ...
+
+
 class RobotRepositoryProtocol(Protocol):
     """Protocol for Robot Elo repository operations."""
 
@@ -1373,6 +1394,11 @@ class DatabaseBackendProtocol(Protocol):
     @property
     def robots(self) -> RobotRepositoryProtocol:
         """Access the Robot repository."""
+        ...
+
+    @property
+    def app_versions(self) -> AppVersionRepositoryProtocol:
+        """Access the AppVersion repository."""
         ...
 
     def transaction(self) -> TransactionContextProtocol:

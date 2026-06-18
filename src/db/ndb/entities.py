@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         StatsModel as NDBStatsModel,
         ChatModel as NDBChatModel,
         RiddleModel as NDBRiddleModel,
+        AppVersionModel as NDBAppVersionModel,
     )
 
 from ..protocols import MoveDict, PrefsDict
@@ -523,3 +524,28 @@ class RiddleEntity:
     @property
     def _ndb_model(self) -> "NDBRiddleModel":
         return self._model
+
+
+class AppVersionEntity:
+    """Wrapper around NDB AppVersionModel implementing AppVersionEntityProtocol."""
+
+    __slots__ = ("_model",)
+
+    def __init__(self, model: "NDBAppVersionModel") -> None:
+        self._model = model
+
+    @property
+    def key_id(self) -> str:
+        return self._model.key.id()
+
+    @property
+    def min_supported_version(self) -> str:
+        return self._model.min_supported_version
+
+    @property
+    def latest_version(self) -> str:
+        return self._model.latest_version
+
+    @property
+    def update_message(self) -> Optional[str]:
+        return self._model.update_message

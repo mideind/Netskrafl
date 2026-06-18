@@ -13,6 +13,7 @@ from contextlib import contextmanager
 import skrafldb_ndb as skrafldb
 
 from .repositories import (
+    AppVersionRepository,
     UserRepository,
     GameRepository,
     EloRepository,
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
         SubmissionRepositoryProtocol,
         CompletionRepositoryProtocol,
         RobotRepositoryProtocol,
+        AppVersionRepositoryProtocol,
     )
 
 
@@ -126,6 +128,7 @@ class NDBBackend:
         self._submissions = SubmissionRepository()
         self._completions = CompletionRepository()
         self._robots = RobotRepository()
+        self._app_versions = AppVersionRepository()
 
     @property
     def users(self) -> "UserRepositoryProtocol":
@@ -216,6 +219,11 @@ class NDBBackend:
     def robots(self) -> "RobotRepositoryProtocol":
         """Access the Robot repository."""
         return self._robots
+
+    @property
+    def app_versions(self) -> "AppVersionRepositoryProtocol":
+        """Access the AppVersion repository."""
+        return self._app_versions
 
     def transaction(self) -> NDBTransactionContext:
         """Begin a database transaction.
