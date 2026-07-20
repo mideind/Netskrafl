@@ -643,6 +643,15 @@ class UserModel:
         ]
 
     @classmethod
+    def list_top_elo(cls, kind: str, limit: int) -> List[str]:
+        """Return the ids of the users with the highest current
+        'old style' (locale-independent) Elo rating of the given kind
+        ('all', 'human' or 'manual'), in descending order. These fields
+        are maintained canonically by the nightly stats run."""
+        db = _get_db()
+        return db.users.list_top_elo(kind, limit)
+
+    @classmethod
     def delete_related_entities(cls, user_id: str) -> None:
         """Delete entities related to a user."""
         if not user_id:
@@ -1588,7 +1597,9 @@ class StatsModel:
         cls._NB_CACHE_STATS["misses"] += 1
         sm = cls.create(user_id, robot_level)
 
-        if ts and user_id:
+        if ts:
+            # Note that a user_id of None denotes a robot, further
+            # identified by its robot_level, mirroring the NDB backend
             db = _get_db()
             entity = db.stats.newest_before(ts, user_id, robot_level)
             if entity is not None:
@@ -1600,6 +1611,23 @@ class StatsModel:
             cache[key][ts] = sm
 
         return sm
+
+    @classmethod
+    def newest_before_multi(
+        cls, ts: datetime, keys: Sequence[Tuple[Optional[str], int]]
+    ) -> List[StatsModel]:
+        """Returns the newest available stats records at or before the
+        given time, for multiple (user_id, robot_level) keys at once.
+        The result list is aligned with the keys sequence."""
+        db = _get_db()
+        entities = db.stats.newest_before_multi(ts, keys)
+        result: List[StatsModel] = []
+        for (user_id, robot_level), entity in zip(keys, entities):
+            sm = cls.create(user_id, robot_level)
+            if entity is not None:
+                sm.copy_from(cls._from_entity(entity))
+            result.append(sm)
+        return result
 
     @classmethod
     def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
@@ -1777,6 +1805,35 @@ class RatingModel:
     def delete_all(cls) -> None:
         db = _get_db()
         db.ratings.delete_all()
+
+
+# ---------------------------------------------------------------------------
+# RatingArchiveModel
+# ---------------------------------------------------------------------------
+
+class RatingArchiveModel:
+    """PostgreSQL facade for RatingArchiveModel. Stores an archived
+    daily top-ratings table as a JSON text blob, keyed by (kind, date),
+    mirroring the NDB backend."""
+
+    @classmethod
+    def store(cls, kind: str, key_date: str, table_json: str) -> None:
+        """Store or overwrite the archived table for the given kind and date"""
+        db = _get_db()
+        db.rating_archive.put_archive(kind, key_date, table_json)
+
+    @classmethod
+    def fetch_json(cls, kind: str, key_date: str) -> Optional[str]:
+        """Fetch the archived table for the given kind and date,
+        or None if it does not exist"""
+        db = _get_db()
+        return db.rating_archive.get_archive(kind, key_date)
+
+    @classmethod
+    def delete(cls, kind: str, key_date: str) -> None:
+        """Delete the archived table for the given kind and date, if present"""
+        db = _get_db()
+        db.rating_archive.delete_archive(kind, key_date)
 
 
 # ---------------------------------------------------------------------------

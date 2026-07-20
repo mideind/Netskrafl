@@ -47,6 +47,7 @@ from .models import (
     Submission,
     Completion,
     Rating,
+    RatingArchive,
     Riddle,
 )
 
@@ -315,6 +316,21 @@ class UserRepository:
             (u.id, EloDict(u.elo, u.human_elo, u.manual_elo))
             for u in combined[:max_len]
         ]
+
+    def list_top_elo(self, kind: str, limit: int) -> List[str]:
+        """List the ids of the users with the highest current 'old style'
+        (locale-independent) Elo rating of the given kind ('all', 'human'
+        or 'manual'), in descending order. These fields are maintained
+        canonically by the nightly stats run."""
+        if kind == "human":
+            col = User.human_elo
+        elif kind == "manual":
+            col = User.manual_elo
+        else:
+            # Default, kind == 'all'
+            col = User.elo
+        stmt = select(User.id).order_by(desc(col)).limit(limit)
+        return [row[0] for row in self._session.execute(stmt)]
 
     def query(self) -> "PostgreSQLQueryWrapper[User]":
         """Return a query object for users."""
@@ -681,16 +697,21 @@ class StatsRepository:
         return self._session.execute(stmt).scalar_one_or_none()
 
     def newest_before(
-        self, ts: datetime, user_id: str, robot_level: int = 0
+        self, ts: datetime, user_id: Optional[str], robot_level: int = 0
     ) -> Stats:
-        """Get the most recent stats at or before a timestamp."""
+        """Get the most recent stats at or before a timestamp.
+        A user_id of None denotes a robot, further identified by its
+        robot_level, mirroring NDB where robot stats rows have user=None."""
         # Inclusive bound (<=) to match NDB StatsModel.newest_before; the
         # leaderboard false-positive correction relies on the record AT `ts`.
+        user_filter = (
+            Stats.user_id.is_(None) if user_id is None else Stats.user_id == user_id
+        )
         stmt = (
             select(Stats)
             .where(
                 and_(
-                    Stats.user_id == user_id,
+                    user_filter,
                     Stats.robot_level == robot_level,
                     Stats.timestamp <= ts,
                 )
@@ -703,6 +724,19 @@ class StatsRepository:
             return stats
         # No record: return an unpersisted default (NDB does not write here)
         return self._default_stats(user_id, robot_level)
+
+    def newest_before_multi(
+        self, ts: datetime, keys: Sequence[Tuple[Optional[str], int]]
+    ) -> List[Stats]:
+        """Get the most recent stats at or before a timestamp for multiple
+        (user_id, robot_level) keys at once. The result is aligned with the
+        keys sequence; keys without a stored record yield an unpersisted
+        default entity. This mirrors NDB StatsModel.newest_before_multi,
+        which issues the same per-key queries asynchronously."""
+        return [
+            self.newest_before(ts, user_id, robot_level)
+            for user_id, robot_level in keys
+        ]
 
     def last_for_user(self, user_id: str, days: int) -> List[Stats]:
         """Get the newest `days` human (robot_level == 0) stats rows for a
@@ -772,17 +806,32 @@ class StatsRepository:
 
         results = []
         for rank, s in enumerate(self._session.execute(stmt).scalars(), 1):
+            # Extract the fields of the requested kind into the generic
+            # StatsInfo slots, mirroring the NDB _makedict variants in
+            # StatsModel.list_elo / list_human_elo / list_manual_elo
+            if elo_field == "human_elo":
+                games, elo = s.human_games, s.human_elo
+                score, score_against = s.human_score, s.human_score_against
+                wins, losses = s.human_wins, s.human_losses
+            elif elo_field == "manual_elo":
+                games, elo = s.manual_games, s.manual_elo
+                score, score_against = s.manual_score, s.manual_score_against
+                wins, losses = s.manual_wins, s.manual_losses
+            else:
+                games, elo = s.games, s.elo
+                score, score_against = s.score, s.score_against
+                wins, losses = s.wins, s.losses
             results.append(
                 StatsInfo(
                     user=s.user_id,
                     robot_level=s.robot_level,
                     timestamp=s.timestamp,
-                    games=s.games,
-                    elo=s.elo,
-                    score=s.score,
-                    score_against=s.score_against,
-                    wins=s.wins,
-                    losses=s.losses,
+                    games=games,
+                    elo=elo,
+                    score=score,
+                    score_against=score_against,
+                    wins=wins,
+                    losses=losses,
                     rank=rank,
                 )
             )
@@ -1321,6 +1370,36 @@ class RatingRepository:
         stmt = delete(Rating)
         self._session.execute(stmt)
         self._session.flush()
+
+
+class RatingArchiveRepository:
+    """PostgreSQL implementation of RatingArchiveRepositoryProtocol."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def put_archive(self, kind: str, key_date: str, table_json: str) -> None:
+        """Store or overwrite the archived table for a kind and ISO date."""
+        ra = self._session.get(RatingArchive, (kind, key_date))
+        if ra is None:
+            ra = RatingArchive(kind=kind, key_date=key_date, table_json=table_json)
+            self._session.add(ra)
+        else:
+            ra.table_json = table_json
+            ra.timestamp = datetime.now(UTC)
+        self._session.flush()
+
+    def get_archive(self, kind: str, key_date: str) -> Optional[str]:
+        """Fetch the archived table for a kind and ISO date, or None."""
+        ra = self._session.get(RatingArchive, (kind, key_date))
+        return None if ra is None else ra.table_json
+
+    def delete_archive(self, kind: str, key_date: str) -> None:
+        """Delete the archived table for a kind and ISO date, if present."""
+        ra = self._session.get(RatingArchive, (kind, key_date))
+        if ra is not None:
+            self._session.delete(ra)
+            self._session.flush()
 
 
 class RiddleRepository:
