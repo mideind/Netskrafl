@@ -706,6 +706,34 @@ class Rating(Base):
     losses_month_ago: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
+class RatingArchive(Base):
+    """Archived daily rating tables - mirrors NDB RatingArchiveModel.
+    One row is written per (kind, date) each time the ratings task runs;
+    historical comparisons (yesterday/week/month ago) are then simple
+    keyed lookups instead of expensive recomputations over the entire
+    stats history."""
+
+    __tablename__ = "rating_archive"
+
+    # Composite primary key: kind ("all", "human" or "manual") + ISO date
+    kind: Mapped[str] = mapped_column(String(16), primary_key=True)
+    # The date that the table was (or would have been) computed,
+    # in ISO format (YYYY-MM-DD)
+    key_date: Mapped[str] = mapped_column(String(10), primary_key=True)
+
+    # The rating table rows as a JSON document
+    table_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # The time at which this row was actually written
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    @property
+    def key_id(self) -> str:
+        return f"{self.kind}:{self.key_date}"
+
+
 class Riddle(Base):
     """Daily riddles - mirrors NDB RiddleModel."""
 
