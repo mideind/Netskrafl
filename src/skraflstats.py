@@ -620,10 +620,19 @@ def _enqueue_backfill_task(days: int) -> bool:
 
         client = tasks_v2.CloudTasksClient()
         parent = client.queue_path(PROJECT_ID, CLOUD_TASKS_LOCATION, CLOUD_TASKS_QUEUE)
+        # Pin the continuation task to the service/version that is
+        # currently executing; without explicit routing, App Engine
+        # would send it to the default (promoted) version, breaking
+        # backfill chains that run on a not-yet-promoted deployment
+        routing = tasks_v2.AppEngineRouting(
+            service=os.environ.get("GAE_SERVICE", "default"),
+            version=os.environ.get("GAE_VERSION", ""),
+        )
         task = tasks_v2.Task(
             app_engine_http_request=tasks_v2.AppEngineHttpRequest(
                 http_method=tasks_v2.HttpMethod.GET,
                 relative_uri=f"/stats/ratings_backfill?days={days}",
+                app_engine_routing=routing,
             )
         )
         client.create_task(request=tasks_v2.CreateTaskRequest(parent=parent, task=task))
