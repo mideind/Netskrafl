@@ -11,4 +11,5 @@ types-google-cloud-ndb
 Flask-Cors==6.0.0
 PyJWT
 google-cloud-secret-manager==2.23.2
+google-cloud-tasks==2.19.3
 Pillow
