@@ -135,6 +135,27 @@ multiple languages through separate DAWG files and tile sets.
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB
 
+### Scheduled jobs (GAE)
+
+- `cron.yaml` defines three jobs: `/stats/run` (03:00), `/stats/ratings` (03:45)
+  and `/connect/update` ("Online users", every 2 minutes). It is deployed on
+  explo-dev and explo-live, where all three run via legacy App Engine cron.
+- **Netskrafl's deployed cron config is older** and contains only the two `/stats`
+  jobs; there, `/connect/update` is instead triggered by a manually created,
+  **version-pinned** Cloud Scheduler job `update_online_status` (us-central1),
+  which must be re-pinned after every deploy/promotion (see `deploy-netskrafl.sh`).
+  This split is a historical accident (the "Online users" cron entry was added in
+  2024 but cron.yaml was never redeployed to netskrafl). Possible future cleanup:
+  deploy `cron.yaml` to netskrafl and delete the Cloud Scheduler job, removing the
+  re-pin chore. Low priority, as the container migration replaces GAE cron with
+  supercronic anyway.
+- `/stats/ratings` (and `/stats/ratings_backfill`) are no-ops outside the
+  netskrafl project (guarded by the `NETSKRAFL` config flag): the old-style,
+  locale-ignorant rating tables are only displayed on Netskrafl, while Explo
+  serves per-locale ratings live from `EloModel` via `/rating_locale`.
+  `/stats/run` remains essential in all projects (profile stats, 30-day Elo
+  history, `UserModel` Elo fallback fields).
+
 ## Coding Standards
 
 - The #!/usr/bin/env python3 shebang is not required and should be omitted.
