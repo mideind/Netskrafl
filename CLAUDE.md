@@ -138,17 +138,15 @@ multiple languages through separate DAWG files and tile sets.
 ### Scheduled jobs (GAE)
 
 - `cron.yaml` defines three jobs: `/stats/run` (03:00), `/stats/ratings` (03:45)
-  and `/connect/update` ("Online users", every 2 minutes). It is deployed on
-  explo-dev and explo-live, where all three run via legacy App Engine cron.
-- **Netskrafl's deployed cron config is older** and contains only the two `/stats`
-  jobs; there, `/connect/update` is instead triggered by a manually created,
-  **version-pinned** Cloud Scheduler job `update_online_status` (us-central1),
-  which must be re-pinned after every deploy/promotion (see `deploy-netskrafl.sh`).
-  This split is a historical accident (the "Online users" cron entry was added in
-  2024 but cron.yaml was never redeployed to netskrafl). Possible future cleanup:
-  deploy `cron.yaml` to netskrafl and delete the Cloud Scheduler job, removing the
-  re-pin chore. Low priority, as the container migration replaces GAE cron with
-  supercronic anyway.
+  and `/connect/update` ("Online users", every 2 minutes). It is deployed on all
+  three projects (netskrafl, explo-dev, explo-live), where the jobs run via
+  legacy App Engine cron, always targeting the promoted version. No per-version
+  scheduler updates are needed after deploys. (Consolidated 2026-08-07; before
+  that, netskrafl triggered `/connect/update` via a version-pinned Cloud
+  Scheduler job that had to be re-pinned after every promotion.)
+- The only remaining Cloud Scheduler job is `Clear-Redis` on netskrafl (yearly);
+  explo-dev also has a daily `clear-cache` job. The container migration will
+  replace GAE cron with supercronic.
 - `/stats/ratings` (and `/stats/ratings_backfill`) are no-ops outside the
   netskrafl project (guarded by the `NETSKRAFL` config flag): the old-style,
   locale-ignorant rating tables are only displayed on Netskrafl, while Explo

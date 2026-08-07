@@ -32,11 +32,15 @@ traffic increase. Never delete or stop old versions unless the user asks.
 
 ## Target configuration
 
-| Target      | app.yaml              | credentials                                 | project     | prefix | scheduler update |
-|-------------|-----------------------|---------------------------------------------|-------------|--------|------------------|
-| netskrafl   | `app-netskrafl.yaml`  | `credentials/netskrafl/service-account.json`| `netskrafl` | `n`    | yes (`update_online_status`, location `us-central1`) |
-| explo-live  | `app-explo-live.yaml` | `credentials/explo-live/service-account.json`| `explo-live`| `e`    | none |
-| explo-dev   | `app-explo.yaml`      | `credentials/explo-dev/service-account.json`| `explo-dev` | `e`    | none |
+| Target      | app.yaml              | credentials                                 | project     | prefix |
+|-------------|-----------------------|---------------------------------------------|-------------|--------|
+| netskrafl   | `app-netskrafl.yaml`  | `credentials/netskrafl/service-account.json`| `netskrafl` | `n`    |
+| explo-live  | `app-explo-live.yaml` | `credentials/explo-live/service-account.json`| `explo-live`| `e`    |
+| explo-dev   | `app-explo.yaml`      | `credentials/explo-dev/service-account.json`| `explo-dev` | `e`    |
+
+All recurring jobs (`/stats/run`, `/stats/ratings`, `/connect/update`) run via the
+shared `cron.yaml`, deployed to all three projects; cron always targets the
+promoted version, so no per-version scheduler updates are needed on any target.
 
 The default service name is `default`.
 
@@ -129,22 +133,9 @@ For each stage in **10% → 25% → 50% → 100%**:
    Use `severity>=WARNING` (not just `ERROR`) so significant warnings are
    surfaced too. A rise in warnings or non-200 statuses on the new version is a
    signal even without hard errors. If anything looks abnormal, **stop and
-   recommend rollback** (step 6) rather than advancing.
+   recommend rollback** (see Rollback below) rather than advancing.
 
-### 5. Post-promote (netskrafl only)
-
-Once the new version is at 100% and healthy, repoint the online-status scheduler
-job (it is pinned to a specific version):
-
-```bash
-gcloud scheduler jobs update app-engine update_online_status \
-  --version=<VERSION> --project=netskrafl --location=us-central1
-```
-
-(`Clear-Redis` is yearly and does not need updating. explo-live/explo-dev have no
-such job.)
-
-### 6. Finish
+### 5. Finish
 
 - **Do not delete or stop old versions** — leave them for rollback. Mention to
   the user that older versions remain and can be cleaned up later.
@@ -157,10 +148,10 @@ To instantly route all traffic back to the previous version:
 ```bash
 gcloud app services set-traffic default --splits=<CURRENT>=1 \
   --split-by=cookie --project=<project> --quiet
-# netskrafl: also repoint the scheduler back
-gcloud scheduler jobs update app-engine update_online_status \
-  --version=<CURRENT> --project=netskrafl --location=us-central1
 ```
+
+Cron jobs follow the promoted version automatically; no scheduler changes are
+needed on rollback.
 
 ## Notes
 
