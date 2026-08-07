@@ -52,7 +52,7 @@ from threading import Thread
 from flask import request, Blueprint
 from flask.wrappers import Request
 
-from config import running_local, ResponseType, DEFAULT_ELO, PROJECT_ID
+from config import running_local, ResponseType, DEFAULT_ELO, NETSKRAFL, PROJECT_ID
 from cache import memcache
 from skrafldb import (
     Context,
@@ -825,6 +825,12 @@ def stats_ratings() -> ResponseType:
     wait = _scheduler_wait_mode("ratings")
     if wait is None:
         return "Restricted URL", 403
+    if not NETSKRAFL:
+        # The old-style, locale-ignorant rating tables are only
+        # maintained (and displayed) on Netskrafl; Explo uses live
+        # per-locale EloModel ratings via /rating_locale instead
+        logging.info("Skipping ratings task; not applicable in this project")
+        return "Not applicable in this project", 200
     result, status = ratings(request, wait=wait)
     if status == 200:
         # New ratings: ensure that old ones are deleted from cache
@@ -840,6 +846,10 @@ def stats_ratings_backfill() -> ResponseType:
     chaining via a Cloud Tasks task until no dates are missing"""
     if _scheduler_wait_mode("ratings_backfill") is None:
         return "Restricted URL", 403
+    if not NETSKRAFL:
+        # See comment in stats_ratings() above
+        logging.info("Skipping ratings backfill; not applicable in this project")
+        return "Not applicable in this project", 200
     try:
         days = int(request.args.get("days", str(BACKFILL_DEFAULT_DAYS)))
     except ValueError:
