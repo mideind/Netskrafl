@@ -101,6 +101,9 @@ services:
       - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # Static assets served directly by nginx (bypassing Flask).
+      # Prerequisite: built assets must exist on the host (grunt make).
+      - ./static:/srv/static:ro
     depends_on:
       - app
     profiles:

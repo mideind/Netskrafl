@@ -715,7 +715,15 @@ def submit_move(
     uuid: str, movelist: List[Any], movecount: int, validate: bool
 ) -> ResponseType:
     """Idempotent, transactional function to process an incoming move"""
-    game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
+    # for_update=True locks the game row on the PostgreSQL backend,
+    # serializing concurrent submissions for the same game; under NDB
+    # the flag is a no-op and @transactional() provides the equivalent
+    # optimistic-concurrency protection
+    game = (
+        Game.load(uuid, use_cache=False, set_locale=True, for_update=True)
+        if uuid
+        else None
+    )
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
     # Make sure the client is in sync with the server:

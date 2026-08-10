@@ -45,7 +45,7 @@ from logging.config import dictConfig
 # Import authmanager first to ensure credentials are set up
 # before any Google Cloud libraries are imported (via secret_manager)
 from authmanager import running_local
-from secret_manager import SecretManager
+from secret_manager import SecretProvider, get_secret_provider
 
 
 T = TypeVar('T')
@@ -159,8 +159,11 @@ COOKIE_DOMAIN: Optional[str] = (
     else None
 )
 
-# Initialize the Google Cloud SecretManager with the project ID
-sm = SecretManager(PROJECT_ID)
+# Initialize the secret provider with the project ID. By default this is
+# Google Cloud Secret Manager; setting SECRETS_PROVIDER=env selects an
+# environment-variable-based provider instead (for containerized
+# deployments without GCP Secret Manager access).
+sm: SecretProvider = get_secret_provider(PROJECT_ID)
 
 # Read the Flask secret session key from Google secret manager
 FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")

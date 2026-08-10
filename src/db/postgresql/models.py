@@ -125,6 +125,14 @@ class User(Base):
         "EloRating", back_populates="user", cascade="all, delete-orphan"
     )
 
+    __table_args__ = (
+        # Locale-scoped prefix searches (list_prefix) and similar-Elo
+        # lookups; mirror the UserModel composite indexes in index.yaml
+        Index("ix_users_locale_nick_lc", "locale", "nick_lc"),
+        Index("ix_users_locale_name_lc", "locale", "name_lc"),
+        Index("ix_users_locale_human_elo", "locale", "human_elo"),
+    )
+
     @property
     def key_id(self) -> str:
         return self.id
@@ -263,8 +271,13 @@ class Game(Base):
     player1: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player1_id])
 
     __table_args__ = (
-        Index("ix_games_player0_over", "player0_id", "over"),
-        Index("ix_games_player1_over", "player1_id", "over"),
+        # Per-player game lists ordered by last move (list_finished_games,
+        # iter_live_games); mirrors the GameModel composites in index.yaml
+        Index("ix_games_player0_over_ts", "player0_id", "over", "ts_last_move"),
+        Index("ix_games_player1_over_ts", "player1_id", "over", "ts_last_move"),
+        # Finished games in a time window ordered by last move
+        # (/stats/run batch scan)
+        Index("ix_games_over_ts", "over", "ts_last_move"),
     )
 
     @property
@@ -371,6 +384,10 @@ class Challenge(Base):
 
     __table_args__ = (
         Index("ix_challenges_src_dest", "src_user_id", "dest_user_id"),
+        # Issued/received challenge lists ordered by timestamp;
+        # mirrors the ChallengeModel composites in index.yaml
+        Index("ix_challenges_src_ts", "src_user_id", "timestamp"),
+        Index("ix_challenges_dest_ts", "dest_user_id", "timestamp"),
     )
 
 
@@ -422,6 +439,14 @@ class Stats(Base):
     manual_wins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     manual_losses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    __table_args__ = (
+        # Newest-snapshot-per-user lookups (newest_before/_multi, the
+        # ratings candidate scan, and the DISTINCT ON leaderboard dedup);
+        # mirrors the StatsModel (robot_level, user, timestamp) composite
+        # in index.yaml
+        Index("ix_stats_user_robot_ts", "user_id", "robot_level", "timestamp"),
+    )
+
     @property
     def key_id(self) -> str:
         return str(self.id)
@@ -456,6 +481,14 @@ class Chat(Base):
         DateTime(timezone=True), nullable=False, default=utcnow, index=True
     )
 
+    __table_args__ = (
+        # Conversation listing and per-user chat history, ordered by
+        # timestamp; mirrors the ChatModel composites in index.yaml
+        Index("ix_chats_channel_ts", "channel", "timestamp"),
+        Index("ix_chats_user_ts", "user_id", "timestamp"),
+        Index("ix_chats_recipient_ts", "recipient_id", "timestamp"),
+    )
+
     @property
     def key_id(self) -> str:
         return str(self.id)
@@ -472,6 +505,13 @@ class Zombie(Base):
     )
     user_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    __table_args__ = (
+        # list_games()/delete_for_user() filter by user_id alone, which
+        # the (game_id, user_id) primary key cannot serve. Under NDB this
+        # relied on Datastore's automatic single-property index.
+        Index("ix_zombies_user", "user_id"),
     )
 
 
@@ -575,6 +615,12 @@ class Promo(Base):
         DateTime(timezone=True), nullable=False, default=utcnow, index=True
     )
 
+    __table_args__ = (
+        # Promotion display history per user and promo type; mirrors the
+        # PromoModel (player, promotion, timestamp) composite in index.yaml
+        Index("ix_promos_user_promo_ts", "user_id", "promotion", "timestamp"),
+    )
+
 
 class Transaction(Base):
     """Transaction log - mirrors NDB TransactionModel."""
@@ -599,6 +645,12 @@ class Transaction(Base):
     # Timestamp
     ts: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, index=True
+    )
+
+    __table_args__ = (
+        # Per-user transaction history ordered by timestamp; mirrors the
+        # TransactionModel (user, ts) composite in index.yaml
+        Index("ix_transactions_user_ts", "user_id", "ts"),
     )
 
 

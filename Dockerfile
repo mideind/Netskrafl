@@ -59,35 +59,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 WORKDIR /dawg
 
-# List of all DAWG files to download
-# These are the vocabulary files for different languages and robot difficulty levels
-# NOTE: The authoritative list of DAWGs used by the app is in src/wordbase.py (_ALL_DAWGS).
-# This list should include all files from there (with .bin.dawg extension) plus any legacy files.
-# If you add or remove DAWGs in wordbase.py, update this list accordingly.
-RUN for dawg in \
-    algeng.bin.dawg \
-    amlodi.bin.dawg \
-    midlungur.bin.dawg \
-    nsf2023.aml.bin.dawg \
-    nsf2023.bin.dawg \
-    nsf2023.mid.bin.dawg \
-    nynorsk2024.aml.bin.dawg \
-    nynorsk2024.bin.dawg \
-    nynorsk2024.mid.bin.dawg \
-    ordalisti.bin.dawg \
-    osps37.aml.bin.dawg \
-    osps37.bin.dawg \
-    osps37.mid.bin.dawg \
-    otcwl2014.aml.bin.dawg \
-    otcwl2014.bin.dawg \
-    otcwl2014.mid.bin.dawg \
-    sowpods.aml.bin.dawg \
-    sowpods.bin.dawg \
-    sowpods.mid.bin.dawg \
-    twl06.bin.dawg; do \
+# The authoritative list of DAWG vocabulary files is _ALL_DAWGS in
+# src/wordbase.py. Derive the download list from it at build time so the
+# Dockerfile can never drift out of sync with the application code:
+# adding or removing a DAWG in wordbase.py is automatically reflected here.
+COPY src/wordbase.py /tmp/wordbase.py
+RUN python - <<'EOF' > /tmp/dawgs.txt
+import ast
+tree = ast.parse(open("/tmp/wordbase.py").read())
+names = []
+for node in ast.walk(tree):
+    if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", "") == "_ALL_DAWGS":
+        for elt in node.value.elts:
+            names.append(elt.elts[0].value + ".bin.dawg")
+assert names, "_ALL_DAWGS not found in wordbase.py"
+print("\n".join(names))
+EOF
+RUN echo "DAWG files to download:" && cat /tmp/dawgs.txt && \
+    while read -r dawg; do \
         echo "Downloading $dawg..." && \
         curl -fsSL "${DAWG_BASE_URL}/${dawg}" -o "${dawg}" || exit 1; \
-    done
+    done < /tmp/dawgs.txt
 
 # =============================================================================
 # Stage 4: Build frontend assets (CSS and JS)
@@ -172,6 +164,11 @@ COPY --link --chown=appuser:appuser --from=dawg-downloader /dawg/*.bin.dawg ./re
 COPY --link --chown=appuser:appuser crontab ./crontab
 COPY --link --chown=appuser:appuser docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
+
+# Copy Alembic schema migrations (used by the entrypoint when
+# DATABASE_BACKEND=postgresql)
+COPY --link --chown=appuser:appuser alembic.ini ./alembic.ini
+COPY --link --chown=appuser:appuser migrations/ ./migrations/
 
 # Switch to non-root user
 USER appuser

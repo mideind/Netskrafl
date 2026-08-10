@@ -343,8 +343,17 @@ class GameRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_by_id(self, game_id: str) -> Optional[Game]:
-        """Fetch a game by its UUID."""
+    def get_by_id(self, game_id: str, for_update: bool = False) -> Optional[Game]:
+        """Fetch a game by its UUID. If for_update is True, the game row is
+        locked with SELECT ... FOR UPDATE until the enclosing transaction
+        ends, serializing concurrent modifications of the same game
+        (e.g. simultaneous move submissions). populate_existing ensures
+        that a fresh row is read under the lock even if a stale copy is
+        already present in the session's identity map."""
+        if for_update:
+            return self._session.get(
+                Game, game_id, with_for_update=True, populate_existing=True
+            )
         return self._session.get(Game, game_id)
 
     def create(self, **kwargs: Any) -> Game:
@@ -1191,6 +1200,16 @@ class ChatRepository:
         rlist = [r for r in result.values() if r.last_msg]
         rlist.sort(key=lambda r: r.ts, reverse=True)
         return rlist
+
+    def delete_for_user(self, user_id: str) -> None:
+        """Delete all chat messages sent or received by a user."""
+        if not user_id:
+            return
+        stmt = delete(Chat).where(
+            or_(Chat.user_id == user_id, Chat.recipient_id == user_id)
+        )
+        self._session.execute(stmt)
+        self._session.flush()
 
 
 class BlockRepository:

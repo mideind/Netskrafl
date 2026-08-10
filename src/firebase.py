@@ -33,7 +33,6 @@ from typing import (
     cast,
 )
 
-import os
 import threading
 import logging
 from datetime import UTC, datetime, timedelta
@@ -47,9 +46,6 @@ from config import (
     NETSKRAFL,
     PROJECT_ID,
     FIREBASE_DB_URL,
-    running_local,
-    ON_GAE,
-    ON_GCP,
     ResponseType,
     ttl_cache,
 )
@@ -85,47 +81,10 @@ _PUSH_NOTIFICATION_CUTOFF = 14  # Days
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
 
-# Optional secret token for authenticating cron requests from external schedulers
-# (e.g., when running in Docker/Kubernetes instead of GAE)
-CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
-
 # Create a blueprint for the connect module, which is used to
 # update the Redis cache from Firebase presence information
 # using a cron job that calls /connect/update
 connect_blueprint = connect = Blueprint("connect", __name__, url_prefix="/connect")
-
-
-def is_cron_request() -> bool:
-    """Check if the current request is from an authorized scheduler.
-
-    Supports multiple authentication methods for different deployment environments:
-    - GAE Task Queue (X-AppEngine-QueueName header) - only on GAE
-    - GAE Cron (X-Appengine-Cron header) - only on GAE
-    - Cloud Scheduler (HTTP_X_CLOUDSCHEDULER) - only on GCP (GAE or Cloud Run)
-    - External scheduler with secret token (X-Cron-Secret header)
-    - Local development (always allowed)
-    """
-    # Local development: always allow
-    if running_local:
-        return True
-    headers = request.headers
-    # GAE-specific headers: only trust these when running on GAE
-    # (these headers can be spoofed on non-GAE platforms)
-    if ON_GAE:
-        # GAE Task Queue
-        if headers.get("X-AppEngine-QueueName", ""):
-            return True
-        # GAE Cron
-        if headers.get("X-Appengine-Cron", "") == "true":
-            return True
-    # Cloud Scheduler: only trust on GCP (GAE or Cloud Run)
-    # (this header can be spoofed on non-GCP platforms)
-    if ON_GCP and request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true":
-        return True
-    # External scheduler with secret token (for Docker/Kubernetes deployments)
-    if CRON_SECRET and headers.get("X-Cron-Secret", "") == CRON_SECRET:
-        return True
-    return False
 
 
 def init_firebase_app():
@@ -461,6 +420,10 @@ def push_to_user(
 def update() -> ResponseType:
     """Update the Redis cache from Firebase presence information.
     This method is invoked from a cron job that fetches /connect/update."""
+    # Deferred import: a module-level import would be circular
+    # (basics -> skrafluser -> firebase)
+    from basics import is_cron_request
+
     if not is_cron_request():
         return "Error", 403  # Forbidden
     try:

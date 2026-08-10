@@ -832,8 +832,12 @@ class UserRepositoryProtocol(Protocol):
 class GameRepositoryProtocol(Protocol):
     """Protocol for Game repository operations."""
 
-    def get_by_id(self, game_id: str) -> Optional[GameEntityProtocol]:
-        """Fetch a game by its UUID."""
+    def get_by_id(
+        self, game_id: str, for_update: bool = False
+    ) -> Optional[GameEntityProtocol]:
+        """Fetch a game by its UUID. If for_update is True, backends that
+        support row locking lock the game row for the duration of the
+        enclosing transaction; other backends may ignore the flag."""
         ...
 
     def create(self, **kwargs: Any) -> GameEntityProtocol:
@@ -1092,6 +1096,10 @@ class ChatRepositoryProtocol(Protocol):
         self, for_user: str, max_len: int = 20, blocked_users: Optional[Set[str]] = None
     ) -> Sequence[ChatHistoryEntry]:
         """Get chat history for a user."""
+        ...
+
+    def delete_for_user(self, user_id: str) -> None:
+        """Delete all chat messages sent or received by a user."""
         ...
 
 
