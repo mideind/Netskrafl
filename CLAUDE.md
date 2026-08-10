@@ -133,7 +133,26 @@ multiple languages through separate DAWG files and tile sets.
 - Elo rating system tracks player performance
 - Google App Engine deployment with multiple environments (Netskrafl/Explo, demo/live)
 - A project is underway to migrate from Google Cloud to a containerized deployment,
-  probably on Digital Ocean, with PostgreSQL replacing Google NDB
+  probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
+  current status are tracked in `doc/migration-strategy.md`
+
+### PostgreSQL collation (detail to attend to later)
+
+The PostgreSQL database uses the neutral ICU root collation (`und`) as its
+default - the only coherent choice, since users of all locales share the same
+tables. PostgreSQL simultaneously provides per-locale ICU collations
+(`is-x-icu`, `pl-x-icu`, `nb-x-icu`, `nn-x-icu`, `ga-x-icu`, `gd-x-icu`, ...)
+that produce correct national alphabetical order (e.g. Icelandic þ/æ/ö at the
+end; Norwegian æ/ø/å after z), applied per query with
+`ORDER BY col COLLATE "is-x-icu"` (plus a collated index if the query is hot;
+app locale codes map trivially: `is_IS` → `is-IS`). **Deferred decision:**
+which server-side-sorted list/leaderboard endpoints should switch from neutral
+to locale-strict ordering after the PG cutover - a product-visible change, so
+it deserves a deliberate pass rather than a blanket swap. Note that NDB sorts
+strings by UTF-8 bytes (code-point order), so root ICU is already an
+improvement; parts of the app also sort client-side via `Alphabet` in
+`languages.py`. Ops note: after a managed-PG engine/ICU upgrade, watch for
+"collation version mismatch" warnings and `REINDEX` affected text indexes.
 
 ### Scheduled jobs (GAE)
 

@@ -275,6 +275,14 @@ mark their users as paying via `AuthHelper.login_user(..., paid=True)`.)
 4. ✅ Index parity with `index.yaml` established (Blind Spot #11); all
    indexes are in the initial Alembic revision.
 
+Deferred collation detail: the database default is the neutral ICU root
+collation (`und`); per-locale ICU collations (`is-x-icu`, `pl-x-icu`,
+`nb-x-icu`, ...) are available in the same database for correct national
+alphabetical order, applied per query/index. Which server-side-sorted
+list/leaderboard endpoints should adopt locale-strict ordering is a
+product-visible decision deferred to after cutover — see the
+"PostgreSQL collation" note in `CLAUDE.md`.
+
 Additional hardening from the Phase B kickoff sweep: a method-level
 parity comparison of the two facades found no remaining functional gaps
 (the "missing" NDB methods have no callers outside `skrafldb_ndb.py`
