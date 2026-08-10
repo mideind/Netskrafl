@@ -151,6 +151,19 @@ def client(app: Flask) -> FlaskClient:
 # =============================================================================
 
 
+def set_user_paid(user_id: str, paid: bool = True) -> None:
+    """Set the has_paid and friend status of a test user via the User model.
+    Premium status is needed e.g. to play against the stronger (premium)
+    robots and to create more than MAX_FREE_GAMES concurrent games."""
+    from skrafluser import User
+
+    user = User.load_if_exists(user_id)
+    assert user is not None, f"User {user_id} not found"
+    user.set_has_paid(paid)
+    user.set_friend(paid)
+    user.update()
+
+
 @dataclass
 class AuthHelper:
     """Helper for simulating user authentication in tests.
@@ -170,6 +183,7 @@ class AuthHelper:
         email: str,
         *,
         client_type: str = "web",
+        paid: bool = False,
     ) -> Dict[str, Any]:
         """Simulate OAuth login via POST to /oauth2callback with form data.
 
@@ -181,6 +195,9 @@ class AuthHelper:
             name: User's display name
             email: User's email address
             client_type: Client type ('web', 'ios', 'android')
+            paid: If True, mark the user as a paying (premium) user,
+                allowing games against premium robots and more than
+                MAX_FREE_GAMES concurrent games
 
         Returns:
             JSON response dict with user data
@@ -198,6 +215,8 @@ class AuthHelper:
         data = response.get_json()
         if data and data.get("user_id"):
             self._current_user_id = data["user_id"]
+            if paid:
+                set_user_paid(data["user_id"], True)
         return data or {}
 
     def login_anonymous(self, device_id: str) -> Dict[str, Any]:

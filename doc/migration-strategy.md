@@ -200,8 +200,11 @@ record; Vercel is dropped from consideration.
    (Blind Spot #8).
 
 Verified: `tests/db/` 315 passed (`--backend=both`), `test/` 49 passed,
-`tests/api_e2e/` 98 passed (20 failures pre-existing on master, unrelated),
-pyright clean.
+`tests/api_e2e/` 118 passed, pyright clean. (20 e2e tests had been failing
+since the paywall alignment: they played premium robots — `robot-0/5/10` —
+with non-paying test users, and `/initgame` correctly returned
+`premium_required`. Production behavior was correct; the stale tests now
+mark their users as paying via `AuthHelper.login_user(..., paid=True)`.)
 
 ### Phase B — Alembic and deployable topology
 

@@ -10,18 +10,7 @@ from __future__ import annotations
 import pytest
 from flask.testing import FlaskClient
 
-from tests.api_e2e.conftest import AuthHelper
-
-
-def _set_user_paid(user_id: str, paid: bool) -> None:
-    """Set the has_paid and friend status of a test user via the User model."""
-    from skrafluser import User
-
-    user = User.load_if_exists(user_id)
-    assert user is not None, f"User {user_id} not found"
-    user.set_has_paid(paid)
-    user.set_friend(paid)
-    user.update()
+from tests.api_e2e.conftest import AuthHelper, set_user_paid as _set_user_paid
 
 
 # =============================================================================
