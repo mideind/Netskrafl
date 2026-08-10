@@ -90,8 +90,10 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Install build tools globally (smaller than full npm install)
-RUN npm install -g less typescript uglify-js
+# Install build tools globally (smaller than full npm install).
+# Majors are pinned to match package.json: TypeScript 6+ removed the
+# module=AMD/outFile options that this project's tsconfig relies on.
+RUN npm install -g less@4 typescript@5 uglify-js@3
 
 # Copy frontend source files
 COPY static/ ./static/
