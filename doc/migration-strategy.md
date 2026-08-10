@@ -78,23 +78,31 @@ record; Vercel is dropped from consideration.
 
 | Area | State |
 |------|-------|
-| Schema migrations | **Absent** — no Alembic; `create_all()` is called only from test fixtures, never from `docker-entrypoint.sh`. A fresh container against an empty PostgreSQL starts with no tables. |
+| Schema migrations | ✅ **Fixed** (prepare-migration, Phase B) — Alembic with a verified initial revision; `docker-entrypoint.sh` runs `alembic upgrade head` in PG mode. |
 | Data migration (Datastore→PG) | **Absent** — `scripts/migrate_to_postgres.py` from the plan was never written; there is no `scripts/` directory. |
 | Container cron auth | ✅ **Fixed** (prepare-migration) — `/stats/run`, `/stats/ratings`, and `/cacheflush` now accept `X-Cron-Secret` via the shared `cron_request_source()` helper. |
 | Long-running cron jobs | ✅ **Fixed** (prepare-migration) — externally scheduled stats jobs dispatch asynchronously, out of reach of the gunicorn request timeout. |
 | Secret Manager | ✅ **Fixed** (prepare-migration) — `SECRETS_PROVIDER=env` selects an environment-based provider; GCP Secret Manager remains the default. |
 | Firebase RTDB / FCM | **Retained Google dependency**, no abstraction layer. |
-| Deployable PG topology | **Incomplete** — no PostgreSQL service in `docker-compose.yml`; `docker-compose.local.yml` requires host-installed PostgreSQL. |
+| Deployable PG topology | ✅ **Fixed** (prepare-migration, Phase B) — `docker-compose.pg.yml`: self-contained app + PostgreSQL 16 (ICU collation) + Redis stack with schema auto-migration. |
 | Production state | All three projects run NDB on GAE; `DATABASE_BACKEND` has never been set anywhere in production. |
 
 ---
 
 ## Blind Spots (Detailed)
 
-1. **No schema migration tooling.** No Alembic, no SQL files. The only way to
-   create tables is `Base.metadata.create_all()`
-   (`src/db/postgresql/backend.py`), called only from test fixtures. Its own
-   docstring says "for production, use proper migrations (e.g., Alembic)".
+1. ✅ **RESOLVED — No schema migration tooling.** *Fixed on
+   `prepare-migration` (Phase B):* Alembic is set up (`alembic.ini`,
+   `migrations/env.py` reading `DATABASE_URL` from the environment — no
+   application secrets needed) with an initial revision that exactly
+   reproduces the model schema (verified: empty autogenerate diff after
+   upgrade, and a clean downgrade/upgrade cycle). `docker-entrypoint.sh`
+   runs `alembic upgrade head` when `DATABASE_BACKEND=postgresql`, so a
+   fresh container against an empty database boots to a working schema.
+   For databases whose schema predates Alembic (created via
+   `create_all()`), run `alembic stamp head` once. `alembic` was added to
+   `requirements-pg.txt`; `alembic.ini`/`migrations/` are copied into the
+   Docker image and excluded from GAE deploys.
 
 2. **No data migration tooling.** The `utils/` scripts are all NDB-only
    one-offs. Note that `.dockerignore` and `.gcloudignore` both exclude
@@ -203,10 +211,22 @@ record; Vercel is dropped from consideration.
       no-op guard when already inside a WSGI request.
     - `EloModel.put_multi()` (classmethod) was missing from the PG facade.
 
-11. **Index verification.** `index.yaml` (Datastore composite indexes) should
-    be diffed against the `Index(...)` declarations in
-    `src/db/postgresql/models.py` before cutover to confirm no hot query is
-    left unindexed.
+11. ✅ **RESOLVED — Index verification.** *Done on `prepare-migration`
+    (Phase B):* `index.yaml` was diffed against
+    `src/db/postgresql/models.py`. Already covered: `RatingModel(kind,rank)`
+    (composite PK), the `EloModel` locale composites, `ImageModel(user,fmt)`.
+    Added composites mirroring the remaining Datastore indexes:
+    games `(player0_id|player1_id, over, ts_last_move)` and
+    `(over, ts_last_move)` (per-player lists and the `/stats/run` scan),
+    stats `(user_id, robot_level, timestamp)` (`newest_before` lookups and
+    leaderboard dedup), chats `(channel|user_id|recipient_id, timestamp)`,
+    challenges `(src|dest, timestamp)`, users `(locale, nick_lc|name_lc)`
+    and `(locale, human_elo)`, promos `(user_id, promotion, timestamp)`,
+    transactions `(user_id, ts)`. Deliberately not ported: the StatsModel
+    `(timestamp, *elo)` composites, which served NDB's legacy
+    descending-Elo scan — the PG leaderboard uses `DISTINCT ON` served by
+    the new stats composite instead. All indexes are included in the
+    initial Alembic revision.
 
 12. **Static file serving.** GAE's ~20 tuned static handlers in
     `app-netskrafl.yaml` are replaced by Flask serving everything through
@@ -240,15 +260,31 @@ with non-paying test users, and `/initgame` correctly returned
 `premium_required`. Production behavior was correct; the stale tests now
 mark their users as paying via `AuthHelper.login_user(..., paid=True)`.)
 
-### Phase B — Alembic and deployable topology
+### Phase B — Alembic and deployable topology — ✅ DONE (prepare-migration)
 
-1. Adopt Alembic; generate the initial revision from the existing models.
-2. Wire `alembic upgrade head` into the entrypoint or a deploy step.
-3. Add a real PostgreSQL service to a deployable compose / App Platform spec
-   (currently only the host-network local variant sets
-   `DATABASE_BACKEND=postgresql`).
-4. Create the production database with ICU collation per
-   `postgresql-plan.md` (requires PostgreSQL 15+; DO managed PG qualifies).
+1. ✅ Alembic adopted; initial revision generated from the models and
+   verified drift-free with a working downgrade path (Blind Spot #1).
+2. ✅ `docker-entrypoint.sh` runs `alembic upgrade head` in PG mode.
+3. ✅ `docker-compose.pg.yml` added: full self-contained stack (app +
+   PostgreSQL 16 + Redis) with healthchecks and named volumes; the
+   postgres service initializes its cluster with ICU collation
+   (`und`), matching the production recommendation. On DO App Platform,
+   the postgres service is replaced by managed PostgreSQL via
+   `DATABASE_URL`. Provisioning the managed production database with ICU
+   collation (PostgreSQL 15+) remains a deploy-time step.
+4. ✅ Index parity with `index.yaml` established (Blind Spot #11); all
+   indexes are in the initial Alembic revision.
+
+Additional hardening from the Phase B kickoff sweep: a method-level
+parity comparison of the two facades found no remaining functional gaps
+(the "missing" NDB methods have no callers outside `skrafldb_ndb.py`
+itself), and the PG facade's residual silent stubs (`Model.query`,
+`Model.get_by_id`, the leftover `Query` shell) now raise
+`NotImplementedError` instead of returning empty results — future facade
+gaps will fail loudly instead of masquerading as an empty database.
+
+Verified: `tests/db/` 315 passed (`--backend=both`), `tests/api_e2e/`
+125 passed, `test/` 49 passed, pyright clean.
 
 ### Phase C — Prove hosting on DO with NDB first (optional, low-risk)
 

@@ -324,38 +324,48 @@ _T_Model = TypeVar("_T_Model")
 
 
 class Query(Generic[_T_Model]):
-    """Minimal query stub.
+    """Typing shell for NDB-style queries.
 
-    Complex NDB-style query building (used in skraflstats.py/admin.py)
-    is not yet supported for Phase 1. The Model facade classes provide
-    direct static methods that delegate to the PG repositories instead.
+    Real NDB-style queries over the PG backend are provided by
+    FacadeQuery (via UserModel.query()/GameModel.query()). This class
+    exists only so that type annotations like Query[UserModel] resolve;
+    any attempt to actually execute it raises immediately. Silent empty
+    results here previously masked missing facade functionality - never
+    reintroduce that behavior.
     """
 
+    def _unsupported(self) -> Any:
+        raise NotImplementedError(
+            "NDB-style queries on this model are not implemented in the "
+            "PostgreSQL facade; use the model's dedicated classmethods, "
+            "or extend FacadeQuery support to this model"
+        )
+
     def order(self, *args: Any, **kwargs: Any) -> Query[_T_Model]:
-        return self
+        return self._unsupported()
 
     def filter(self, *args: Any, **kwargs: Any) -> Query[_T_Model]:
-        return self
+        return self._unsupported()
 
     def fetch(self, *args: Any, **kwargs: Any) -> Sequence[_T_Model]:
-        return []
+        return self._unsupported()
 
     def fetch_async(self, *args: Any, **kwargs: Any) -> Future[_T_Model]:
-        return Future([])
+        return self._unsupported()
 
     def fetch_page(
         self, *args: Any, **kwargs: Any
     ) -> Tuple[Sequence[_T_Model], Any, bool]:
-        return ([], None, False)
+        return self._unsupported()
 
     def get(self, *args: Any, **kwargs: Any) -> Optional[_T_Model]:
-        return None
+        return self._unsupported()
 
     def count(self, *args: Any, **kwargs: Any) -> int:
-        return 0
+        return self._unsupported()
 
     def iter(self, *args: Any, **kwargs: Any) -> Iterator[_T_Model]:
-        return iter([])
+        return self._unsupported()
 
 
 class Future(Generic[_T]):
@@ -375,9 +385,11 @@ class Future(Generic[_T]):
 class Model:
     """Base Model stub for PostgreSQL.
 
-    Provides the type helper statics (Str, Int, Bool, etc.) that are
-    used as class-level declarations in skrafldb_ndb.py. Since the PG
-    facade classes don't use NDB property descriptors, these are no-ops.
+    The facade model classes (UserModel, GameModel, etc.) are plain
+    classes with their own dedicated methods; this base exists for API
+    compatibility only. Its query entry points raise immediately rather
+    than returning silent empty results, so that any facade gap fails
+    loudly instead of masquerading as an empty database.
     """
 
     @property
@@ -393,11 +405,18 @@ class Model:
     def get_by_id(
         cls, id: Any, *args: Any, **kwargs: Any
     ) -> Optional[Any]:
-        return None
+        raise NotImplementedError(
+            f"{cls.__name__}.get_by_id is not implemented in the "
+            "PostgreSQL facade; use the model's dedicated classmethods"
+        )
 
     @classmethod
     def query(cls, *args: Any, **kwargs: Any) -> Query[Any]:
-        return Query()
+        raise NotImplementedError(
+            f"{cls.__name__}.query is not implemented in the PostgreSQL "
+            "facade; NDB-style queries are supported for UserModel and "
+            "GameModel via FacadeQuery"
+        )
 
 
 def iter_q(

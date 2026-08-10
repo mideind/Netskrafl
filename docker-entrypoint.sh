@@ -4,6 +4,15 @@
 
 set -e
 
+# Apply database schema migrations when running the PostgreSQL backend.
+# For a database whose schema predates Alembic (created via
+# Base.metadata.create_all()), run `alembic stamp head` once manually
+# before deploying with this entrypoint.
+if [ "$DATABASE_BACKEND" = "postgresql" ]; then
+    echo "Applying database migrations (alembic upgrade head)..."
+    (cd /app && python -m alembic upgrade head)
+fi
+
 # Start supercronic in the background if CRON_SECRET is set and supercronic is installed
 if [ -n "$CRON_SECRET" ] && command -v supercronic >/dev/null 2>&1; then
     echo "Starting supercronic scheduler..."

@@ -173,6 +173,11 @@ COPY --link --chown=appuser:appuser crontab ./crontab
 COPY --link --chown=appuser:appuser docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
+# Copy Alembic schema migrations (used by the entrypoint when
+# DATABASE_BACKEND=postgresql)
+COPY --link --chown=appuser:appuser alembic.ini ./alembic.ini
+COPY --link --chown=appuser:appuser migrations/ ./migrations/
+
 # Switch to non-root user
 USER appuser
 
