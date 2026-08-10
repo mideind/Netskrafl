@@ -228,15 +228,23 @@ record; Vercel is dropped from consideration.
     the new stats composite instead. All indexes are included in the
     initial Alembic revision.
 
-12. **Static file serving.** GAE's ~20 tuned static handlers in
-    `app-netskrafl.yaml` are replaced by Flask serving everything through
-    Python; the nginx static block exists but is commented out in
-    `nginx.conf`. Enable it (or a CDN) to avoid regressing static-asset
-    performance at scale.
+12. ✅ **RESOLVED — Static file serving.** *Fixed on `prepare-migration`:*
+    the nginx `/static/` block is enabled (1-day expiry, matching the GAE
+    static handlers; assets are version-query cache-busted), with the
+    static directory mounted read-only into the nginx service in
+    `docker-compose.yml`. Root-level static files (`/favicon.ico`, ...)
+    deliberately stay with Flask — their list lives in `src/main.py` and
+    replicating it in nginx would create a hand-sync hazard; they are
+    small and rare. On DO App Platform (no nginx), a CDN in front remains
+    the recommended equivalent at scale.
 
-13. **DAWG file list is hand-maintained.** The Dockerfile's download list
-    must be kept in sync with `src/wordbase.py:_ALL_DAWGS` manually (the
-    Dockerfile comment says so).
+13. ✅ **RESOLVED — DAWG file list was hand-maintained.** *Fixed on
+    `prepare-migration`:* the Dockerfile now derives the download list
+    from `src/wordbase.py:_ALL_DAWGS` at build time (AST parse of the
+    copied source file), so the two can never drift apart. This also
+    dropped two dead legacy downloads (`algeng`, `twl06`) that the
+    runtime never loads. Verified: the build stage downloads exactly the
+    18 files the application loads.
 
 ---
 
