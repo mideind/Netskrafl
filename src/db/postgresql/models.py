@@ -507,6 +507,13 @@ class Zombie(Base):
         String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
 
+    __table_args__ = (
+        # list_games()/delete_for_user() filter by user_id alone, which
+        # the (game_id, user_id) primary key cannot serve. Under NDB this
+        # relied on Datastore's automatic single-property index.
+        Index("ix_zombies_user", "user_id"),
+    )
+
 
 class Block(Base):
     """User blocking - mirrors NDB BlockModel."""

@@ -228,6 +228,17 @@ record; Vercel is dropped from consideration.
     the new stats composite instead. All indexes are included in the
     initial Alembic revision.
 
+    **Important subtlety:** `index.yaml` lists only *composite* indexes —
+    Datastore automatically maintains single-property (asc + desc)
+    indexes for every indexed property, and NDB queries silently rely on
+    them. Composite parity alone is therefore not sufficient. A
+    query-driven audit was added: every filter/sort column used by the PG
+    repositories was checked for leading-column index coverage. This
+    found one genuine gap — `zombies.user_id` (`list_games`,
+    `delete_for_user`), which the `(game_id, user_id)` PK cannot serve —
+    fixed in Alembic revision `51d5c69f5a8e`. The remaining flags were
+    false positives (secondary predicates or PK-served sorts).
+
 12. ✅ **RESOLVED — Static file serving.** *Fixed on `prepare-migration`:*
     the nginx `/static/` block is enabled (1-day expiry, matching the GAE
     static handlers; assets are version-query cache-busted), with the
