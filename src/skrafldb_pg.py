@@ -213,10 +213,16 @@ class Key:
 # ---------------------------------------------------------------------------
 
 class Client:
-    """No-op NDB Client replacement for PostgreSQL.
+    """NDB Client replacement for PostgreSQL.
 
-    PostgreSQL session management is handled by the WSGI middleware
-    (db_wsgi_middleware) rather than explicit client contexts.
+    Within WSGI requests, PostgreSQL session management is handled by
+    the request middleware (db_wsgi_middleware). Background threads
+    (e.g. deferred stats/admin jobs) use Client.get_context() - just
+    like they establish a fresh NDB client context - to obtain a
+    thread-local session that is committed on success, rolled back on
+    exception, and closed on exit. Without this, updates made on a
+    background thread would remain uncommitted and the session would
+    leak.
     """
 
     def __init__(self) -> None:
@@ -225,8 +231,18 @@ class Client:
     @classmethod
     @contextmanager
     def get_context(cls) -> Iterator[None]:
-        """No-op context manager (PG uses WSGI middleware)."""
-        yield
+        """Establish a database session scope for the current thread.
+        A no-op if a session scope is already active on this thread
+        (i.e. when called inside a WSGI request)."""
+        from db.session import get_session_manager
+        manager = get_session_manager()
+        if manager.has_backend():
+            # Already inside an active session scope (e.g. a WSGI
+            # request); don't disturb its lifecycle
+            yield
+            return
+        with manager.request_context():
+            yield
 
 
 class Context:
@@ -416,23 +432,191 @@ def delete_multi(keys: Iterable[Key]) -> None:
 # _model_property descriptor
 # ---------------------------------------------------------------------------
 
-def _model_property(name: str, default: Any = None) -> property:
+class _Cond:
+    """A query filter term produced by comparing a Model facade class
+    attribute with a value, e.g. UserModel.locale == "is_IS"."""
+
+    __slots__ = ("name", "op", "value")
+
+    def __init__(self, name: str, op: str, value: Any) -> None:
+        self.name = name
+        self.op = op
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f"_Cond({self.name} {self.op} {self.value!r})"
+
+
+class _Order:
+    """An ordering term for FacadeQuery.order()."""
+
+    __slots__ = ("name", "descending")
+
+    def __init__(self, name: str, descending: bool = False) -> None:
+        self.name = name
+        self.descending = descending
+
+
+class _ModelProperty:
     """Descriptor for Model facade properties.
 
-    Reads from the mutation dict (_attrs) first, then falls back to the
-    wrapped protocol entity, then to the default.
+    On instances, reads from the mutation dict (_attrs) first, then
+    falls back to the wrapped protocol entity, then to the default.
+    On the class itself, comparison operators produce _Cond filter
+    terms and unary minus produces a descending _Order term, enabling
+    NDB-style queries such as
+    UserModel.query(UserModel.locale == "is_IS").order(-UserModel.elo).
     """
-    def getter(self: Any) -> Any:
-        if name in self._attrs:
-            return self._attrs[name]
-        if self._entity is not None:
-            return getattr(self._entity, name, default)
-        return default
 
-    def setter(self: Any, value: Any) -> None:
-        self._attrs[name] = value
+    __slots__ = ("name", "default")
 
-    return property(getter, setter)
+    def __init__(self, name: str, default: Any = None) -> None:
+        self.name = name
+        self.default = default
+
+    def __get__(self, instance: Any, owner: Any = None) -> Any:
+        if instance is None:
+            # Class-level access: return the descriptor itself,
+            # for use in query expressions
+            return self
+        if self.name in instance._attrs:
+            return instance._attrs[self.name]
+        if instance._entity is not None:
+            return getattr(instance._entity, self.name, self.default)
+        return self.default
+
+    def __set__(self, instance: Any, value: Any) -> None:
+        instance._attrs[self.name] = value
+
+    # Class-level comparison operators build query filter terms
+    def __eq__(self, other: object) -> Any:
+        return _Cond(self.name, "eq", other)
+
+    def __ne__(self, other: object) -> Any:
+        return _Cond(self.name, "ne", other)
+
+    def __lt__(self, other: Any) -> Any:
+        return _Cond(self.name, "lt", other)
+
+    def __le__(self, other: Any) -> Any:
+        return _Cond(self.name, "le", other)
+
+    def __gt__(self, other: Any) -> Any:
+        return _Cond(self.name, "gt", other)
+
+    def __ge__(self, other: Any) -> Any:
+        return _Cond(self.name, "ge", other)
+
+    def __neg__(self) -> _Order:
+        return _Order(self.name, descending=True)
+
+    # Defining __eq__ suppresses the default __hash__; restore it
+    __hash__ = object.__hash__
+
+
+def _model_property(name: str, default: Any = None) -> Any:
+    """Create a descriptor for a Model facade property."""
+    return _ModelProperty(name, default)
+
+
+class FacadeQuery(Generic[_T_Model]):
+    """NDB-style query over a Model facade class, translated to a
+    SQLAlchemy query via the PG repositories. Supports the patterns
+    used by skraflstats.py and admin.py: equality and range filters on
+    model properties, ndb.AND(...) combinations, ordering, iteration,
+    fetch, get and count. Yields facade model instances."""
+
+    def __init__(
+        self,
+        repo_name: str,
+        orm_name: str,
+        facade_cls: Any,
+        conditions: Tuple[Any, ...] = (),
+    ) -> None:
+        self._repo_name = repo_name
+        self._orm_name = orm_name
+        self._facade_cls = facade_cls
+        self._conds: List[_Cond] = []
+        self._orders: List[_Order] = []
+        self._add_conditions(conditions)
+
+    def _add_conditions(self, conditions: Iterable[Any]) -> None:
+        for c in conditions:
+            if isinstance(c, _Cond):
+                self._conds.append(c)
+            elif isinstance(c, tuple) and len(c) == 2 and c[0] == "AND":
+                # ndb.AND(...) via the _NdbCompat shim
+                self._add_conditions(c[1])
+            else:
+                raise ValueError(f"Unsupported query condition: {c!r}")
+
+    def filter(self, *conditions: Any) -> FacadeQuery[_T_Model]:
+        self._add_conditions(conditions)
+        return self
+
+    def order(self, *props: Any) -> FacadeQuery[_T_Model]:
+        for p in props:
+            if isinstance(p, _Order):
+                self._orders.append(p)
+            elif isinstance(p, _ModelProperty):
+                self._orders.append(_Order(p.name, descending=False))
+            else:
+                raise ValueError(f"Unsupported ordering term: {p!r}")
+        return self
+
+    def _wrapper(self) -> Any:
+        """Build the repository-level query wrapper with translated
+        filter and ordering terms."""
+        import db.postgresql.models as _orm
+
+        db = _get_db()
+        repo = getattr(db, self._repo_name)
+        w = repo.query()
+        orm_cls = getattr(_orm, self._orm_name)
+        if self._conds:
+            sa_conds: List[Any] = []
+            for c in self._conds:
+                col = getattr(orm_cls, c.name)
+                if c.op == "eq":
+                    sa_conds.append(col == c.value)
+                elif c.op == "ne":
+                    sa_conds.append(col != c.value)
+                elif c.op == "lt":
+                    sa_conds.append(col < c.value)
+                elif c.op == "le":
+                    sa_conds.append(col <= c.value)
+                elif c.op == "gt":
+                    sa_conds.append(col > c.value)
+                else:
+                    assert c.op == "ge"
+                    sa_conds.append(col >= c.value)
+            w = w.filter(*sa_conds)
+        if self._orders:
+            cols = [
+                getattr(orm_cls, o.name).desc()
+                if o.descending
+                else getattr(orm_cls, o.name)
+                for o in self._orders
+            ]
+            w = w.order(*cols)
+        return w
+
+    def iter(self, limit: int = 0) -> Iterator[_T_Model]:
+        for row in self._wrapper().iter(limit):
+            yield self._facade_cls._from_entity(row)
+
+    def fetch(self, limit: Optional[int] = None, **_kw: Any) -> List[_T_Model]:
+        return list(self.iter(limit or 0))
+
+    def get(self) -> Optional[_T_Model]:
+        row = self._wrapper().get()
+        return None if row is None else self._facade_cls._from_entity(row)
+
+    def count(self) -> int:
+        # Note: counts by iterating, since the repository wrapper's
+        # count() does not apply filters. Use the facade classmethod
+        # count() (e.g. UserModel.count()) for cheap full-table counts.
+        return sum(1 for _ in self._wrapper().iter(0))
 
 
 # ===========================================================================
@@ -614,6 +798,11 @@ class UserModel:
         return db.users.count()
 
     @classmethod
+    def query(cls, *conditions: Any) -> FacadeQuery[UserModel]:
+        """Return an NDB-style query over user entities."""
+        return FacadeQuery("users", "User", cls, conditions)
+
+    @classmethod
     def filter_locale(cls, q: Any, locale: Optional[str]) -> Any:
         """Filter by locale (stub - query builder deferred to Phase 2)."""
         return q
@@ -770,6 +959,12 @@ class EloModel:
         db = _get_db()
         existing = em._entity if em is not None else None
         return db.elo.upsert(existing, locale, uid, ratings)
+
+    @classmethod
+    def put_multi(cls, recs: Iterable[EloModel]) -> None:
+        """Persist multiple EloModel entities."""
+        for em in recs:
+            em.put()
 
     @classmethod
     def delete_for_user(cls, uid: str) -> None:
@@ -1194,6 +1389,11 @@ class GameModel:
             return 0
         db = _get_db()
         return db.games.count_live_games(user_id, max_count)
+
+    @classmethod
+    def query(cls, *conditions: Any) -> FacadeQuery[GameModel]:
+        """Return an NDB-style query over game entities."""
+        return FacadeQuery("games", "Game", cls, conditions)
 
     @classmethod
     def delete_for_user(cls, uid: str) -> None:

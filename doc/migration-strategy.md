@@ -165,9 +165,43 @@ record; Vercel is dropped from consideration.
    production and no comparable operation on this data is anticipated, so
    this is not a migration concern.
 
-10. **Admin routes are gated on `running_local`** (`src/web.py`), so they are
-    unavailable in production containers, and `src/admin.py` is untested
-    against PG.
+10. ✅ **RESOLVED — Admin routes are gated on `running_local`** (`src/web.py`),
+    so they are unavailable in production containers.
+    **Decision (August 2026): keep this model.** Admin operations continue
+    to run on a locally started instance connected to the production
+    database — the same workflow used against GAE/NDB. Rationale:
+    - DO managed PostgreSQL is reachable from a local box via a
+      trusted-sources IP allowlist over TLS (`sslmode=require`), or via an
+      SSH tunnel through any droplet in the VPC. Set `DATABASE_URL`
+      accordingly, with `RUNNING_LOCAL=true` and
+      `DATABASE_BACKEND=postgresql`.
+    - The old NDB/Redis cache-incoherency snag largely disappears: the PG
+      backend has no Redis entity cache, so local admin writes are
+      immediately visible to production instances. Derived Redis state
+      (rating tables, live lists) can be invalidated remotely via
+      `/cacheflush` with the `X-Cron-Secret` header.
+    - Long-running admin jobs don't belong in production web requests
+      (gunicorn timeout), and unregistered routes are a stronger guarantee
+      than any auth check. An env-var admin flag (e.g. `ADMIN_USER_IDS`)
+      remains an option later, scoped to cheap operations only.
+
+    *Test pass (prepare-migration):* `tests/api_e2e/test_admin.py` now
+    exercises the admin routes and the deferred (background-thread) admin
+    jobs against PostgreSQL. This uncovered and fixed three real gaps in
+    the PG facade:
+    - `UserModel.query()` / `GameModel.query()` did not exist (the base
+      `Query` stub silently returned empty results) — **`/stats/run` was
+      broken under PG** as well as the deferred admin jobs. Fixed via
+      `FacadeQuery` in `skrafldb_pg.py`, which translates NDB-style
+      conditions (`UserModel.locale == x`, `ndb.AND(...)`, `.order(...)`)
+      to SQLAlchemy queries; `/stats/run` is now e2e-tested on PG.
+    - `Client.get_context()` was a no-op on PG, so background threads
+      (deferred admin jobs, async stats dispatch) got a thread-local
+      session that was **never committed or closed** — silent data loss
+      plus a connection leak. It now establishes a real session scope
+      (commit on success, rollback on exception, close on exit), with a
+      no-op guard when already inside a WSGI request.
+    - `EloModel.put_multi()` (classmethod) was missing from the PG facade.
 
 11. **Index verification.** `index.yaml` (Datastore composite indexes) should
     be diffed against the `Index(...)` declarations in
