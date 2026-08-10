@@ -965,13 +965,8 @@ def main() -> ResponseType:
 @web.route("/cacheflush", methods=["GET", "POST"])
 def cache_flush() -> ResponseType:
     """Flush the Redis cache"""
-    headers: Dict[str, str] = cast(Any, request).headers
-    task_queue_name = headers.get("X-AppEngine-QueueName", "")
-    task_queue = task_queue_name != ""
-    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    cron_job = headers.get("X-Appengine-Cron", "") == "true"
-    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
-        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
+    if not firebase.is_cron_request():
+        # Only allow authorized scheduler requests
         return "Restricted URL", 403
     # Flush the cache
     memcache.flush()

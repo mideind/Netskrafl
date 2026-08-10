@@ -286,16 +286,27 @@ class Game:
 
     @classmethod
     def load(
-        cls, uuid: str, *, use_cache: bool = True, set_locale: bool = False
+        cls,
+        uuid: str,
+        *,
+        use_cache: bool = True,
+        set_locale: bool = False,
+        for_update: bool = False,
     ) -> Optional[Game]:
         """Load an already existing game from persistent storage.
         If set_locale is True, set the current thread's locale
-        to the game locale."""
+        to the game locale. If for_update is True, backends that
+        support row locking (PostgreSQL) lock the game row until the
+        end of the current request transaction, serializing concurrent
+        modifications of the same game."""
         with Game._lock:
             # Ensure that the game load does not introduce race conditions
             try:
                 return cls._load_locked(
-                    uuid, use_cache=use_cache, set_locale=set_locale
+                    uuid,
+                    use_cache=use_cache,
+                    set_locale=set_locale,
+                    for_update=for_update,
                 )
             except KeyError:
                 # Hack to handle older game objects that have no associated
@@ -305,7 +316,10 @@ class Game:
                 # we try again with the locale forced to is_IS.
                 if set_locale and DEFAULT_LOCALE != "is_IS":
                     return cls._load_locked(
-                        uuid, use_cache=use_cache, force_locale="is_IS"
+                        uuid,
+                        use_cache=use_cache,
+                        force_locale="is_IS",
+                        for_update=for_update,
                     )
             return None
 
@@ -323,10 +337,11 @@ class Game:
         use_cache: bool = True,
         set_locale: bool = False,
         force_locale: str = "",
+        for_update: bool = False,
     ) -> Optional[Game]:
         """Load an existing game from cache or persistent storage under lock"""
 
-        gm = GameModel.fetch(uuid, use_cache)
+        gm = GameModel.fetch(uuid, use_cache, for_update=for_update)
         if gm is None:
             # A game with this uuid is not found in the database: give up
             return None

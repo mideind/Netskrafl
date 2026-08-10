@@ -72,6 +72,7 @@ from skrafldb import (
 from skraflgame import Game
 from skraflelo import ESTABLISHED_MARK, compute_elo
 from autoplayers import AUTOPLAYERS
+from firebase import cron_request_source
 
 # Register the Flask blueprint for the stats routes
 stats = stats_blueprint = Blueprint("stats", __name__, url_prefix="/stats")
@@ -781,32 +782,29 @@ def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
     return "Ratings calculation completed", 200
 
 
-# Cloud Scheduler routes - requests are only accepted when originated
-# by the Google Cloud Scheduler
+# Scheduler routes - requests are only accepted when originated
+# by an authorized scheduler (see firebase.cron_request_source())
 
 
 def _scheduler_wait_mode(task_name: str) -> Optional[bool]:
-    """Check that the current request originates from the Google Cloud
-    Scheduler, a Cloud Tasks queue or a cron job (or from a local
-    development server). Returns None if the request is not authorized;
-    otherwise False if the task should be run asynchronously (Cloud
-    Scheduler requests), or True to run it synchronously."""
-    headers: Dict[str, str] = cast(Any, request).headers
-    task_queue_name = headers.get("X-AppEngine-QueueName", "")
-    task_queue = task_queue_name != ""
-    cloud_scheduler = request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true"
-    cron_job = headers.get("X-Appengine-Cron", "") == "true"
-    if not any((task_queue, cloud_scheduler, cron_job, running_local)):
-        # Only allow bona fide Google Cloud Scheduler or Task Queue requests
+    """Check that the current request originates from an authorized
+    scheduler: the Google Cloud Scheduler, a Cloud Tasks queue, a GAE
+    cron job, an external scheduler bearing the X-Cron-Secret header
+    (e.g. supercronic in a container), or a local development server.
+    Returns None if the request is not authorized; otherwise False if
+    the task should be run asynchronously, or True to run it
+    synchronously."""
+    source = cron_request_source()
+    if source is None:
+        # Not an authorized scheduler request
         return None
-    if cloud_scheduler:
-        logging.info(f"Running {task_name} from cloud scheduler")
-        # Run Cloud Scheduler tasks asynchronously
+    logging.info(f"Running {task_name} from {source}")
+    if source in ("cloud-scheduler", "external"):
+        # Run asynchronously: these schedulers expect a quick response.
+        # In particular, external schedulers (supercronic curling with an
+        # X-Cron-Secret header) run behind gunicorn's request timeout,
+        # which would otherwise kill a long-running synchronous task.
         return False
-    if task_queue:
-        logging.info(f"Running {task_name} from queue {task_queue_name}")
-    elif cron_job:
-        logging.info(f"Running {task_name} from cron job")
     return True
 
 

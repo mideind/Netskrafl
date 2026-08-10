@@ -185,8 +185,10 @@ class UserRepository:
 class GameRepository:
     """NDB implementation of GameRepositoryProtocol."""
 
-    def get_by_id(self, game_id: str) -> Optional[GameEntity]:
-        """Fetch a game by its UUID."""
+    def get_by_id(self, game_id: str, for_update: bool = False) -> Optional[GameEntity]:
+        """Fetch a game by its UUID. The for_update flag is ignored here:
+        under NDB, concurrent game modifications are serialized by the
+        @ndb.transactional decorator on the calling code instead."""
         model = skrafldb.GameModel.fetch(game_id)
         return GameEntity(model) if model else None
 
@@ -620,6 +622,10 @@ class ChatRepository:
             )
             for r in results
         ]
+
+    def delete_for_user(self, user_id: str) -> None:
+        """Delete all chat messages sent or received by a user."""
+        skrafldb.ChatModel.delete_for_user(user_id)
 
 
 class BlockRepository:

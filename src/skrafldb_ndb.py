@@ -1306,8 +1306,13 @@ class GameModel(Model["GameModel"]):
         return p.id()
 
     @classmethod
-    def fetch(cls, game_uuid: str, use_cache: bool = True) -> Optional[GameModel]:
-        """Fetch a game entity given its uuid"""
+    def fetch(
+        cls, game_uuid: str, use_cache: bool = True, for_update: bool = False
+    ) -> Optional[GameModel]:
+        """Fetch a game entity given its uuid. The for_update flag is
+        ignored here: under NDB, concurrent game modifications are
+        serialized by the @ndb.transactional decorator on the calling
+        code (see logic.submit_move) instead of row locking."""
         if not use_cache:
             return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
         # Default caching policy if caching is not explictly prohibited

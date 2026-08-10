@@ -1469,3 +1469,103 @@ class TestGameComparison:
         )
 
         assert runner.report.all_passed, runner.report.format()
+
+
+class TestGameRowLocking:
+    """Test the for_update row-locking flag on games.get_by_id."""
+
+    PLAYERS = [
+        ("lock-test-player0", "test:lockp0", "LockPlayer0"),
+        ("lock-test-player1", "test:lockp1", "LockPlayer1"),
+    ]
+
+    def _create_game(self, backend: "DatabaseBackendProtocol") -> str:
+        """Create two players and a game between them; return the game id."""
+        for user_id, account, nickname in self.PLAYERS:
+            if backend.users.get_by_id(user_id) is None:
+                backend.users.create(
+                    user_id=user_id,
+                    account=account,
+                    email=None,
+                    nickname=nickname,
+                    locale="is_IS",
+                )
+        game_id = fresh_id()
+        backend.games.create(
+            id=game_id,
+            player0_id=self.PLAYERS[0][0],
+            player1_id=self.PLAYERS[1][0],
+            locale="is_IS",
+            rack0="AEILNRT",
+            rack1="DGOSTU?",
+            score0=0,
+            score1=0,
+            to_move=0,
+            robot_level=0,
+            over=False,
+        )
+        return game_id
+
+    def _cleanup(self, backend: "DatabaseBackendProtocol", game_id: str) -> None:
+        backend.games.delete(game_id)
+        for user_id, _, _ in self.PLAYERS:
+            backend.users.delete(user_id)
+
+    def test_get_by_id_for_update(self, backend: "DatabaseBackendProtocol") -> None:
+        """get_by_id accepts for_update on both backends and returns the game.
+        (NDB ignores the flag; PostgreSQL locks the row.)"""
+        game_id = self._create_game(backend)
+        try:
+            game = backend.games.get_by_id(game_id, for_update=True)
+            assert game is not None
+            assert game.key_id == game_id
+        finally:
+            self._cleanup(backend, game_id)
+
+    def test_for_update_locks_row_postgresql(
+        self, pg_backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """PostgreSQL: get_by_id(for_update=True) holds a row lock that
+        blocks other transactions until the session commits/rolls back."""
+        from sqlalchemy import create_engine, text
+        from sqlalchemy.exc import OperationalError
+        from src.db.config import get_config, DEFAULT_TEST_DATABASE_URL
+
+        game_id = self._create_game(pg_backend)
+        # Make the game visible to other connections
+        pg_backend.commit()
+
+        url = get_config().get_database_url(DEFAULT_TEST_DATABASE_URL)
+        engine2 = create_engine(url)
+        try:
+            # Acquire the row lock in the primary session
+            game = pg_backend.games.get_by_id(game_id, for_update=True)
+            assert game is not None
+
+            # A second, independent connection must NOT be able to lock
+            # the same row while the primary session holds the lock
+            with engine2.connect() as conn:
+                with pytest.raises(OperationalError):
+                    conn.execute(
+                        text(
+                            "SELECT id FROM games "
+                            "WHERE id = :gid FOR UPDATE NOWAIT"
+                        ),
+                        {"gid": game_id},
+                    )
+
+            # Release the lock; now the second connection can lock the row
+            pg_backend.commit()
+            with engine2.connect() as conn:
+                result = conn.execute(
+                    text(
+                        "SELECT id FROM games "
+                        "WHERE id = :gid FOR UPDATE NOWAIT"
+                    ),
+                    {"gid": game_id},
+                )
+                assert result.scalar_one() == game_id
+        finally:
+            engine2.dispose()
+            self._cleanup(pg_backend, game_id)
+            pg_backend.commit()

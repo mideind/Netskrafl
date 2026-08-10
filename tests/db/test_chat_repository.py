@@ -461,3 +461,70 @@ class TestChatHistory:
             assert entry.user is not None
             assert entry.ts is not None
             assert entry.last_msg is not None
+
+
+class TestChatDeleteForUser:
+    """Test deletion of all chat messages sent or received by a user."""
+
+    USERS = [
+        ("chat-del-user-1", "test:chatdel1", "ChatDelUser1"),
+        ("chat-del-user-2", "test:chatdel2", "ChatDelUser2"),
+        ("chat-del-user-3", "test:chatdel3", "ChatDelUser3"),
+    ]
+
+    @pytest.fixture(autouse=True)
+    def setup_delete_users(self, backend: "DatabaseBackendProtocol"):
+        """Create test users, and clean up all their data afterwards."""
+        for user_id, account, nickname in self.USERS:
+            if backend.users.get_by_id(user_id) is None:
+                backend.users.create(
+                    user_id=user_id,
+                    account=account,
+                    email=None,
+                    nickname=nickname,
+                    locale="is_IS",
+                )
+        yield
+        # Clean up: delete all chat messages and the users themselves
+        for user_id, _, _ in self.USERS:
+            backend.chat.delete_for_user(user_id)
+            backend.users.delete(user_id)
+
+    @staticmethod
+    def _user_channel(uid1: str, uid2: str) -> str:
+        """Compose a direct-message channel id the same way the backends do"""
+        if uid1 > uid2:
+            uid1, uid2 = uid2, uid1
+        return f"user:{uid1}:{uid2}"
+
+    def test_delete_for_user(self, backend: "DatabaseBackendProtocol") -> None:
+        """delete_for_user removes messages sent and received by the user,
+        and leaves other users' conversations untouched."""
+        u1, u2, u3 = (u[0] for u in self.USERS)
+        # u1 <-> u2 conversation (u1 sends and receives)
+        backend.chat.add_msg_between_users(u1, u2, "From u1 to u2")
+        backend.chat.add_msg_between_users(u2, u1, "From u2 to u1")
+        # u2 <-> u3 conversation, not involving u1
+        backend.chat.add_msg_between_users(u2, u3, "From u2 to u3")
+
+        ch_12 = self._user_channel(u1, u2)
+        ch_23 = self._user_channel(u2, u3)
+        assert len(list(backend.chat.list_conversation(ch_12))) == 2
+        assert len(list(backend.chat.list_conversation(ch_23))) == 1
+
+        backend.chat.delete_for_user(u1)
+
+        # All messages sent or received by u1 are gone
+        assert list(backend.chat.list_conversation(ch_12)) == []
+        # The u2 <-> u3 conversation is untouched
+        assert len(list(backend.chat.list_conversation(ch_23))) == 1
+
+    def test_delete_for_user_empty_id(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """delete_for_user with an empty user id is a harmless no-op."""
+        u1, u2, _ = (u[0] for u in self.USERS)
+        backend.chat.add_msg_between_users(u1, u2, "Should survive")
+        backend.chat.delete_for_user("")
+        ch_12 = self._user_channel(u1, u2)
+        assert len(list(backend.chat.list_conversation(ch_12))) == 1

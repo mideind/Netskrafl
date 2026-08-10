@@ -95,8 +95,9 @@ CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
 connect_blueprint = connect = Blueprint("connect", __name__, url_prefix="/connect")
 
 
-def is_cron_request() -> bool:
-    """Check if the current request is from an authorized scheduler.
+def cron_request_source() -> Optional[str]:
+    """Return the source of an authorized scheduler request, or None
+    if the current request is not from an authorized scheduler.
 
     Supports multiple authentication methods for different deployment environments:
     - GAE Task Queue (X-AppEngine-QueueName header) - only on GAE
@@ -107,25 +108,30 @@ def is_cron_request() -> bool:
     """
     # Local development: always allow
     if running_local:
-        return True
+        return "local"
     headers = request.headers
     # GAE-specific headers: only trust these when running on GAE
     # (these headers can be spoofed on non-GAE platforms)
     if ON_GAE:
         # GAE Task Queue
-        if headers.get("X-AppEngine-QueueName", ""):
-            return True
+        if queue_name := headers.get("X-AppEngine-QueueName", ""):
+            return f"task-queue:{queue_name}"
         # GAE Cron
         if headers.get("X-Appengine-Cron", "") == "true":
-            return True
+            return "gae-cron"
     # Cloud Scheduler: only trust on GCP (GAE or Cloud Run)
     # (this header can be spoofed on non-GCP platforms)
     if ON_GCP and request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true":
-        return True
+        return "cloud-scheduler"
     # External scheduler with secret token (for Docker/Kubernetes deployments)
     if CRON_SECRET and headers.get("X-Cron-Secret", "") == CRON_SECRET:
-        return True
-    return False
+        return "external"
+    return None
+
+
+def is_cron_request() -> bool:
+    """Check if the current request is from an authorized scheduler"""
+    return cron_request_source() is not None
 
 
 def init_firebase_app():

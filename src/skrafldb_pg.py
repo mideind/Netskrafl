@@ -44,15 +44,18 @@ from functools import wraps
 from itertools import zip_longest
 
 from config import (
+    DEFAULT_ELO,
     DEFAULT_LOCALE,
     DEFAULT_THUMBNAIL_SIZE,
     ESTABLISHED_MARK,
 )
 
-# Re-export all shared type definitions from the NDB module.
+# Shared type definitions - canonical definitions are in src.db.protocols.
 # These TypedDicts and dataclasses are backend-agnostic data shapes.
-from skrafldb_ndb import (
-    # Type definitions (shared across backends)
+# Note: importing them from db.protocols (rather than via skrafldb_ndb)
+# keeps the PostgreSQL backend free of any dependency on skrafldb_ndb
+# and thereby on the google-cloud-ndb package.
+from db.protocols import (
     PrefsDict,
     ChallengeTuple,
     StatsDict,
@@ -65,7 +68,12 @@ from skrafldb_ndb import (
     RatingDict,
     RatingForLocaleDict,
     EloDict,
-    DEFAULT_ELO_DICT,  # noqa: F401 - re-exported via skrafldb.py
+)
+
+# Default Elo rating dictionary (re-exported via skrafldb.py);
+# mirrors the definition in skrafldb_ndb.py
+DEFAULT_ELO_DICT = EloDict(
+    elo=DEFAULT_ELO, human_elo=DEFAULT_ELO, manual_elo=DEFAULT_ELO
 )
 
 
@@ -88,8 +96,12 @@ _log = logging.getLogger(__name__)
 def transactional(**_kw: Any) -> Any:
     """No-op replacement for ndb.transactional() on the PostgreSQL backend.
 
-    The PostgreSQL WSGI middleware already wraps each request in a transaction,
-    so there is no need for an additional transactional wrapper here."""
+    The PostgreSQL WSGI middleware already wraps each request in a
+    transaction. Where NDB relies on this decorator for concurrency
+    control (logic.submit_move), the PostgreSQL backend uses row locking
+    instead: the game row is fetched with SELECT ... FOR UPDATE
+    (see GameRepository.get_by_id with for_update=True), which serializes
+    concurrent modifications for the duration of the request transaction."""
 
     def decorator(fn: Any) -> Any:
         @wraps(fn)
@@ -635,12 +647,7 @@ class UserModel:
     ) -> List[Tuple[str, EloDict]]:
         """List users with a similar Elo rating."""
         db = _get_db()
-        result = db.users.list_similar_elo(elo, max_len, locale)
-        # Convert protocol EloDict to skrafldb_ndb EloDict
-        return [
-            (uid, EloDict(ed.elo, ed.human_elo, ed.manual_elo))
-            for uid, ed in result
-        ]
+        return list(db.users.list_similar_elo(elo, max_len, locale))
 
     @classmethod
     def list_top_elo(cls, kind: str, limit: int) -> List[str]:
@@ -1117,10 +1124,15 @@ class GameModel:
         return self.key
 
     @classmethod
-    def fetch(cls, game_uuid: str, use_cache: bool = True) -> Optional[GameModel]:
-        """Fetch a game entity given its uuid."""
+    def fetch(
+        cls, game_uuid: str, use_cache: bool = True, for_update: bool = False
+    ) -> Optional[GameModel]:
+        """Fetch a game entity given its uuid. If for_update is True,
+        the game row is locked (SELECT ... FOR UPDATE) until the end of
+        the current request transaction, serializing concurrent
+        modifications of the same game."""
         db = _get_db()
-        entity = db.games.get_by_id(game_uuid)
+        entity = db.games.get_by_id(game_uuid, for_update=for_update)
         if entity is None:
             return None
         return cls._from_entity(entity)
@@ -1924,8 +1936,11 @@ class ChatModel:
 
     @classmethod
     def delete_for_user(cls, user_id: str) -> None:
-        # Not implemented in PG repository yet, but not commonly needed
-        pass
+        """Delete all ChatModel entries for a particular user"""
+        if not user_id:
+            return
+        db = _get_db()
+        db.chat.delete_for_user(user_id)
 
 
 # ---------------------------------------------------------------------------
