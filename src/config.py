@@ -287,6 +287,16 @@ PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 # Key for transition state in local storage ('legacy' or 'malstadur')
 TRANSITION_KEY = "transition"
 
+# Set SKIP_TRANSITION=true to disable the client-side redirect to the
+# transition/Málstaður UI on Netskrafl, keeping the legacy built-in web
+# UI usable. Intended for smoke testing (e.g. local containers);
+# never set in production.
+SKIP_TRANSITION: bool = os.environ.get("SKIP_TRANSITION", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 
 class Error:
     """Error codes returned from server APIs"""
