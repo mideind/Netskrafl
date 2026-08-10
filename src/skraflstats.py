@@ -69,10 +69,10 @@ from skrafldb import (
     StatsDict,
     StatsResults,
 )
+from basics import cron_request_source
 from skraflgame import Game
 from skraflelo import ESTABLISHED_MARK, compute_elo
 from autoplayers import AUTOPLAYERS
-from firebase import cron_request_source
 
 # Register the Flask blueprint for the stats routes
 stats = stats_blueprint = Blueprint("stats", __name__, url_prefix="/stats")
@@ -783,7 +783,7 @@ def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
 
 
 # Scheduler routes - requests are only accepted when originated
-# by an authorized scheduler (see firebase.cron_request_source())
+# by an authorized scheduler (see basics.cron_request_source())
 
 
 def _scheduler_wait_mode(task_name: str) -> Optional[bool]:

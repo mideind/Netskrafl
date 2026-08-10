@@ -114,7 +114,7 @@ record; Vercel is dropped from consideration.
    and `/stats/ratings`) and the copy-pasted check on `/cacheflush` in
    `src/web.py` accepted only GAE/Cloud Scheduler headers, rejecting the
    container's own `X-Cron-Secret` requests. *Fixed on `prepare-migration`:*
-   cron authorization is unified in `firebase.cron_request_source()`
+   cron authorization is unified in `basics.cron_request_source()`
    (platform-gated GAE/GCP headers, `X-Cron-Secret`, local dev), used by
    `is_cron_request()`, `_scheduler_wait_mode()`, and `/cacheflush`.
 
@@ -130,7 +130,7 @@ record; Vercel is dropped from consideration.
    `src/config.py` called Google Cloud Secret Manager at module import and
    could not boot without it. *Fixed on `prepare-migration`:*
    `src/secret_manager.py` now defines an abstract `SecretProvider` with two
-   implementations — `GoogleSecretManager` (default, unchanged behavior) and
+   implementations — `GoogleSecretProvider` (default, unchanged behavior) and
    `EnvSecretProvider` (`SECRETS_PROVIDER=env`), which reads `<SECRET_ID>`
    or base64-encoded `<SECRET_ID>_BASE64` environment variables and imports
    no Google libraries. Firebase RTDB + FCM (realtime game push, presence

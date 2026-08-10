@@ -11,7 +11,7 @@
     This module defines an abstract SecretProvider interface for obtaining
     application secrets, with two concrete implementations:
 
-    * GoogleSecretManager fetches secrets from Google Cloud Secret Manager
+    * GoogleSecretProvider fetches secrets from Google Cloud Secret Manager
       (the default, used on GAE and wherever GCP credentials are available).
     * EnvSecretProvider fetches secrets from environment variables, allowing
       containerized deployments to run without access to GCP Secret Manager.
@@ -91,12 +91,12 @@ class EnvSecretProvider(SecretProvider):
         )
 
 
-class GoogleSecretManager(SecretProvider):
+class GoogleSecretProvider(SecretProvider):
     """Secret provider that fetches secrets from Google Cloud Secret Manager"""
 
     def __init__(self, project_id: str) -> None:
         """
-        Initialize the GoogleSecretManager with a Google Cloud project ID.
+        Initialize the GoogleSecretProvider with a Google Cloud project ID.
         A SecretManagerServiceClient is created for interacting with Secret Manager.
         """
         # Import authmanager first to ensure credentials are set up
@@ -193,11 +193,6 @@ class GoogleSecretManager(SecretProvider):
             raise
 
 
-# Compatibility alias: SecretManager was the original name of the
-# Google Cloud Secret Manager implementation
-SecretManager = GoogleSecretManager
-
-
 def get_secret_provider(project_id: str) -> SecretProvider:
     """Return the secret provider selected by the SECRETS_PROVIDER
     environment variable: 'google' (the default) for Google Cloud
@@ -210,5 +205,5 @@ def get_secret_provider(project_id: str) -> SecretProvider:
         raise ValueError(
             f"Unknown SECRETS_PROVIDER '{provider}'; expected 'google' or 'env'"
         )
-    return GoogleSecretManager(project_id)
+    return GoogleSecretProvider(project_id)
 

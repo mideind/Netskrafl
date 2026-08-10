@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .backend import PostgreSQLBackend as PostgreSQLBackend
+    from .backend import PostgreSQLBackend
 
 __all__ = ["PostgreSQLBackend"]
 
@@ -25,6 +25,9 @@ def __getattr__(name: str) -> Any:
     if name == "PostgreSQLBackend":
         from .backend import PostgreSQLBackend
 
+        # Cache in the module namespace so subsequent attribute
+        # accesses bypass this hook entirely
+        globals()["PostgreSQLBackend"] = PostgreSQLBackend
         return PostgreSQLBackend
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

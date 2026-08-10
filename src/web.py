@@ -65,6 +65,7 @@ from basics import (
     auth_required,
     current_user_id,
     get_google_auth,
+    is_cron_request,
     jsonify,
     session_data,
     session_user,
@@ -965,7 +966,7 @@ def main() -> ResponseType:
 @web.route("/cacheflush", methods=["GET", "POST"])
 def cache_flush() -> ResponseType:
     """Flush the Redis cache"""
-    if not firebase.is_cron_request():
+    if not is_cron_request():
         # Only allow authorized scheduler requests
         return "Restricted URL", 403
     # Flush the cache
