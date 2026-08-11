@@ -1,0 +1,193 @@
+{
+  "game_id": "046c8922-6564-11f0-89fa-354f5f939501",
+  "ts_last_move": "2025-08-11T18:14:23.481566+00:00",
+  "locale": "is_IS",
+  "prefs": {
+    "duration": 0,
+    "fairplay": false,
+    "newbag": true,
+    "manual": false
+  },
+  "manual": false,
+  "irack0": "shadamt",
+  "irack1": "áfntjtt",
+  "moves": [
+    {
+      "player": 0,
+      "coord": "H4",
+      "tiles": "hamdast",
+      "score": 90,
+      "rack": "aiórðsa"
+    },
+    {
+      "player": 1,
+      "coord": "5E",
+      "tiles": "játan",
+      "score": 26,
+      "rack": "fttsixa"
+    },
+    {
+      "player": 0,
+      "coord": "10F",
+      "tiles": "óstaðari",
+      "score": 72,
+      "rack": "tllýorv"
+    },
+    {
+      "player": 1,
+      "coord": "M9",
+      "tiles": "fixist",
+      "score": 42,
+      "rack": "tamgnír"
+    },
+    {
+      "player": 0,
+      "coord": "4D",
+      "tiles": "vot",
+      "score": 40,
+      "rack": "llýrulþ"
+    },
+    {
+      "player": 1,
+      "coord": "9E",
+      "tiles": "grís",
+      "score": 26,
+      "rack": "tamnnfy"
+    },
+    {
+      "player": 0,
+      "coord": "15L",
+      "tiles": "lull",
+      "score": 50,
+      "rack": "ýrþings"
+    },
+    {
+      "player": 1,
+      "coord": "11E",
+      "tiles": "ym",
+      "score": 22,
+      "rack": "tannfmr"
+    },
+    {
+      "player": 0,
+      "coord": "12D",
+      "tiles": "ýrings",
+      "score": 44,
+      "rack": "þgkas?b"
+    },
+    {
+      "player": 1,
+      "coord": "K5",
+      "tiles": "manntarf",
+      "score": 98,
+      "rack": "aælélkk"
+    },
+    {
+      "player": 0,
+      "coord": "6B",
+      "tiles": "þ?ras",
+      "score": 35,
+      "rack": "gkbkies"
+    },
+    {
+      "player": 1,
+      "coord": "7C",
+      "tiles": "él",
+      "score": 33,
+      "rack": "aælkkeu"
+    },
+    {
+      "player": 0,
+      "coord": "8A",
+      "tiles": "gesi",
+      "score": 40,
+      "rack": "kbkaaði"
+    },
+    {
+      "player": 1,
+      "coord": "H12",
+      "tiles": "gælu",
+      "score": 33,
+      "rack": "akkerne"
+    },
+    {
+      "player": 0,
+      "coord": "13B",
+      "tiles": "bakk",
+      "score": 36,
+      "rack": "aðiðöua"
+    },
+    {
+      "player": 1,
+      "coord": "N14",
+      "tiles": "el",
+      "score": 20,
+      "rack": "akkrnea"
+    },
+    {
+      "player": 0,
+      "coord": "6B",
+      "tiles": "þrasa",
+      "score": 20,
+      "rack": "ðiðöuaú"
+    },
+    {
+      "player": 1,
+      "coord": "N3",
+      "tiles": "rekkana",
+      "score": 69,
+      "rack": "páænurn"
+    },
+    {
+      "player": 0,
+      "coord": "14B",
+      "tiles": "úði",
+      "score": 43,
+      "rack": "ðöuaóiu"
+    },
+    {
+      "player": 1,
+      "coord": "O7",
+      "tiles": "næru",
+      "score": 46,
+      "rack": "pánr?rs"
+    },
+    {
+      "player": 0,
+      "coord": "15A",
+      "tiles": "óða",
+      "score": 33,
+      "rack": "öuiuðuf"
+    },
+    {
+      "player": 1,
+      "coord": "O1",
+      "tiles": "spár",
+      "score": 42,
+      "rack": "n?rit"
+    },
+    {
+      "player": 0,
+      "coord": "14F",
+      "tiles": "föluðu",
+      "score": 27,
+      "rack": "iu"
+    },
+    {
+      "player": 1,
+      "coord": "L2",
+      "tiles": "n?otir",
+      "score": 15,
+      "rack": ""
+    }
+  ],
+  "score0": 530,
+  "score1": 478,
+  "rack0_final": "iu",
+  "rack1_final": "",
+  "num_moves": 24,
+  "num_challenges": 0,
+  "num_challenges_upheld": 0,
+  "num_challenges_rejected": 0,
+  "ends_with_resignation": false
+}

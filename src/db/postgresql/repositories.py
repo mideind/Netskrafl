@@ -143,26 +143,45 @@ class UserRepository:
         preferences: Optional[PrefsDict] = None,
         locale: Optional[str] = None,
     ) -> Tuple[str, PrefsDict]:
-        """Create a new user."""
+        """Create a new user. NDB semantics: put() of a fresh entity
+        under an existing key fully replaces the stored entity, so an
+        existing row is reset to a newly created state."""
         prefs = preferences or {}
-        user = User(
-            id=user_id,
+        values: Dict[str, Any] = dict(
             account=account,
             email=email or "",  # NDB stores "" not NULL
             nickname=nickname,
             nick_lc=nickname.lower(),
             name_lc=prefs.get("full_name", "").lower() if prefs else "",
             image=image or "",  # NDB stores "" not NULL
+            image_blob=None,
             inactive=False,
             prefs=prefs,
             plan="friend" if prefs.get("friend", False) else None,
             locale=locale or "is_IS",
+            location="",
             ready=True,
             ready_timed=True,
+            chat_disabled=False,
+            timestamp=datetime.now(UTC),
             last_login=datetime.now(UTC),
+            elo=0,
+            human_elo=0,
+            manual_elo=0,
+            highest_score=0,
+            highest_score_game=None,
+            best_word=None,
+            best_word_score=0,
+            best_word_game=None,
             games=0,
         )
-        self._session.add(user)
+        user = self._session.get(User, user_id)
+        if user is None:
+            user = User(id=user_id, **values)
+            self._session.add(user)
+        else:
+            for key, value in values.items():
+                setattr(user, key, value)
         self._session.flush()
 
         # Return full preferences with defaults
