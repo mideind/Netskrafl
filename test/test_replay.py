@@ -34,7 +34,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 
 import json
 import os
@@ -354,9 +354,10 @@ def replay_game(
 
 
 @pytest.fixture
-def cleanup_games(u1: str, u2: str):
-    """Delete games (and zombie markers) created by a replay test,
-    so that no test data accumulates in the database"""
+def cleanup_games(u1: str, u2: str) -> Iterator[None]:
+    """Teardown-only fixture: after a replay test completes (pass or
+    fail), delete the games and zombie markers it created, so that no
+    test data accumulates in the database"""
     yield
     with Client.get_context():
         ZombieModel.delete_for_user(u1)
@@ -365,6 +366,7 @@ def cleanup_games(u1: str, u2: str):
         GameModel.delete_for_user(u2)
 
 
+@pytest.mark.usefixtures("cleanup_games")
 @pytest.mark.parametrize(
     "fixture_file",
     FIXTURE_FILES,
@@ -376,7 +378,6 @@ def test_replay(
     client2: CustomClient,
     u1: str,
     u2: str,
-    cleanup_games: None,
 ) -> None:
     """Replay a sampled production game and verify that the engine
     behaves identically to the original"""
