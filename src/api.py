@@ -100,8 +100,8 @@ from logic import (
     process_move,
     rating_for_locale,
     set_online_status_for_chats,
-    autoplayer_lock,
     submit_move,
+    force_resign,
     userlist,
     gamelist,
     recentlist,
@@ -355,26 +355,7 @@ def forceresign_api() -> ResponseType:
     rq = RequestData(request)
     uuid = rq.get("game")
     movecount = rq.get_int("mcount", -1)
-
-    game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
-
-    if game is None:
-        return jsonify(result=Error.GAME_NOT_FOUND)
-
-    # Only the user who is the opponent of the tardy user can force a resign
-    if game.player_id(1 - game.player_to_move()) != user_id:
-        return jsonify(result=Error.WRONG_USER)
-
-    # Make sure the client is in sync with the server:
-    # check the move count
-    if movecount != game.num_moves():
-        return jsonify(result=Error.OUT_OF_SYNC)
-
-    if not game.is_overdue():
-        return jsonify(result=Error.GAME_NOT_OVERDUE)
-
-    # Send in a resign move on behalf of the opponent
-    return process_move(game, ["rsgn"], force_resign=True)
+    return force_resign(uuid, user_id, movecount)
 
 
 @api_route("/wordcheck")
@@ -1207,9 +1188,7 @@ def bestmoves_api() -> ResponseType:
     if rq_move_number <= move_number:
         # How many best moves are being requested?
         num_moves = rq.get_int("num_moves", DEFAULT_BEST_MOVES)
-        # Serialize access to the following section
-        with autoplayer_lock:
-            best_moves = game.best_moves(state, min(num_moves, MAX_BEST_MOVES))
+        best_moves = game.best_moves(state, min(num_moves, MAX_BEST_MOVES))
 
     uid = user.id()
     if uid is not None and game.has_player(uid):

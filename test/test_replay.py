@@ -14,7 +14,7 @@
     Since tile draws from the bag are random, the harness forces them to
     conform to history: after each submitted move, the mover's rack is
     overwritten with the rack recorded in the original game (the same
-    override mechanism that Game._load_locked uses when deserializing a
+    override mechanism that Game._do_load uses when deserializing a
     stored game). The bag is derived state (recalculated on every load
     as full bag minus board minus racks), so forcing the racks keeps the
     entire game state consistent with history.
@@ -88,7 +88,7 @@ def tile_pairs(tiles: str) -> List[Tuple[str, str]]:
 
 def decode_coord(coord: str) -> Tuple[int, int, bool]:
     """Decode a stored move coordinate: 'A15' means horizontal,
-    '15A' means vertical (same convention as Game._load_locked)"""
+    '15A' means vertical (same convention as Game._do_load)"""
     if coord[0] in ROWIDS:
         return ROWIDS.index(coord[0]), int(coord[1:]) - 1, True
     return ROWIDS.index(coord[-1]), int(coord[:-1]) - 1, False
