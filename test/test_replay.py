@@ -24,6 +24,10 @@
     The harness therefore submits only the CHALL move and verifies the
     engine's verdict and rack retraction against the recorded RESP move.
 
+    The suite can be run in parallel tracks with pytest-xdist (e.g.
+    'pytest test/test_replay.py -n 2'): each worker plays with its own
+    pair of test users, so the tracks do not interfere.
+
     NOTE: Replayed moves are validated against the *current* vocabulary.
     A fixture may fail because a word has been added to or removed from
     the vocabulary since the original game was played ("vocabulary
@@ -45,7 +49,7 @@ import pytest
 from skrafldb import Client, GameModel, PrefsDict, ZombieModel
 from skraflgame import Game
 
-from utils import CustomClient, login_user
+from utils import CustomClient, UserPair, create_worker_user_pair, login_user
 
 # Error codes used in API responses
 LEGAL = 0
@@ -153,16 +157,16 @@ def create_game(
     fixture: Fixture,
     client1: CustomClient,
     client2: CustomClient,
-    u1: str,
-    u2: str,
+    users: UserPair,
 ) -> Tuple[str, Dict[int, CustomClient]]:
     """Create a game between the two test users with the fixture's
     preferences and initial racks. Returns the game id and a mapping
     from fixture player index (0 moves first) to the API client that
     plays that side."""
-    resp = login_user(client1, 1)
+    (ix1, u1), (ix2, u2) = users
+    resp = login_user(client1, ix1)
     assert resp.status_code == 200
-    resp = login_user(client2, 2)
+    resp = login_user(client2, ix2)
     assert resp.status_code == 200
 
     locale: str = fixture["locale"]
@@ -354,16 +358,23 @@ def replay_game(
 
 
 @pytest.fixture
-def cleanup_games(u1: str, u2: str) -> Iterator[None]:
+def replay_users() -> UserPair:
+    """The pair of test users playing the replayed game; unique per
+    pytest-xdist worker, so the suite can run with e.g. 'pytest -n 2'
+    for two parallel replay tracks against the same database"""
+    return create_worker_user_pair()
+
+
+@pytest.fixture
+def cleanup_games(replay_users: UserPair) -> Iterator[None]:
     """Teardown-only fixture: after a replay test completes (pass or
     fail), delete the games and zombie markers it created, so that no
     test data accumulates in the database"""
     yield
     with Client.get_context():
-        ZombieModel.delete_for_user(u1)
-        ZombieModel.delete_for_user(u2)
-        GameModel.delete_for_user(u1)
-        GameModel.delete_for_user(u2)
+        for _, uid in replay_users:
+            ZombieModel.delete_for_user(uid)
+            GameModel.delete_for_user(uid)
 
 
 @pytest.mark.usefixtures("cleanup_games")
@@ -376,13 +387,12 @@ def test_replay(
     fixture_file: str,
     client1: CustomClient,
     client2: CustomClient,
-    u1: str,
-    u2: str,
+    replay_users: UserPair,
 ) -> None:
     """Replay a sampled production game and verify that the engine
     behaves identically to the original"""
     with open(fixture_file, encoding="utf-8") as f:
         fixture: Fixture = json.load(f)
-    game_id, clients = create_game(fixture, client1, client2, u1, u2)
+    game_id, clients = create_game(fixture, client1, client2, replay_users)
     replay_game(fixture, game_id, clients)
 

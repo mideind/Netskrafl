@@ -299,8 +299,8 @@ class Game:
         support row locking (PostgreSQL) lock the game row until the
         end of the current request transaction, serializing concurrent
         modifications of the same game."""
-        with Game._lock:
-            # Ensure that the game load does not introduce race conditions
+
+        def do_load() -> Optional[Game]:
             try:
                 return cls._load_locked(
                     uuid,
@@ -322,6 +322,22 @@ class Game:
                         for_update=for_update,
                     )
             return None
+
+        if for_update:
+            # A row-locking load: the database serializes concurrent
+            # access to the game, and the SELECT ... FOR UPDATE may
+            # block until a concurrent request's transaction commits.
+            # The class lock must not be held while blocking on the
+            # database: a thread waiting for the row lock while holding
+            # the class lock would deadlock against the row lock holder,
+            # whose store() needs the class lock before its transaction
+            # can commit. The class lock is not needed on this path,
+            # which touches no shared in-process state (for_update
+            # callers pass use_cache=False).
+            return do_load()
+        with Game._lock:
+            # Ensure that the game load does not introduce race conditions
+            return do_load()
 
     def store(self, *, calc_elo_points: bool) -> None:
         """Store the game state in persistent storage"""

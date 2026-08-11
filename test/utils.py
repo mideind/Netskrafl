@@ -8,7 +8,7 @@
 """
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import sys
 import os
@@ -132,6 +132,30 @@ def create_user(idx: int, locale: str = "en_US") -> str:
         assert not prefs.get("fanfare")
         assert not prefs.get("fairplay")
         return user_id
+
+
+# A pair of test users, each as an (index, user_id) tuple
+UserPair = Tuple[Tuple[int, str], Tuple[int, str]]
+
+
+def xdist_worker_index() -> int:
+    """Return the pytest-xdist worker index (0 for 'gw0', 1 for 'gw1',
+    and so on), or 0 when not running under pytest-xdist"""
+    wid = os.environ.get("PYTEST_XDIST_WORKER", "")
+    if wid.startswith("gw") and wid[2:].isdigit():
+        return int(wid[2:])
+    return 0
+
+
+def create_worker_user_pair() -> UserPair:
+    """Create (or reset) a pair of test users unique to the current
+    pytest-xdist worker, so that parallel workers can play games
+    concurrently without interfering with each other's game lists,
+    challenges or live-game counts. Indices start at 10 to stay clear
+    of the fixed test users 1-3."""
+    w = xdist_worker_index()
+    ix1, ix2 = 10 + 2 * w, 11 + 2 * w
+    return (ix1, create_user(ix1)), (ix2, create_user(ix2))
 
 
 @pytest.fixture
