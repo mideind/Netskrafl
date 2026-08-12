@@ -95,14 +95,24 @@ services:
         value: REPLACE_ME_base64_service_account_json
 
       # --- Redis / Valkey --------------------------------------------------
-      # Managed Valkey cluster over the private VPC. Prefer binding an
-      # attached database (see the `databases:` block below) over pasting a
-      # literal URL, so credential rotation does not require a spec edit:
-      #   value: ${valkey.DATABASE_URL}
+      # Miðeind's existing shared Valkey clusters are reused (decision
+      # 2026-08-12): db-redis-gsapi-staging for staging/dev, db-redis-gsapi-prod
+      # for production. Tenants are separated by *logical database*, selected
+      # with a /N suffix on the connection URL (verified working on DO managed
+      # Valkey 8, including URL-based selection, SELECT, and FLUSHDB being
+      # scoped to the selected database):
+      #   db 0: gsapi (both clusters)
+      #   staging db 1: explo-dev / netskrafl-staging
+      #   prod db 1: netskrafl, prod db 2: explo-live
+      # Note: a ${...DATABASE_URL} attached-database binding would yield db 0,
+      # so the URL is set explicitly here, e.g.
+      #   rediss://default:<password>@<staging-host>:25061/1
+      # Additionally, cache.py's flush() only deletes the app's own key
+      # patterns (no FLUSHDB), so /cacheflush is shared-tenant-safe either way.
       - key: REDIS_URL
         scope: RUN_TIME
         type: SECRET
-        value: REPLACE_ME_rediss_url
+        value: REPLACE_ME_rediss_url_with_db_number
 
       # --- Firebase ---------------------------------------------------------
       # No env var needed: FIREBASE_DB_URL, FIREBASE_API_KEY et al. are read
@@ -149,10 +159,15 @@ services:
 # (`und`) rather than DO's default - see the PostgreSQL collation notes in
 # CLAUDE.md. DO's stock `defaultdb` does not use it.
 #
+# For Valkey, the existing shared gsapi cluster is reused (see the REDIS_URL
+# note above). Attaching it here is still useful — it adds this app to the
+# cluster's trusted sources — but its ${valkey.DATABASE_URL} binding points at
+# db 0, so REDIS_URL must stay an explicit URL with the /N database suffix.
+#
 # databases:
 #   - name: valkey
 #     engine: VALKEY
-#     cluster_name: netskrafl-valkey-staging
+#     cluster_name: db-redis-gsapi-staging
 #     production: true
 #   - name: pg
 #     engine: PG
