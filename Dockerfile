@@ -123,27 +123,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Optional: Install supercronic for container-friendly cron scheduling
-# Only installed if CRON_SECRET is set at build time (same var used at runtime)
-# TARGETARCH is set by BuildKit; default to amd64 for platforms that don't set it
+# Install supercronic for container-friendly cron scheduling. The binary is
+# installed unconditionally (small static executable); whether it *runs* is
+# decided at container start by docker-entrypoint.sh, which only launches it
+# when CRON_SECRET is set. (It was previously gated on a CRON_SECRET build
+# ARG, but on DO App Platform the secret is a runtime env var, so the binary
+# was silently absent from the image - and image content should not depend
+# on a secret's build-time presence in any case.)
+# TARGETARCH is set by BuildKit; default to amd64 for builders that don't
+# set it (e.g. kaniko on DO App Platform)
 # SHA1 checksums from https://github.com/aptible/supercronic/releases/tag/v0.2.42
-ARG CRON_SECRET
 ARG TARGETARCH=amd64
 RUN set -e; \
-    if [ -n "${CRON_SECRET}" ]; then \
-      SUPERCRONIC_VERSION=v0.2.42; \
-      case "${TARGETARCH}" in \
-        amd64) SUPERCRONIC_SHA1=b444932b81583b7860849f59fdb921217572ece2 ;; \
-        arm64) SUPERCRONIC_SHA1=5193ea5292dda3ad949d0623e178e420c26bfad2 ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
-      esac; \
-      curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
-        -o /usr/local/bin/supercronic \
-      && echo "${SUPERCRONIC_SHA1}  /usr/local/bin/supercronic" | sha1sum -c - \
-      && chmod +x /usr/local/bin/supercronic; \
-    else \
-      echo "Skipping supercronic installation (CRON_SECRET not set)"; \
-    fi
+    SUPERCRONIC_VERSION=v0.2.42; \
+    case "${TARGETARCH}" in \
+      amd64) SUPERCRONIC_SHA1=b444932b81583b7860849f59fdb921217572ece2 ;; \
+      arm64) SUPERCRONIC_SHA1=5193ea5292dda3ad949d0623e178e420c26bfad2 ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
+      -o /usr/local/bin/supercronic \
+    && echo "${SUPERCRONIC_SHA1}  /usr/local/bin/supercronic" | sha1sum -c - \
+    && chmod +x /usr/local/bin/supercronic
 
 WORKDIR /app
 
