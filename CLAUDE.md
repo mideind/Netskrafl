@@ -218,9 +218,15 @@ on push to the dedicated `do-deploy` branch. Firebase and other client-secret
 values are *not* set as env vars - they are fetched from Secret Manager keyed by
 `PROJECT_ID` (`src/config.py:166,186`), so they follow the project automatically.
 
-**Not yet exercised:** no Valkey/Redis cluster is attached, so `/health/ready`
-fails, no `health_check` is configured, and `CRON_SECRET` is deliberately unset
-(which keeps supercronic, and therefore all scheduled jobs, switched off - see
+**Redis/Valkey (since 2026-08-12):** the app uses Miðeind's shared Valkey
+cluster `db-redis-gsapi-staging`, **logical database 1** (`REDIS_URL` set to
+the cluster URI with a `/1` suffix; db 0 belongs to gsapi — see the Valkey
+notes in `.do/app.yaml` for the full tenant assignment, and note that
+`cache.py`'s `flush()` deliberately avoids `FLUSHDB` for this reason).
+`/health/ready` passes and a `health_check` on it gates deployments.
+
+**Not yet exercised:** `CRON_SECRET` is deliberately unset (which keeps
+supercronic, and therefore all scheduled jobs, switched off - see
 `docker-entrypoint.sh`). The PostgreSQL backend has never been deployed here.
 Note the instance has 1 GB against GAE production's 2 GB (`B4_1G`) with the same
 three gunicorn workers, so it is not a valid load-testing baseline as sized.
