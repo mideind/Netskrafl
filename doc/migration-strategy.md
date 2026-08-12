@@ -128,9 +128,12 @@ netskrafl project has no instance of it. Consumers:
   **hardcoded appspot.com URLs** (`RIDDLE_ENDPOINT_DEV/_PROD` in
   `src/riddle.py`); explo-live uses the prod endpoint, everything else —
   including production netskrafl — uses the dev endpoint (a standing TODO).
-- **The Explo mobile client** (`explo-front`) calls `/moves` directly,
-  configured via `movesApiUrl` / `movesAccessKey` in its Expo config, with
-  CORS handled by the service (`ALLOWED_ORIGINS`).
+- **The Explo mobile client** (`explo-front`) calls `/moves` and
+  `/wordcheck` directly, configured via `movesApiUrl` / `movesAccessKey` in
+  its Expo config, with CORS handled by the service (`ALLOWED_ORIGINS`).
+  The Go `/wordcheck` is deliberately API-identical to the Flask one, and
+  current clients prefer it because it is much faster; the Flask route
+  remains for the built-in web UI (session-cookie rather than bearer auth).
 
 Porting needs: GoSkrafl has **no Dockerfile** and no DO deployment. The
 service is a good container citizen (static Go binary + embedded DAWGs,
