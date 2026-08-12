@@ -199,3 +199,37 @@ improvement; parts of the app also sort client-side via `Alphabet` in
   are being run locally.* Also, adding comments to utility programs to this effect is useful.
 - `netskrafl_lint.py` is **not** a linter - it is a separate utility program.
   Do not invoke it for code quality checks. Only run it when specifically asked.
+
+## Digital Ocean deployment experiment (status as of 2026-08-12)
+
+A container deployment test runs on DO App Platform as the app
+`netskrafl-staging` (region ams,
+`https://netskrafl-staging-fvmuj.ondigitalocean.app`). It was first stood up in
+January 2026 against the **NDB** backend, proving that hosting can be migrated
+independently of the database, and was revived and repointed on 2026-08-12. The
+app spec is checked in at `.do/app.yaml` as a reference copy; the live spec
+remains the source of truth, so edit it by round-tripping
+`doctl apps spec get` → edit → `doctl apps update` rather than applying the
+checked-in file (which would overwrite encrypted secrets with placeholders).
+
+**Current configuration:** `PROJECT_ID=explo-dev` with the explo-dev service
+account, `DATABASE_BACKEND=ndb`, one `apps-s-1vcpu-1gb` instance, auto-deploying
+on push to the dedicated `do-deploy` branch. Firebase and other client-secret
+values are *not* set as env vars - they are fetched from Secret Manager keyed by
+`PROJECT_ID` (`src/config.py:166,186`), so they follow the project automatically.
+
+**Not yet exercised:** no Valkey/Redis cluster is attached, so `/health/ready`
+fails, no `health_check` is configured, and `CRON_SECRET` is deliberately unset
+(which keeps supercronic, and therefore all scheduled jobs, switched off - see
+`docker-entrypoint.sh`). The PostgreSQL backend has never been deployed here.
+Note the instance has 1 GB against GAE production's 2 GB (`B4_1G`) with the same
+three gunicorn workers, so it is not a valid load-testing baseline as sized.
+
+**Build gotcha - App Platform builds with kaniko, not BuildKit.** kaniko does
+not support heredocs in `RUN`: it passes only the first line and silently
+discards the body, so failures surface later and misleadingly. The DAWG list
+derivation was affected and now lives in `utils/list_dawgs.py` instead. Related:
+`.dockerignore` excludes `utils/` wholesale, so build-time helpers there need an
+explicit `!utils/<file>` re-inclusion or their `COPY` fails during context
+resolution, before any stage runs. Validate Dockerfile changes against a kaniko
+build, not just a local `docker build`.

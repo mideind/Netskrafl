@@ -1,0 +1,221 @@
+{
+  "game_id": "6c78af72-7514-11f0-923c-b3815ebdfde1",
+  "ts_last_move": "2025-08-11T15:56:46.760601+00:00",
+  "locale": "is_IS",
+  "prefs": {
+    "duration": 0,
+    "fairplay": false,
+    "newbag": true,
+    "manual": false
+  },
+  "manual": false,
+  "irack0": "iæuktúm",
+  "irack1": "isráíag",
+  "moves": [
+    {
+      "player": 0,
+      "coord": "H4",
+      "tiles": "kútum",
+      "score": 28,
+      "rack": "iæyðrnt"
+    },
+    {
+      "player": 1,
+      "coord": "3H",
+      "tiles": "sígari",
+      "score": 43,
+      "rack": "ánöealv"
+    },
+    {
+      "player": 0,
+      "coord": "J1",
+      "tiles": "rægið",
+      "score": 19,
+      "rack": "ynt?tnd"
+    },
+    {
+      "player": 1,
+      "coord": "1H",
+      "tiles": "vörn",
+      "score": 39,
+      "rack": "áealrft"
+    },
+    {
+      "player": 0,
+      "coord": "G8",
+      "tiles": "ytt",
+      "score": 20,
+      "rack": "n?ndasu"
+    },
+    {
+      "player": 1,
+      "coord": "F10",
+      "tiles": "efla",
+      "score": 26,
+      "rack": "árthsri"
+    },
+    {
+      "player": 0,
+      "coord": "7G",
+      "tiles": "dunu",
+      "score": 36,
+      "rack": "?nasabó"
+    },
+    {
+      "player": 1,
+      "coord": "11D",
+      "tiles": "háfist",
+      "score": 44,
+      "rack": "rrngiaa"
+    },
+    {
+      "player": 0,
+      "coord": "H11",
+      "tiles": "snasa",
+      "score": 18,
+      "rack": "?bóxðr?"
+    },
+    {
+      "player": 1,
+      "coord": "8J",
+      "tiles": "nagari",
+      "score": 36,
+      "rack": "rkellru"
+    },
+    {
+      "player": 0,
+      "coord": "14H",
+      "tiles": "s?ax",
+      "score": 31,
+      "rack": "bóðr?ri"
+    },
+    {
+      "player": 1,
+      "coord": "13J",
+      "tiles": "eklu",
+      "score": 31,
+      "rack": "rlrktað"
+    },
+    {
+      "player": 0,
+      "coord": "K7",
+      "tiles": "raðir",
+      "score": 23,
+      "rack": "bó?alpó"
+    },
+    {
+      "player": 1,
+      "coord": "12B",
+      "tiles": "trall",
+      "score": 31,
+      "rack": "rkðliun"
+    },
+    {
+      "player": 0,
+      "coord": "15G",
+      "tiles": "bala",
+      "score": 25,
+      "rack": "ó?pónmk"
+    },
+    {
+      "player": 1,
+      "coord": "B9",
+      "tiles": "kultið",
+      "score": 30,
+      "rack": "rnajtau"
+    },
+    {
+      "player": 0,
+      "coord": "A8",
+      "tiles": "kóp",
+      "score": 42,
+      "rack": "?ónmuaý"
+    },
+    {
+      "player": 1,
+      "coord": "K13",
+      "tiles": "kar",
+      "score": 26,
+      "rack": "njtausþ"
+    },
+    {
+      "player": 0,
+      "coord": "1H",
+      "tiles": "vörnun?um",
+      "score": 60,
+      "rack": "óaýsoás"
+    },
+    {
+      "player": 1,
+      "coord": "5G",
+      "tiles": "þúaðu",
+      "score": 32,
+      "rack": "njtsgmæ"
+    },
+    {
+      "player": 0,
+      "coord": "7A",
+      "tiles": "sýs",
+      "score": 19,
+      "rack": "óaoáfes"
+    },
+    {
+      "player": 1,
+      "coord": "A13",
+      "tiles": "tæm",
+      "score": 33,
+      "rack": "njsgéði"
+    },
+    {
+      "player": 0,
+      "coord": "N6",
+      "tiles": "fera",
+      "score": 14,
+      "rack": "óoásrfn"
+    },
+    {
+      "player": 1,
+      "coord": "O5",
+      "tiles": "séði",
+      "score": 26,
+      "rack": "njgi"
+    },
+    {
+      "player": 0,
+      "coord": "12H",
+      "tiles": "nás",
+      "score": 25,
+      "rack": "óorfn"
+    },
+    {
+      "player": 1,
+      "coord": "10J",
+      "tiles": "gini",
+      "score": 12,
+      "rack": "j"
+    },
+    {
+      "player": 0,
+      "coord": "6B",
+      "tiles": "róf",
+      "score": 21,
+      "rack": "on"
+    },
+    {
+      "player": 1,
+      "coord": "C5",
+      "tiles": "jós",
+      "score": 10,
+      "rack": ""
+    }
+  ],
+  "score0": 381,
+  "score1": 431,
+  "rack0_final": "on",
+  "rack1_final": "",
+  "num_moves": 28,
+  "num_challenges": 0,
+  "num_challenges_upheld": 0,
+  "num_challenges_rejected": 0,
+  "ends_with_resignation": false
+}

@@ -33,7 +33,6 @@ from typing import (
     cast,
 )
 
-import threading
 from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
@@ -198,8 +197,6 @@ class Game:
     # waiting player can force the tardy opponent to resign
     OVERDUE_DAYS = 14
 
-    _lock = threading.Lock()
-
     def __init__(self, *, locale: str, uuid: Optional[str] = None) -> None:
         # Unique id of the game
         self.uuid = uuid
@@ -298,39 +295,39 @@ class Game:
         to the game locale. If for_update is True, backends that
         support row locking (PostgreSQL) lock the game row until the
         end of the current request transaction, serializing concurrent
-        modifications of the same game."""
-        with Game._lock:
-            # Ensure that the game load does not introduce race conditions
-            try:
-                return cls._load_locked(
+        modifications of the same game. Note that no in-process locking
+        is done here: each request deserializes its own Game instance,
+        and concurrent modification of the same game is serialized by
+        the database layer (row locking on PostgreSQL, transactions
+        on NDB)."""
+        try:
+            return cls._do_load(
+                uuid,
+                use_cache=use_cache,
+                set_locale=set_locale,
+                for_update=for_update,
+            )
+        except KeyError:
+            # Hack to handle older game objects that have no associated
+            # locale. If we run Explo on such data, the default locale
+            # is en_US, but the game may use the Icelandic tile set, which
+            # causes KeyError to be raised upon loading. In that case,
+            # we try again with the locale forced to is_IS.
+            if set_locale and DEFAULT_LOCALE != "is_IS":
+                return cls._do_load(
                     uuid,
                     use_cache=use_cache,
-                    set_locale=set_locale,
+                    force_locale="is_IS",
                     for_update=for_update,
                 )
-            except KeyError:
-                # Hack to handle older game objects that have no associated
-                # locale. If we run Explo on such data, the default locale
-                # is en_US, but the game may use the Icelandic tile set, which
-                # causes KeyError to be raised upon loading. In that case,
-                # we try again with the locale forced to is_IS.
-                if set_locale and DEFAULT_LOCALE != "is_IS":
-                    return cls._load_locked(
-                        uuid,
-                        use_cache=use_cache,
-                        force_locale="is_IS",
-                        for_update=for_update,
-                    )
-            return None
+        return None
 
     def store(self, *, calc_elo_points: bool) -> None:
         """Store the game state in persistent storage"""
-        # Avoid race conditions by securing the lock before storing
-        with Game._lock:
-            self._store_locked(calc_elo_points=calc_elo_points)
+        self._do_store(calc_elo_points=calc_elo_points)
 
     @classmethod
-    def _load_locked(
+    def _do_load(
         cls,
         uuid: str,
         *,
@@ -475,15 +472,15 @@ class Game:
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
                 # (This also calls game.set_elo_delta())
-                game._store_locked(calc_elo_points=True)
+                game._do_store(calc_elo_points=True)
             else:
                 # Fill in the game.elo_delta and game.elo_now dictionaries
                 game.set_elo_delta(gm)
 
         return game
 
-    def _store_locked(self, *, calc_elo_points: bool) -> None:
-        """Store the game after having acquired the object lock"""
+    def _do_store(self, *, calc_elo_points: bool) -> None:
+        """Store the game in persistent storage"""
 
         assert self.uuid is not None
 

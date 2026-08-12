@@ -1,0 +1,221 @@
+{
+  "game_id": "5a2ce73a-73a1-11f0-aea1-4f07a25636e0",
+  "ts_last_move": "2025-08-13T11:43:28.710806+00:00",
+  "locale": "is_IS",
+  "prefs": {
+    "duration": 0,
+    "fairplay": true,
+    "newbag": true,
+    "manual": true
+  },
+  "manual": true,
+  "irack0": "rarkaæy",
+  "irack1": "áskmiau",
+  "moves": [
+    {
+      "player": 0,
+      "coord": "",
+      "tiles": "EXCH æy",
+      "score": 0,
+      "rack": "rarkast"
+    },
+    {
+      "player": 1,
+      "coord": "H4",
+      "tiles": "kisum",
+      "score": 20,
+      "rack": "áafeatn"
+    },
+    {
+      "player": 0,
+      "coord": "5B",
+      "tiles": "rakastir",
+      "score": 70,
+      "rack": "sreðalr"
+    },
+    {
+      "player": 1,
+      "coord": "6B",
+      "tiles": "ef",
+      "score": 26,
+      "rack": "áaatnng"
+    },
+    {
+      "player": 0,
+      "coord": "A6",
+      "tiles": "seðlar",
+      "score": 37,
+      "rack": "rðhilöu"
+    },
+    {
+      "player": 1,
+      "coord": "B10",
+      "tiles": "táanna",
+      "score": 37,
+      "rack": "glævrna"
+    },
+    {
+      "player": 0,
+      "coord": "15A",
+      "tiles": "halirðu",
+      "score": 42,
+      "rack": "öngeíiæ"
+    },
+    {
+      "player": 1,
+      "coord": "D2",
+      "tiles": "vænkar",
+      "score": 36,
+      "rack": "glgóyir"
+    },
+    {
+      "player": 0,
+      "coord": "F5",
+      "tiles": "söng",
+      "score": 23,
+      "rack": "eíiæitd"
+    },
+    {
+      "player": 1,
+      "coord": "9C",
+      "tiles": "yggli",
+      "score": 35,
+      "rack": "órfks?s"
+    },
+    {
+      "player": 0,
+      "coord": "D11",
+      "tiles": "deiti",
+      "score": 24,
+      "rack": "íæilnut"
+    },
+    {
+      "player": 1,
+      "coord": "E11",
+      "tiles": "óf",
+      "score": 34,
+      "rack": "rks?soý"
+    },
+    {
+      "player": 0,
+      "coord": "10F",
+      "tiles": "il",
+      "score": 24,
+      "rack": "íænutba"
+    },
+    {
+      "player": 1,
+      "coord": "13A",
+      "tiles": "knýi",
+      "score": 18,
+      "rack": "rs?soér"
+    },
+    {
+      "player": 0,
+      "coord": "E1",
+      "tiles": "bít",
+      "score": 26,
+      "rack": "ænuaafs"
+    },
+    {
+      "player": 1,
+      "coord": "1E",
+      "tiles": "bors",
+      "score": 36,
+      "rack": "?séraul"
+    },
+    {
+      "player": 0,
+      "coord": "4H",
+      "tiles": "kæfuna",
+      "score": 31,
+      "rack": "asrnjðt"
+    },
+    {
+      "player": 1,
+      "coord": "E8",
+      "tiles": "ég",
+      "score": 20,
+      "rack": "?sraulð"
+    },
+    {
+      "player": 0,
+      "coord": "M1",
+      "tiles": "stjarnað",
+      "score": 82,
+      "rack": "xnukópt"
+    },
+    {
+      "player": 1,
+      "coord": "",
+      "tiles": "CHALL",
+      "score": 0,
+      "rack": "?sraulð"
+    },
+    {
+      "player": 0,
+      "coord": "",
+      "tiles": "RESP",
+      "score": -82,
+      "rack": "asrnjðt"
+    },
+    {
+      "player": 1,
+      "coord": "M2",
+      "tiles": "?draslaðu",
+      "score": 76,
+      "rack": "móiúsut"
+    },
+    {
+      "player": 0,
+      "coord": "K3",
+      "tiles": "juð",
+      "score": 20,
+      "rack": "asrntaþ"
+    },
+    {
+      "player": 1,
+      "coord": "8K",
+      "tiles": "túðum",
+      "score": 48,
+      "rack": "óisnpak"
+    },
+    {
+      "player": 0,
+      "coord": "3B",
+      "tiles": "þrætan",
+      "score": 34,
+      "rack": "stami?x"
+    },
+    {
+      "player": 1,
+      "coord": "14F",
+      "tiles": "óp",
+      "score": 32,
+      "rack": "isnakáu"
+    },
+    {
+      "player": 0,
+      "coord": "I7",
+      "tiles": "mixast?u",
+      "score": 88,
+      "rack": ""
+    },
+    {
+      "player": 1,
+      "coord": "",
+      "tiles": "PASS",
+      "score": 0,
+      "rack": "isnakáu"
+    }
+  ],
+  "score0": 441,
+  "score1": 418,
+  "rack0_final": "",
+  "rack1_final": "isnakáu",
+  "num_moves": 28,
+  "num_challenges": 1,
+  "num_challenges_upheld": 1,
+  "num_challenges_rejected": 0,
+  "ends_with_resignation": false
+}
