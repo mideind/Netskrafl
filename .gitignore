@@ -56,9 +56,11 @@ static/*.min.js
 # JavaScript built from TypeScript
 static/built/
 
-# Python package folders required for AppEngine
-lib/
-lib64/
+# Python package folders required for AppEngine (root level only;
+# an unanchored lib/ would also swallow static/lib/, the vendored
+# third-party JS used by the built-in web UI)
+/lib/
+/lib64/
 
 # Scratch work files
 templates/main-scratch.html
