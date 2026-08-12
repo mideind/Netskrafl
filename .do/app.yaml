@@ -1,0 +1,161 @@
+# Digital Ocean App Platform spec for Netskrafl/Explo container deployment.
+#
+# This is the *reference* copy of the app spec, kept in git so the
+# configuration does not live only in the DO control panel. The live app is
+# `netskrafl-staging` (region ams3), used for container/PostgreSQL migration
+# testing - see doc/migration-strategy.md and doc/dockerization-plan.md.
+#
+# ---------------------------------------------------------------------------
+# SECRETS: never commit real values
+# ---------------------------------------------------------------------------
+# Values marked `type: SECRET` below are placeholders. In the live app they are
+# stored encrypted and read back as opaque `EV[1:...]` ciphertext, which is
+# bound to that one app and cannot be reused elsewhere.
+#
+# Applying this file verbatim to the live app WILL OVERWRITE the encrypted
+# secrets with these placeholder strings. To modify the running app, always
+# round-trip the live spec instead:
+#
+#   doctl apps spec get <APP_ID> > /tmp/live-spec.yaml
+#   # edit /tmp/live-spec.yaml, leaving every EV[1:...] value untouched
+#   doctl apps update <APP_ID> --spec /tmp/live-spec.yaml
+#
+# Use this file as-is only when creating a *new* app from scratch
+# (`doctl apps create --spec .do/app.yaml`), then set the real secret values
+# in the control panel with "Encrypt" checked.
+# ---------------------------------------------------------------------------
+
+name: netskrafl-staging
+region: ams
+
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
+
+ingress:
+  rules:
+    - component:
+        name: netskrafl
+      match:
+        path:
+          prefix: /
+
+services:
+  - name: netskrafl
+
+    # Build from the repository Dockerfile (5-stage: uv, DAWG download from the
+    # DO Spaces CDN, frontend build, supercronic, non-root runtime).
+    dockerfile_path: /Dockerfile
+    source_dir: /
+
+    github:
+      repo: mideind/Netskrafl
+      # Deployment testing tracks a dedicated branch rather than master, so an
+      # ordinary push to master cannot redeploy this app.
+      branch: do-deploy
+      deploy_on_push: true
+
+    http_port: 8080
+    instance_count: 1
+    # The container runs 3 gunicorn workers, each loading ~14 MB of DAWG
+    # vocabularies. GAE production uses B4_1G (2 GB) per instance, so 1 GB here
+    # is the tighter constraint - watch memory before trusting a load test.
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    # /health/ready reports Redis (and, on the PG backend, database)
+    # reachability; /health/live is process-liveness only. Readiness is the
+    # right gate for rollouts - a deploy that cannot reach Redis should fail
+    # rather than serve.
+    health_check:
+      http_path: /health/ready
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 3
+
+    envs:
+      # --- Application identity -------------------------------------------
+      # Point deployment tests at explo-dev, NOT the netskrafl production
+      # project: the container runs the real cron jobs (/stats/run writes
+      # aggregate statistics) against whatever project this names.
+      - key: PROJECT_ID
+        scope: RUN_AND_BUILD_TIME
+        value: explo-dev
+
+      - key: APP_VERSION
+        scope: RUN_AND_BUILD_TIME
+        value: 0.0.1
+
+      # --- Google Cloud credentials ---------------------------------------
+      # Base64-encoded service account JSON for PROJECT_ID above.
+      # Required for the NDB backend, and for Firebase in both backends.
+      - key: GOOGLE_CREDENTIALS_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_service_account_json
+
+      # --- Redis / Valkey --------------------------------------------------
+      # Managed Valkey cluster over the private VPC. Prefer binding an
+      # attached database (see the `databases:` block below) over pasting a
+      # literal URL, so credential rotation does not require a spec edit:
+      #   value: ${valkey.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_rediss_url
+
+      # --- Firebase ---------------------------------------------------------
+      # No env var needed: FIREBASE_DB_URL, FIREBASE_API_KEY et al. are read
+      # from the per-project client secret via Secret Manager
+      # (src/config.py:231-243), so they follow PROJECT_ID automatically.
+      # The service account above must have Secret Manager access.
+
+      # --- Scheduled jobs ---------------------------------------------------
+      # docker-entrypoint.sh starts supercronic only when CRON_SECRET is set;
+      # leave it unset to run the app with no scheduled jobs at all. The value
+      # authenticates the crontab's localhost calls (src/basics.py:114).
+      # NOTE: with this set, /connect/update runs every 2 minutes and
+      # /stats/run + /stats/ratings run nightly against PROJECT_ID.
+      - key: CRON_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_random_string
+
+      # --- Database backend -------------------------------------------------
+      # "ndb" (default) or "postgresql". The January 2026 deployment ran ndb,
+      # proving the hosting migration independently of the database migration.
+      - key: DATABASE_BACKEND
+        scope: RUN_AND_BUILD_TIME
+        value: ndb
+
+      # Required only when DATABASE_BACKEND=postgresql. docker-entrypoint.sh
+      # runs `alembic upgrade head` at startup when the PG backend is active -
+      # safe at instance_count: 1, but concurrent instances would race, and a
+      # pre-Alembic schema needs a one-time `alembic stamp head` first.
+      # Prefer the binding form: value: ${pg.DATABASE_URL}
+      # - key: DATABASE_URL
+      #   scope: RUN_TIME
+      #   type: SECRET
+      #   value: REPLACE_ME_postgres_url
+
+# ---------------------------------------------------------------------------
+# Managed databases
+# ---------------------------------------------------------------------------
+# Attach existing clusters here so their credentials can be referenced as
+# ${<name>.DATABASE_URL} above instead of being pasted as literals.
+#
+# The PostgreSQL cluster must be 15+ for ICU collation support, and the
+# application database should be created with the neutral ICU root collation
+# (`und`) rather than DO's default - see the PostgreSQL collation notes in
+# CLAUDE.md. DO's stock `defaultdb` does not use it.
+#
+# databases:
+#   - name: valkey
+#     engine: VALKEY
+#     cluster_name: netskrafl-valkey-staging
+#     production: true
+#   - name: pg
+#     engine: PG
+#     cluster_name: netskrafl-pg-staging
+#     db_name: netskrafl
+#     production: true

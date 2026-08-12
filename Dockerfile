@@ -63,18 +63,19 @@ WORKDIR /dawg
 # src/wordbase.py. Derive the download list from it at build time so the
 # Dockerfile can never drift out of sync with the application code:
 # adding or removing a DAWG in wordbase.py is automatically reflected here.
+#
+# list_dawgs.py parses wordbase.py with `ast` rather than importing it,
+# because this stage has none of the app's dependencies installed and
+# importing `config` would reach out to Google Secret Manager. See the
+# module docstring for the full rationale.
+#
+# NOTE: this deliberately does NOT use a `RUN python - <<'EOF'` heredoc.
+# Digital Ocean App Platform builds with kaniko, which does not support
+# heredocs in RUN and silently discards the body, yielding an empty list
+# and an image with no vocabularies. Keep the script in a file.
 COPY src/wordbase.py /tmp/wordbase.py
-RUN python - <<'EOF' > /tmp/dawgs.txt
-import ast
-tree = ast.parse(open("/tmp/wordbase.py").read())
-names = []
-for node in ast.walk(tree):
-    if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", "") == "_ALL_DAWGS":
-        for elt in node.value.elts:
-            names.append(elt.elts[0].value + ".bin.dawg")
-assert names, "_ALL_DAWGS not found in wordbase.py"
-print("\n".join(names))
-EOF
+COPY utils/list_dawgs.py /tmp/list_dawgs.py
+RUN python /tmp/list_dawgs.py /tmp/wordbase.py > /tmp/dawgs.txt
 RUN echo "DAWG files to download:" && cat /tmp/dawgs.txt && \
     while read -r dawg; do \
         echo "Downloading $dawg..." && \

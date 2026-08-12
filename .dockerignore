@@ -62,6 +62,10 @@ setup-*.sh
 
 # Development utilities
 utils/
+# ...except the DAWG list extractor, which the dawg-downloader stage runs
+# at build time. Must stay re-included here or that COPY finds no source
+# files and the build fails during context resolution.
+!utils/list_dawgs.py
 
 # Raw word lists and intermediate DAWG files (only .bin.dawg needed)
 resources/*.txt
