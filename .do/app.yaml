@@ -131,6 +131,16 @@ services:
         type: SECRET
         value: REPLACE_ME_random_string
 
+      # --- GoSkrafl moves sidecar -------------------------------------------
+      # When set, docker-entrypoint.sh starts the GoSkrafl server (built into
+      # the image) on 127.0.0.1 at this port, and the Flask app forwards its
+      # /moves and /riddle traffic to it instead of the external GAE 'moves'
+      # service. Unset it to fall back to the GAE service (or set
+      # MOVES_SERVICE_URL for an explicit target).
+      - key: MOVES_SIDECAR_PORT
+        scope: RUN_TIME
+        value: "8090"
+
       # --- Database backend -------------------------------------------------
       # "ndb" (default) or "postgresql". The January 2026 deployment ran ndb,
       # proving the hosting migration independently of the database migration.

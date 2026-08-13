@@ -173,6 +173,25 @@ assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 byt
 MOVES_AUTH_KEY = sm.get_secret("MOVES_AUTH_KEY").decode("utf-8")
 assert MOVES_AUTH_KEY, "MOVES_AUTH_KEY missing from Secret Manager"
 
+# Base URL of the GoSkrafl 'moves' service, which serves the /moves,
+# /wordcheck and /riddle endpoints. Resolution order:
+# 1) the MOVES_SERVICE_URL environment variable, as an explicit override;
+# 2) the loopback sidecar, if MOVES_SIDECAR_PORT is set (container
+#    deployments, where docker-entrypoint.sh runs the GoSkrafl server
+#    as a sidecar process alongside gunicorn);
+# 3) the GAE-hosted moves service: the explo-live instance for the
+#    explo-live project, otherwise the explo-dev instance (the legacy
+#    default, used by Netskrafl production and all development setups).
+MOVES_SERVICE_URL = os.environ.get("MOVES_SERVICE_URL", "")
+if not MOVES_SERVICE_URL:
+    _sidecar_port = os.environ.get("MOVES_SIDECAR_PORT", "")
+    if _sidecar_port:
+        MOVES_SERVICE_URL = f"http://127.0.0.1:{_sidecar_port}"
+    elif PROJECT_ID == "explo-live":
+        MOVES_SERVICE_URL = "https://moves-dot-explo-live.appspot.com"
+    else:
+        MOVES_SERVICE_URL = "https://moves-dot-explo-dev.appspot.com"
+
 # Load the correct client secret for the project (Explo/Netskrafl)
 CLIENT_SECRET_IDS: Mapping[str, str] = {
     "netskrafl": "CLIENT_SECRET_NETSKRAFL",

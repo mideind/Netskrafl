@@ -111,7 +111,28 @@ RUN cd static && tsc && \
     uglifyjs built/netskrafl.js -o built/netskrafl.min.js --source-map
 
 # =============================================================================
-# Stage 5: Runtime - minimal production image
+# Stage 5: Build the GoSkrafl 'moves' sidecar server
+# The GoSkrafl engine (github.com/vthorsteinsson/GoSkrafl) serves /moves,
+# /wordcheck and /riddle. In the container it runs as a loopback sidecar
+# process, started by docker-entrypoint.sh when MOVES_SIDECAR_PORT is set,
+# and fronted by authenticated Flask routes (see src/movesservice.py).
+# The binary is self-contained: the DAWG dictionaries are go:embed-ded.
+# =============================================================================
+FROM golang:1.25-bookworm AS goskrafl-builder
+
+# Pin an exact commit for reproducible builds; bump deliberately.
+ARG GOSKRAFL_REPO=https://github.com/vthorsteinsson/GoSkrafl
+ARG GOSKRAFL_COMMIT=58ca414173766e308031d05dc1d8cdc19f58d9d9
+
+RUN git clone --no-checkout ${GOSKRAFL_REPO} /goskrafl && \
+    cd /goskrafl && \
+    git checkout ${GOSKRAFL_COMMIT}
+WORKDIR /goskrafl
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+    -o /goskrafl-server ./go-app
+
+# =============================================================================
+# Stage 6: Runtime - minimal production image
 # =============================================================================
 FROM python:3.11-slim
 
@@ -163,6 +184,10 @@ COPY --link --chown=appuser:appuser --from=frontend-builder /app/static/built/ .
 
 # Copy DAWG files from downloader stage
 COPY --link --chown=appuser:appuser --from=dawg-downloader /dawg/*.bin.dawg ./resources/
+
+# Copy the GoSkrafl moves sidecar server (self-contained static binary;
+# its DAWG dictionaries are embedded via go:embed)
+COPY --link --from=goskrafl-builder /goskrafl-server /usr/local/bin/goskrafl-server
 
 # Copy crontab and entrypoint script
 COPY --link --chown=appuser:appuser crontab ./crontab
