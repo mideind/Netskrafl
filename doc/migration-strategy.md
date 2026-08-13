@@ -135,12 +135,32 @@ netskrafl project has no instance of it. Consumers:
   current clients prefer it because it is much faster; the Flask route
   remains for the built-in web UI (session-cookie rather than bearer auth).
 
-Porting needs: GoSkrafl has **no Dockerfile** and no DO deployment. The
-service is a good container citizen (static Go binary + embedded DAWGs,
-`PORT` env, bearer-token auth via `ACCESS_KEY` env) — containerizing it is
-straightforward. The consuming side needs the endpoint URLs made
-configurable (env var in `src/riddle.py`; Expo config change in
-`explo-front` at cutover).
+**Chosen architecture (decided 2026-08-13): loopback sidecar.** In the
+container era, GoSkrafl runs as a second process *inside the Netskrafl
+container*, bound to `127.0.0.1` and supervised by `docker-entrypoint.sh`
+(alongside supercronic). Flask owns the public `/moves`, `/wordcheck` and
+`/riddle` routes: it performs real session authentication and forwards
+over loopback (~0.1–0.3 ms), replacing the bearer-`ACCESS_KEY` hack.
+Externally there is then one backend, one hostname, one auth model; the
+sidecar keeps process isolation (a Go crash restarts one process, the
+20 s riddle generation stays out of the web workers) and loads its DAWGs
+once, shared by all gunicorn workers. The alternative — linking Go into
+the Python process via a `c-shared` library — was considered and
+rejected: it saves only the loopback hop while adding gunicorn
+fork-safety constraints, crash coupling, per-worker memory duplication,
+and a C ABI to maintain; it remains available later behind the same
+Flask routes if profiling ever justifies it.
+
+The bridge design: the Flask routes forward to a **configurable target
+URL** — the external GAE service today, `127.0.0.1` when the sidecar is
+present. This also retires the hardcoded `RIDDLE_ENDPOINT_*` constants
+and the netskrafl-uses-dev-endpoint TODO as a side effect.
+
+**Drain constraint:** older Explo clients call the GAE `moves` service
+directly at its hardcoded appspot.com URL. The GAE service must
+therefore stay up until that direct traffic drains — expected to take
+**several months** after clients switch to the main API host — and is
+decommissioned only then (monitor its request logs to decide).
 
 ### Missing or not yet done
 
@@ -148,9 +168,9 @@ configurable (env var in `src/riddle.py`; Expo config change in
 |------|-------|
 | Data migration (Datastore→PG) | **Absent** — `scripts/migrate_to_postgres.py` was never written; there is no `scripts/` directory. Note `.dockerignore`/`.gcloudignore` exclude `utils/`, so migration tooling runs outside the image. |
 | Managed PostgreSQL cluster | **Not provisioned.** Must be PG 15+ and created with the neutral ICU root collation (`und`) — see the collation note in `CLAUDE.md`. |
-| Managed Valkey | **Decision made (2026-08-12): reuse Miðeind's existing shared clusters** `db-redis-gsapi-staging` and `db-redis-gsapi-prod` (Valkey 8, ams3) instead of provisioning new ones. Tenant separation via *logical databases* selected with a `/N` URL suffix — verified working on the staging cluster (URL-based selection, `SELECT`, and `FLUSHDB` scoped to the selected database). Assignment: db 0 = gsapi; staging db 1 = explo-dev; prod db 1 = netskrafl, prod db 2 = explo-live. `cache.py`'s `flush()` additionally deletes only the app's own key patterns (no `FLUSHDB`), so `/cacheflush` is shared-tenant-safe even within one logical database. Remaining: attach to the staging app and smoke-test. |
-| Scheduled jobs on DO | **Off** (`CRON_SECRET` unset). The `crontab` + supercronic + `X-Cron-Secret` machinery is ready and e2e-tested. |
-| GoSkrafl on DO | **Not started** (no Dockerfile; hardcoded consumer URLs). |
+| Managed Valkey | ✅ **Done (2026-08-12): reusing Miðeind's existing shared clusters** `db-redis-gsapi-staging` and `db-redis-gsapi-prod` (Valkey 8, ams3). Tenant separation via *logical databases* selected with a `/N` URL suffix (verified: URL-based selection, `SELECT`, and `FLUSHDB` scoping all work). Assignment: db 0 = gsapi; staging db 1 = explo-dev; prod db 1 = netskrafl, prod db 2 = explo-live. `cache.py`'s `flush()` deletes only the app's own key patterns (no `FLUSHDB`), so `/cacheflush` is shared-tenant-safe even within one logical database. The staging app is attached and smoke-tested (entity cache + presence sets live in db 1; gsapi's db 0 untouched). |
+| Scheduled jobs on DO | ✅ **Running (2026-08-12)**: `CRON_SECRET` set, supercronic runs `/connect/update` every 2 min (verified end-to-end into Valkey db 1). The daily `/stats/run`/`/stats/ratings` lines are deliberately **commented out in `crontab`** while GAE cron still runs them for the same project; re-enable when the container is the sole scheduler. (Fixed along the way: the Dockerfile only installed supercronic when a `CRON_SECRET` build ARG was set, which DO never supplies — now installed unconditionally, runtime-gated.) |
+| GoSkrafl on DO | **Decision made (2026-08-13): loopback sidecar** in the Netskrafl container behind authenticated Flask routes (see the GoSkrafl section above). Implementation not started; the GAE `moves` service stays up until direct-client traffic drains. |
 | Firebase RTDB / FCM | **Retained Google dependency** (realtime push, presence, notifications, custom auth tokens), no abstraction layer. Posture: "hosted anywhere, still dependent on Google for Firebase." |
 | Production state | All three projects run NDB on GAE; `DATABASE_BACKEND` has never been set anywhere in production. |
 
@@ -237,26 +257,25 @@ hosting problems surface with zero data-migration risk. Rollback is DNS.
    fast-forward `do-deploy` to master whenever staging should pick up new
    work. (Longer term, once staging graduates to production, the app should
    track master directly.)
-2. **Point the app at the shared Valkey** (`db-redis-gsapi-staging`,
-   logical db 1): set `REDIS_URL` to the cluster URI with a `/1` suffix
-   (an attached-database binding would yield db 0, so the URL is explicit),
-   make sure the app is in the cluster's trusted sources, then enable the
-   `health_check` on `/health/ready`. See the Redis/Valkey notes in
-   `.do/app.yaml`.
-3. **Enable scheduled jobs**: set `CRON_SECRET`, verify supercronic runs
-   `/connect/update` (every 2 min) and the nightly `/stats/run` +
-   `/stats/ratings` against explo-dev. (These write real aggregate data to
-   the explo-dev project — that is the point, but never point staging at a
-   production project.)
-4. **Port GoSkrafl** (parallel-friendly, independent of everything else):
-   - Add a Dockerfile to `../GoSkrafl` (multi-stage Go build; `PORT`,
-     `ACCESS_KEY`, `ALLOWED_ORIGINS` env vars already supported). Mind the
-     kaniko heredoc gotcha.
-   - Deploy it as a second service/component on App Platform.
-   - Make the consumer URLs configurable: replace the hardcoded
-     `RIDDLE_ENDPOINT_*` appspot URLs in `src/riddle.py` with
-     project-aware config/env; plan the `movesApiUrl` change in
-     `explo-front` for cutover.
+2. ✅ **Shared Valkey attached** (2026-08-12): `REDIS_URL` → staging
+   cluster, logical db 1; `health_check` on `/health/ready` enabled and
+   gating deployments. See the Redis/Valkey notes in `.do/app.yaml`.
+3. ✅ **Scheduled jobs on** (2026-08-12): supercronic verified end-to-end
+   with `/connect/update`; daily stats jobs deliberately deferred until
+   the container is the sole scheduler for its project.
+4. **GoSkrafl sidecar** (parallel-friendly, decided 2026-08-13 — see the
+   GoSkrafl section above for the architecture):
+   - Add a build stage to the Netskrafl `Dockerfile` compiling the
+     GoSkrafl server binary (pinned version/commit; kaniko-safe), and
+     start it on `127.0.0.1` from `docker-entrypoint.sh`.
+   - Add authenticated Flask routes for `/moves` and `/riddle`, and route
+     the existing `/wordcheck` through the same forwarding path; the
+     forward target is a configurable URL (external GAE service today,
+     loopback sidecar in the container), replacing the hardcoded
+     `RIDDLE_ENDPOINT_*` constants in `src/riddle.py`.
+   - Plan the trailing `explo-front` release: `/moves`/`/wordcheck` move
+     to the main API host with session auth; the GAE `moves` service
+     stays up until its direct traffic drains (several months).
 5. **Production-parity sizing**: move to an instance size with ≥2 GB RAM
    (GAE `B4_1G` equivalent) before drawing any load-testing conclusions;
    then load-test against staging.
@@ -286,8 +305,10 @@ Order: **explo-dev → explo-live → netskrafl.**
 
 1. Brief write freeze; final migration + verification (Phase D tooling).
 2. Flip `DATABASE_BACKEND=postgresql`; monitor.
-3. Move DNS/domains to the DO app; switch GoSkrafl consumer URLs
-   (`src/riddle.py` config, `explo-front` release for `movesApiUrl`).
+3. Move DNS/domains to the DO app. GoSkrafl needs no per-cutover URL
+   switch under the sidecar architecture — the container serves
+   `/moves`/`/wordcheck`/`/riddle` itself; only the trailing
+   `explo-front` release (Phase C step 4) changes client behavior.
 4. Keep NDB warm for a ~30-day rollback window. Rollback after real writes
    means data loss back to the freeze point, so the Phase D verification
    gate matters.
@@ -297,8 +318,12 @@ Order: **explo-dev → explo-live → netskrafl.**
 1. Delete `skrafldb_ndb.py`, `src/db/ndb/`, and the Google Datastore
    dependencies; fold `requirements-pg.txt` into `requirements.txt`.
 2. Retire `cron.yaml`, `index.yaml`, `dispatch.yaml`, `app-*.yaml` and the
-   GAE deploy tooling once GAE is decommissioned; likewise GoSkrafl's
-   `go-app/app.yaml` + deploy scripts and the GAE `moves` services.
+   GAE deploy tooling once GAE is decommissioned. GoSkrafl's GAE `moves`
+   services and `go-app/` deploy tooling are retired **later and
+   separately**: only after direct-client traffic to the hardcoded
+   appspot.com URLs has drained (several months after the `explo-front`
+   release that switches clients to the main API host — monitor the GAE
+   service's request logs).
 3. Delete the remaining Cloud Scheduler jobs (`Clear-Redis` on netskrafl,
    `clear-cache` on explo-dev) or replace them with supercronic entries.
 
