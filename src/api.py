@@ -40,6 +40,7 @@ from functools import wraps
 
 from flask import (
     Blueprint,
+    Response,
     request,
     send_file,  # type: ignore
 )
@@ -77,7 +78,7 @@ from languages import (
     to_supported_locale,
 )
 from wordbase import Wordbase
-from skraflmechanics import BOARD_SIZE
+from skraflmechanics import BOARD_SIZE, Rack
 from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
@@ -90,6 +91,7 @@ from skrafldb import (
 )
 import firebase
 from billing import cancel_plan
+from movesservice import post_to_moves_service
 import auth
 from logic import (
     EXPLO_LOGO_URL,
@@ -153,6 +155,9 @@ class RevenueCatEvent(TypedDict, total=False):
 DEFAULT_BEST_MOVES = 19
 # Maximum number of best moves to return from /bestmoves
 MAX_BEST_MOVES = 20
+# Maximum number of moves to return from /moves (which, unlike /bestmoves,
+# is served by the GoSkrafl moves service and supports larger analyses)
+MAX_MOVES_LIMIT = 100
 # Only allow POST requests to the API endpoints
 _ONLY_POST: Sequence[str] = ["POST"]
 # How long to cache a thumbnail image client-side, in seconds
@@ -386,6 +391,54 @@ def wordcheck_api() -> ResponseType:
     valid = [(w, w in wdb) for w in words]
     ok = all(v[1] for v in valid)
     return jsonify(word=word, ok=ok, valid=valid)
+
+
+@api_route("/moves")
+@auth_required(result=Error.LOGIN_REQUIRED)
+def moves_api() -> ResponseType:
+    """Generate all valid moves for a given board and rack, in descending
+    score order, by forwarding the request to the GoSkrafl moves service
+    (an external service or a loopback sidecar - see movesservice.py).
+    This is the authenticated equivalent of the moves service's own
+    /moves endpoint, which clients have hitherto called directly with
+    a bearer token."""
+    rq = RequestData(request)
+    board: List[str] = rq.get_list("board")
+    rack: str = rq["rack"]
+    board_type: str = rq.get("board_type", "standard")
+    locale: str = to_supported_locale(rq.get("locale", ""))
+    # Cap the number of returned moves; the default matches /bestmoves
+    limit: int = min(rq.get_int("limit", DEFAULT_BEST_MOVES), MAX_MOVES_LIMIT)
+    # Cheap local sanity checks; the moves service does full validation
+    # and replies with a plain-text 4xx error, which is relayed below
+    if len(board) != BOARD_SIZE or not rack or len(rack) > Rack.MAX_TILES:
+        return jsonify(ok=False), 400
+    response = post_to_moves_service(
+        "/moves",
+        {
+            "locale": locale,
+            "board_type": board_type,
+            "board": board,
+            "rack": rack,
+            "limit": limit,
+        },
+        timeout=10,
+    )
+    if response is None:
+        return jsonify(ok=False), 503
+    # Relay the moves service response: {version, count, moves} JSON on
+    # success, or a plain-text error with a 4xx status. The service does
+    # not set a Content-Type header itself (Go's sniffed default is
+    # text/plain), so declare the success payload as JSON explicitly.
+    if response.status_code == 200:
+        content_type = "application/json"
+    else:
+        content_type = response.headers.get("Content-Type", "text/plain")
+    return Response(
+        response=response.content,
+        status=response.status_code,
+        content_type=content_type,
+    )
 
 
 @api_route("/gamestats")

@@ -38,8 +38,9 @@ from flask.typing import ResponseReturnValue
 import requests
 from flask import Blueprint, request
 
-from config import PROJECT_ID, MOVES_AUTH_KEY, ResponseType, RouteType
+from config import ResponseType, RouteType
 from basics import current_user_id, jsonify, auth_required, RequestData
+from movesservice import post_to_moves_service
 import firebase
 from languages import (
     set_locale,
@@ -61,10 +62,6 @@ from skrafldb import RiddleModel
 
 T = TypeVar("T")
 
-
-# Riddle generator API endpoints
-RIDDLE_ENDPOINT_DEV = "https://moves-dot-explo-dev.appspot.com/riddle"
-RIDDLE_ENDPOINT_PROD = "https://moves-dot-explo-live.appspot.com/riddle"
 
 # How many entries (max) in the leaderboard?
 LEADERBOARD_ENTRIES = 50
@@ -242,32 +239,21 @@ def generate_new_riddle(
     if not locale:
         logging.error("Missing locale in generate_new_riddle()")
         return None
-    if PROJECT_ID == "explo-live":
-        # TODO: Consider using the production endpoint for Netskrafl
-        endpoint = RIDDLE_ENDPOINT_PROD
-    else:
-        # For Netskrafl and for development, use the dev endpoint
-        endpoint = RIDDLE_ENDPOINT_DEV
+    response = post_to_moves_service(
+        "/riddle",
+        {"locale": locale},
+        # Currently the moves service may take up to 20 seconds to generate
+        # a riddle, so we need a longer timeout than that
+        timeout=30,
+    )
+    if response is None:
+        return None
     try:
-        response = requests.post(
-            endpoint,
-            # Specify an authorization header with the Moves service key,
-            # retrieved from the Secret Manager
-            headers={
-                "Authorization": f"Bearer {MOVES_AUTH_KEY}",
-            },
-            json={
-                "locale": locale,
-            },
-            # Currently the moves service may take up to 20 seconds to generate a riddle,
-            # so we need a longer timeout than that
-            timeout=30,
-        )
         response.raise_for_status()  # Raise an error for bad responses
         riddle_data: Optional[RiddleFromMovesServiceDict] = response.json()
         return riddle_from_moves_service(riddle_data, tile_scores)
     except (requests.RequestException, KeyError, ValueError) as e:
-        logging.error(f"Failed to fetch riddle from {endpoint}: {e}")
+        logging.error(f"Failed to fetch riddle from moves service: {e}")
     return None
 
 

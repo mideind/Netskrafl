@@ -86,6 +86,16 @@ services:
         scope: RUN_AND_BUILD_TIME
         value: 0.0.1
 
+      # Serve the single-page (SPA) web UI, matching the GAE Explo projects
+      # (app-explo*.yaml set the same). Without this, the legacy multi-page
+      # UI is served: it looks different (skrafl-curry skin, different board
+      # fonts) AND its client JS writes the unsegmented netskrafl-style
+      # Firebase presence path (connection/<uid>), which the Explo projects'
+      # locale-segmented Firebase rules reject with permission_denied.
+      - key: SINGLE_PAGE
+        scope: RUN_TIME
+        value: "TRUE"
+
       # --- Google Cloud credentials ---------------------------------------
       # Base64-encoded service account JSON for PROJECT_ID above.
       # Required for the NDB backend, and for Firebase in both backends.
@@ -130,6 +140,18 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: REPLACE_ME_random_string
+
+      # --- GoSkrafl moves sidecar -------------------------------------------
+      # When set, docker-entrypoint.sh starts the GoSkrafl server (built into
+      # the image) on 127.0.0.1 at this port, and the Flask app forwards its
+      # /moves and /riddle traffic to it instead of the external GAE 'moves'
+      # service. /bestmoves move generation is also delegated to the sidecar
+      # (only when it is local; on GAE the in-process Python engine is used).
+      # Unset it to fall back to the GAE service (or set MOVES_SERVICE_URL
+      # for an explicit target).
+      - key: MOVES_SIDECAR_PORT
+        scope: RUN_TIME
+        value: "8090"
 
       # --- Database backend -------------------------------------------------
       # "ndb" (default) or "postgresql". The January 2026 deployment ran ndb,
