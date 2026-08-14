@@ -159,11 +159,56 @@ Flask app, no Redis, no `PROJECT_ID` config machinery. Import surface is
 **Housekeeping:** add `scripts/` to `.dockerignore` and `.gcloudignore`
 (like `utils/`); the migrator never ships in the image.
 
+## Implementation notes (2026-08-14, deviations from the design above)
+
+`scripts/migrate_to_postgres.py` is implemented; differences from the
+plan, all in the writer/bookkeeping layer:
+
+- **Upserts everywhere, no COPY.** The repo uses psycopg2 (not
+  psycopg3); `execute_values` batched `INSERT ... ON CONFLICT` is used
+  for bulk as well as delta. The REST reader is the throughput bound,
+  upserts make every path idempotent, and one code path is simpler.
+  `--truncate` provides the clean-slate bulk variant.
+- **Checkpoints live in the target database** (`_migration_state`
+  table), updated in the same transaction as each batch — exactly-once
+  semantics with no separate state file; `--resume` reads it back.
+- **Deterministic UUID PKs**: kinds whose PG tables use UUID primary
+  keys (stats, chats, challenges, reports, promos, transactions,
+  submissions, completions, images) get `uuid5(MIGRATION_NS, full key
+  path)` — stable across runs, which is what makes delta upserts land
+  on the same rows. The namespace constant must never change.
+- **FK repair**: the users id-set is held in memory (50k); dependent
+  rows with missing users are skipped (NOT NULL FKs) or nulled
+  (nullable FKs), each counted and reported. Zombies are additionally
+  filtered against existing game ids in PG. Kinds where the source may
+  contain duplicates on the PG key (favorites, blocks, zombies) use
+  `ON CONFLICT DO NOTHING`; verification checks existence only for
+  those, and full column equality elsewhere, sampled post-filter.
+- **Numeric key bounds by binary search** (~60 probes): descending
+  `__key__` order would need a composite index that doesn't exist.
+  Numeric range shards keep open outer bounds, so stray string-named
+  keys are still swept up by the first/last shard.
+- **Delta-replace kinds** (all the small ones) are wiped and fully
+  reloaded inside the delta pass, so rows deleted at the source since
+  T0 also disappear from PG. Known limitation, accepted: users deleted
+  at the source are not deleted in PG by a delta pass (upsert-only),
+  and games/chats/stats deletions are likewise not propagated — both
+  vanishingly rare inside a freeze window.
+- **Environment**: importing the NDB model layer pulls in
+  `src/config.py`, so the tool needs project credentials and a local
+  Redis; it sets the standard local-dev env vars itself from
+  `--project`/`--credentials`. (The design's "no config machinery"
+  aspiration didn't survive contact with the import graph.)
+
 ## Rehearsal sequence (Phase D steps 4–5)
 
-1. explo-dev (19k entities, minutes) — shakes out the tool end-to-end;
-   point the DO staging app at the result (`DATABASE_BACKEND=postgresql`)
-   and click around.
+1. ✅ **explo-dev — DONE 2026-08-14** into the `explo_dev` database
+   (ICU `und`) on the staging cluster: 19k entities, bulk in 0.7 min
+   over 4 shards, `--verify 50` clean on all 19 tables, delta pass
+   exercised (filters + replace kinds) in 0.3 min. Orphan/dedup counts
+   all explained by explo-dev test-data leftovers. Remaining from this
+   step: point the DO staging app at the result
+   (`DATABASE_BACKEND=postgresql`) and click around.
 2. explo-live (size TBD) — first realistic dress rehearsal.
 3. netskrafl (17.6M) — **resize the staging PG cluster first** (the
    initial `db-s-1vcpu-2gb`/30 GB is too small for ~40 GB of entity
