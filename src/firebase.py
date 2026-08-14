@@ -97,6 +97,29 @@ def init_firebase_app():
             )
 
 
+def send_message_in_background(
+    message: Optional[Mapping[str, Any]], *args: str
+) -> None:
+    """Fire-and-forget variant of send_message(), for hot request paths:
+    the Firebase HTTP round trip (~40-100 ms) runs on a daemon thread so
+    the request does not wait for it. Errors are logged by send_message()
+    itself; the firebase_admin SDK is thread-safe."""
+    threading.Thread(
+        target=send_message, args=(message, *args), daemon=True
+    ).start()
+
+
+def push_to_user_in_background(
+    user_id: str, message: PushMessageDict, data: Optional[PushDataDict]
+) -> None:
+    """Fire-and-forget variant of push_to_user(), for hot request paths:
+    the per-session FCM pushes involve multiple Firebase round trips that
+    the request should not wait for. Errors are logged by push_to_user()."""
+    threading.Thread(
+        target=push_to_user, args=(user_id, message, data), daemon=True
+    ).start()
+
+
 def send_message(message: Optional[Mapping[str, Any]], *args: str) -> bool:
     """Updates data in Firebase. If a message object is provided, then it updates
     the data at the given location (whose path is built as a concatenation
