@@ -1097,12 +1097,17 @@ class User:
         return True
 
     @classmethod
-    def load_if_exists(cls, uid: Optional[str]) -> Optional[User]:
-        """Load a user by id if she exists, otherwise return None"""
+    def load_if_exists(
+        cls, uid: Optional[str], *, cached: bool = False
+    ) -> Optional[User]:
+        """Load a user by id if she exists, otherwise return None.
+        With cached=True, the entity cache may serve the result
+        (stale until the entity's next put()); this is appropriate
+        for the hot session-authentication path."""
         if not uid:
             return None
         with User._lock:
-            um = UserModel.fetch(uid)
+            um = UserModel.fetch_cached(uid) if cached else UserModel.fetch(uid)
             if um is None:
                 return None
             u = cls(uid=uid)

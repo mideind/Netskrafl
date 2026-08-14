@@ -315,9 +315,12 @@ def session_user() -> Optional[User]:
         # Old-style session: nested user id dictionary
         userid = u.get("id", "")
 
-    # First, try to resolve a user from the session cookie
+    # First, try to resolve a user from the session cookie.
+    # This runs on every authenticated request, so the entity cache is
+    # allowed to serve the user record (a Datastore round trip here was
+    # measured at ~99% of the total cost of light API calls).
     if userid:
-        user = User.load_if_exists(userid)
+        user = User.load_if_exists(userid, cached=True)
         if user is not None:
             return user
 
@@ -330,7 +333,7 @@ def session_user() -> Optional[User]:
         if claims:
             userid = claims.get("sub", "")
             if userid:
-                return User.load_if_exists(userid)
+                return User.load_if_exists(userid, cached=True)
 
     return None
 
