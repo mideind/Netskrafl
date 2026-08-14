@@ -279,6 +279,12 @@ hosting problems surface with zero data-migration risk. Rollback is DNS.
 5. **Production-parity sizing**: move to an instance size with ≥2 GB RAM
    (GAE `B4_1G` equivalent) before drawing any load-testing conclusions;
    then load-test against staging.
+6. ✅ **Staging secrets on env vars** (2026-08-14), per resolved Open
+   Decision 1: `SECRETS_PROVIDER=env` with `SECRET_KEY_BIN_BASE64`,
+   `MOVES_AUTH_KEY` and `CLIENT_SECRET_EXPLO_BASE64` as encrypted env vars
+   in the app spec — the runtime Secret Manager dependency is gone.
+   Deployed and verified (health gate passed, cron/Firebase exercised).
+   `GOOGLE_CREDENTIALS_BASE64` stays regardless (Firebase Admin SDK).
 
 ### Phase D — Database track: provision, migrate, rehearse
 
@@ -331,12 +337,20 @@ Order: **explo-dev → explo-live → netskrafl.**
 
 ## Open Decisions
 
-1. **Is GCP-for-secrets-and-Firebase acceptable long-term?**
-   - If **yes**: the plan above is mostly mechanical from here.
-   - If **no**: still execute the plan unchanged; a Firebase replacement
-     (presence, realtime push, FCM, custom auth tokens, plus `explo-front`
-     client changes) is a separate follow-on project. Env-var secrets are
-     already done (`SECRETS_PROVIDER=env`).
+1. **GCP for secrets and Firebase — ✅ RESOLVED (2026-08-14):**
+   - **Secrets move to environment variables** on DO: set
+     `SECRETS_PROVIDER=env` and supply `SECRET_KEY_BIN_BASE64`,
+     `MOVES_AUTH_KEY` and the project's `CLIENT_SECRET_*` JSON as encrypted
+     env vars in the app spec. The code side is already done — the
+     `SecretProvider` ABC in `src/secret_manager.py` with
+     `EnvSecretProvider` (`<SECRET_ID>` or `<SECRET_ID>_BASE64`).
+   - **Firebase is retained** (presence, realtime push, FCM, custom auth
+     tokens) and is used from the DO container. Its client-side config
+     values travel inside the `CLIENT_SECRET_*` JSON, and the Firebase
+     Admin SDK authenticates via the Google service-account credential
+     (`GOOGLE_CREDENTIALS_BASE64`) — so that credential stays in the
+     container even once Secret Manager is no longer consulted. A Firebase
+     replacement, if ever, is a separate follow-on project.
 2. **Riddle endpoint for production netskrafl** — it currently uses the
    explo-dev `moves` service (TODO in `src/riddle.py`). The GoSkrafl port
    is the natural moment to decide which instance each project should use.

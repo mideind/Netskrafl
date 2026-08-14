@@ -124,11 +124,38 @@ services:
         type: SECRET
         value: REPLACE_ME_rediss_url_with_db_number
 
-      # --- Firebase ---------------------------------------------------------
-      # No env var needed: FIREBASE_DB_URL, FIREBASE_API_KEY et al. are read
-      # from the per-project client secret via Secret Manager
-      # (src/config.py:231-243), so they follow PROJECT_ID automatically.
-      # The service account above must have Secret Manager access.
+      # --- Application secrets ----------------------------------------------
+      # SECRETS_PROVIDER=env selects EnvSecretProvider (src/secret_manager.py):
+      # secrets come from env vars instead of GCP Secret Manager (decision
+      # 2026-08-14, see doc/migration-strategy.md, Open Decisions). Each secret
+      # id is read from <SECRET_ID> or, base64-decoded, from <SECRET_ID>_BASE64.
+      # The app needs three: SECRET_KEY_BIN (64 raw bytes, so _BASE64 form),
+      # MOVES_AUTH_KEY (plain string), and the per-project client secret JSON
+      # (CLIENT_SECRET_EXPLO for explo-dev; CLIENT_SECRET_NETSKRAFL /
+      # CLIENT_SECRET_EXPLO_LIVE for the other projects - _BASE64 form since
+      # the value is multi-line JSON). The client secret JSON also carries the
+      # Firebase client config (FIREBASE_DB_URL, FIREBASE_API_KEY et al.), so
+      # no separate Firebase env vars are needed. The Firebase Admin SDK still
+      # authenticates with GOOGLE_CREDENTIALS_BASE64 above - that credential
+      # stays even though Secret Manager is no longer consulted.
+      - key: SECRETS_PROVIDER
+        scope: RUN_TIME
+        value: env
+
+      - key: SECRET_KEY_BIN_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_64_raw_bytes
+
+      - key: MOVES_AUTH_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_moves_auth_key
+
+      - key: CLIENT_SECRET_EXPLO_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_client_secret_json
 
       # --- Scheduled jobs ---------------------------------------------------
       # docker-entrypoint.sh starts supercronic only when CRON_SECRET is set;
