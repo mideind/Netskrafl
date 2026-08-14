@@ -192,6 +192,13 @@ if not MOVES_SERVICE_URL:
     else:
         MOVES_SERVICE_URL = "https://moves-dot-explo-dev.appspot.com"
 
+# True when the moves service is local to this instance, i.e. the GoSkrafl
+# sidecar in a container deployment (or an explicitly configured local
+# instance during development). In that case, CPU-heavy move generation
+# such as /bestmoves is delegated to it instead of running in-process;
+# on GAE this is always False and the in-process Python engine is used.
+MOVES_SIDECAR: bool = MOVES_SERVICE_URL.startswith("http://127.0.0.1")
+
 # Load the correct client secret for the project (Explo/Netskrafl)
 CLIENT_SECRET_IDS: Mapping[str, str] = {
     "netskrafl": "CLIENT_SECRET_NETSKRAFL",

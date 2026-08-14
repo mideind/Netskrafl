@@ -33,11 +33,12 @@ from typing import (
     cast,
 )
 
+import logging
 from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE, running_local, Error, BoardTypes
+from config import DEFAULT_LOCALE, running_local, Error, BoardTypes, MOVES_SIDECAR
 
 from languages import (
     Alphabet,
@@ -74,6 +75,7 @@ from skraflmechanics import (
     SummaryTuple,
 )
 from skraflplayer import AutoPlayer
+from movesservice import best_moves_from_service
 from skrafluser import User
 from skraflelo import compute_elo_for_game, compute_locale_elo_for_game
 from autoplayers import autoplayer_create, autoplayer_name
@@ -985,6 +987,23 @@ class Game:
             # querying for best moves is prohibited
             return []
         player_index = state.player_to_move()
+        if MOVES_SIDECAR:
+            # A GoSkrafl moves sidecar runs alongside this process:
+            # delegate the CPU-heavy move generation to it. The Go engine
+            # and the in-process Python engine use the same vocabularies
+            # and return identical (coordinate, tiles, score) summaries.
+            moves = best_moves_from_service(
+                locale=self.locale,
+                board_type=self.board_type,
+                board=state.board().row_strings(),
+                rack=state.rack(player_index),
+                limit=n,
+            )
+            if moves is not None:
+                return [(player_index, m) for m in moves]
+            logging.warning(
+                "Moves sidecar unavailable; falling back to in-process engine"
+            )
         # Create an AutoPlayer instance that always finds the top-scoring moves
         apl = AutoPlayer(0, state)
         return [(player_index, m.summary(state)) for m, _ in apl.generate_best_moves(n)]
