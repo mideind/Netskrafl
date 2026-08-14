@@ -213,6 +213,12 @@ services:
 # cluster's trusted sources — but its ${valkey.DATABASE_URL} binding points at
 # db 0, so REDIS_URL must stay an explicit URL with the /N database suffix.
 #
+# The staging PG cluster was provisioned 2026-08-14:
+# db-postgresql-ams3-netskrafl-staging (PG 18, ams3, db-s-1vcpu-2gb), with the
+# app database `netskrafl` created from template0 with LOCALE_PROVIDER icu
+# ICU_LOCALE 'und', owner netskrafl_app. The staging app is already a trusted
+# source on the cluster's firewall, so attaching it here is optional.
+#
 # databases:
 #   - name: valkey
 #     engine: VALKEY
@@ -220,6 +226,6 @@ services:
 #     production: true
 #   - name: pg
 #     engine: PG
-#     cluster_name: netskrafl-pg-staging
+#     cluster_name: db-postgresql-ams3-netskrafl-staging
 #     db_name: netskrafl
 #     production: true

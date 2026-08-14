@@ -166,8 +166,8 @@ decommissioned only then (monitor its request logs to decide).
 
 | Area | State |
 |------|-------|
-| Data migration (Datastore→PG) | **Absent** — `scripts/migrate_to_postgres.py` was never written; there is no `scripts/` directory. Note `.dockerignore`/`.gcloudignore` exclude `utils/`, so migration tooling runs outside the image. |
-| Managed PostgreSQL cluster | **Not provisioned.** Must be PG 15+ and created with the neutral ICU root collation (`und`) — see the collation note in `CLAUDE.md`. |
+| Data migration (Datastore→PG) | **Designed, not yet implemented** — see `doc/data-migration-design.md` (2026-08-14). The decode spike passed against production data (`scripts/spikes/`); `scripts/migrate_to_postgres.py` is the next artifact. `scripts/` is docker/gcloud-ignored, so the tooling runs outside the image. |
+| Managed PostgreSQL cluster | ✅ **Provisioned (2026-08-14)**: `db-postgresql-ams3-netskrafl-staging` (PG 18, ams3, `db-s-1vcpu-2gb`, 1 node). App database `netskrafl` created from `template0` with `LOCALE_PROVIDER icu ICU_LOCALE 'und'`, owner `netskrafl_app`; per-locale ICU collations (`is-x-icu` et al.) verified. Trusted sources: the dev box and the DO staging app. **Resize before the full netskrafl rehearsal** (~40 GB of entity data vs. this plan's disk). |
 | Managed Valkey | ✅ **Done (2026-08-12): reusing Miðeind's existing shared clusters** `db-redis-gsapi-staging` and `db-redis-gsapi-prod` (Valkey 8, ams3). Tenant separation via *logical databases* selected with a `/N` URL suffix (verified: URL-based selection, `SELECT`, and `FLUSHDB` scoping all work). Assignment: db 0 = gsapi; staging db 1 = explo-dev; prod db 1 = netskrafl, prod db 2 = explo-live. `cache.py`'s `flush()` deletes only the app's own key patterns (no `FLUSHDB`), so `/cacheflush` is shared-tenant-safe even within one logical database. The staging app is attached and smoke-tested (entity cache + presence sets live in db 1; gsapi's db 0 untouched). |
 | Scheduled jobs on DO | ✅ **Running (2026-08-12)**: `CRON_SECRET` set, supercronic runs `/connect/update` every 2 min (verified end-to-end into Valkey db 1). The daily `/stats/run`/`/stats/ratings` lines are deliberately **commented out in `crontab`** while GAE cron still runs them for the same project; re-enable when the container is the sole scheduler. (Fixed along the way: the Dockerfile only installed supercronic when a `CRON_SECRET` build ARG was set, which DO never supplies — now installed unconditionally, runtime-gated.) |
 | GoSkrafl on DO | **Implemented (2026-08-13)** as a loopback sidecar (see the GoSkrafl section above): Dockerfile stage builds the pinned GoSkrafl binary, `docker-entrypoint.sh` runs it when `MOVES_SIDECAR_PORT` is set, and the authenticated Flask `/moves` route + `riddle.py` forward to `MOVES_SERVICE_URL` (loopback when the sidecar is on, GAE service otherwise — `src/movesservice.py`). `/wordcheck` deliberately stays local: behind Flask, a local DAWG lookup beats a loopback hop. `/bestmoves` delegates its move generation to the sidecar **when one is local** (`MOVES_SIDECAR` in `config.py`); on GAE the in-process Python engine keeps running unchanged — same source, environment-selected. Engine equivalence is tested (`test_best_moves_equivalence`: identical move sets and scores; empty-board first moves may differ in orientation label only). Verified end-to-end against both a local sidecar and the GAE service (`test/test_moves.py`). Remaining: the trailing `explo-front` release, then the multi-month GAE drain. |
@@ -288,12 +288,14 @@ hosting problems surface with zero data-migration risk. Rollback is DNS.
 
 ### Phase D — Database track: provision, migrate, rehearse
 
-1. **Provision managed PostgreSQL** (15+, ICU `und` collation on the app
-   database — DO's stock `defaultdb` does not qualify), private VPC,
-   trusted-sources allowlist for local admin access.
-2. **Write `scripts/migrate_to_postgres.py`** per `postgresql-plan.md`:
-   batched, UTC-preserving, moves→JSONB, UUID strings preserved as-is.
-   Runs outside the container image (`utils/` is dockerignored).
+1. ✅ **Provision managed PostgreSQL** (2026-08-14) — see the table above
+   (`db-postgresql-ams3-netskrafl-staging`, PG 18, ICU `und` app database,
+   trusted-sources allowlist covering the dev box and the staging app).
+2. **Write `scripts/migrate_to_postgres.py`** — designed 2026-08-14, see
+   **`doc/data-migration-design.md`** (REST reader with sharded key
+   ranges, NDB-layer decoding, bulk+delta phases, checkpoint/resume;
+   supersedes the `postgresql-plan.md` sketch). Runs outside the
+   container image (add `scripts/` to the ignore files).
 3. **Write the verification tooling**: entity counts and row samples per
    table, plus — the strongest instrument we now have — run the
    **replay harness** and `tests/api_e2e/` against a database populated by
