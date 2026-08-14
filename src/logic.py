@@ -672,9 +672,11 @@ def process_move(
             f"user/{opponent}/move": move_dict,
         }
         # Push a Firebase notification message to the opponent,
-        # in the correct language for each client session
+        # in the correct language for each client session.
+        # Fire-and-forget: the per-session FCM round trips should not
+        # delay the reply to the player who submitted the move.
         opp_nick = game.player_nickname(1 - opponent_index)
-        firebase.push_to_user(
+        firebase.push_to_user_in_background(
             opponent,
             {
                 "title": lambda locale: localize_push_message("title", locale),
@@ -695,7 +697,11 @@ def process_move(
         msg_dict[f"user/{player}/move"] = move_dict
 
     if msg_dict:
-        firebase.send_message(msg_dict)
+        # Fire-and-forget: the Firebase PATCH (~40-100 ms round trip)
+        # notifies the other party and other client sessions; the player
+        # who submitted the move gets the new state in the HTTP response
+        # below and should not wait for it
+        firebase.send_message_in_background(msg_dict)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(1 - opponent_index))
