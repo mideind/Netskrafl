@@ -576,6 +576,17 @@ class UserModel(Model["UserModel"]):
         return cls.get_by_id(user_id, use_cache=False, use_global_cache=False)
 
     @classmethod
+    def fetch_cached(cls, user_id: str) -> Optional[UserModel]:
+        """Fetch a user entity by id, allowing the NDB context cache and
+        the Redis global cache to serve the result. Used on the hot
+        session-authentication path, where a Datastore round trip per
+        request is prohibitively expensive. The global cache is
+        invalidated by put(), so in-application updates remain coherent;
+        out-of-band writers (local utility scripts) must be followed by
+        a /cacheflush, as documented in CLAUDE.md."""
+        return cls.get_by_id(user_id, use_cache=True, use_global_cache=True)
+
+    @classmethod
     def fetch_account(cls, account: str) -> Optional[UserModel]:
         """Attempt to fetch a user by OAuth2 account id,
         eventually prefixed by the authentication provider"""
