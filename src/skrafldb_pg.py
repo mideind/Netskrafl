@@ -755,6 +755,15 @@ class UserModel:
         return cls._from_entity(entity)
 
     @classmethod
+    def fetch_cached(cls, user_id: str) -> Optional[UserModel]:
+        """Fetch a user entity by id. On the PostgreSQL backend this is
+        identical to fetch(): there is no entity cache to bypass, and an
+        in-VPC SQL primary-key fetch is already cheap. The distinct name
+        exists for parity with the NDB facade, where the session-auth
+        path uses the cached variant."""
+        return cls.fetch(user_id)
+
+    @classmethod
     def fetch_account(cls, account: str) -> Optional[UserModel]:
         """Fetch a user by OAuth2 account id."""
         if not account:
