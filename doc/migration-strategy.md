@@ -166,7 +166,7 @@ decommissioned only then (monitor its request logs to decide).
 
 | Area | State |
 |------|-------|
-| Data migration (Datastore→PG) | ✅ **Implemented (2026-08-14)** — `scripts/migrate_to_postgres.py`, per `doc/data-migration-design.md` (see its implementation notes). First rehearsal done: explo-dev bulk (19k entities, 0.7 min, verify clean) + delta pass into the `explo_dev` ICU-`und` database on the staging cluster. Remaining: point staging at it, then the explo-live and netskrafl rehearsals (resize cluster first). |
+| Data migration (Datastore→PG) | ✅ **Implemented (2026-08-14)** — `scripts/migrate_to_postgres.py`, per `doc/data-migration-design.md` (see its implementation notes). First rehearsal done: explo-dev bulk (19k entities, 0.7 min, verify clean) + delta passes into the `explo_dev` ICU-`und` database on the staging cluster. **Staging serves it live since 2026-08-18** (`DATABASE_BACKEND=postgresql`), and the migrated data passed full verification the same day (api_e2e + replay harness + decode sweep — see Phase D step 3). Remaining: the explo-live and netskrafl rehearsals (resize cluster first). |
 | Managed PostgreSQL cluster | ✅ **Provisioned (2026-08-14)**: `db-postgresql-ams3-netskrafl-staging` (PG 18, ams3, `db-s-1vcpu-2gb`, 1 node). App database `netskrafl` created from `template0` with `LOCALE_PROVIDER icu ICU_LOCALE 'und'`, owner `netskrafl_app`; per-locale ICU collations (`is-x-icu` et al.) verified. Trusted sources: the dev box and the DO staging app. **Resize before the full netskrafl rehearsal** (~40 GB of entity data vs. this plan's disk). |
 | Managed Valkey | ✅ **Done (2026-08-12): reusing Miðeind's existing shared clusters** `db-redis-gsapi-staging` and `db-redis-gsapi-prod` (Valkey 8, ams3). Tenant separation via *logical databases* selected with a `/N` URL suffix (verified: URL-based selection, `SELECT`, and `FLUSHDB` scoping all work). Assignment: db 0 = gsapi; staging db 1 = explo-dev; prod db 1 = netskrafl, prod db 2 = explo-live. `cache.py`'s `flush()` deletes only the app's own key patterns (no `FLUSHDB`), so `/cacheflush` is shared-tenant-safe even within one logical database. The staging app is attached and smoke-tested (entity cache + presence sets live in db 1; gsapi's db 0 untouched). |
 | Scheduled jobs on DO | ✅ **Running (2026-08-12)**: `CRON_SECRET` set, supercronic runs `/connect/update` every 2 min (verified end-to-end into Valkey db 1). The daily `/stats/run`/`/stats/ratings` lines are deliberately **commented out in `crontab`** while GAE cron still runs them for the same project; re-enable when the container is the sole scheduler. (Fixed along the way: the Dockerfile only installed supercronic when a `CRON_SECRET` build ARG was set, which DO never supplies — now installed unconditionally, runtime-gated.) |
@@ -297,16 +297,30 @@ hosting problems surface with zero data-migration risk. Rollback is DNS.
    checkpoint/resume in a `_migration_state` table; supersedes the
    `postgresql-plan.md` sketch). Verified end-to-end with the explo-dev
    rehearsal. Runs outside the container image (`scripts/` is ignored).
-3. **Write the verification tooling**: entity counts and row samples per
-   table, plus — the strongest instrument we now have — run the
-   **replay harness** and `tests/api_e2e/` against a database populated by
-   a real migration.
+3. ✅ **Verification against migrated data** (2026-08-18), run on a local
+   `pg_dump` copy of the staging `explo_dev` database so the live data
+   stays untouched:
+   - `tests/api_e2e/`: 125 passed against the migrated copy (with the
+     new `E2E_KEEP_TABLES=1` conftest flag that skips the table reset),
+     identical to the clean-database baseline run the same day.
+   - **Replay harness**: all 105 production-game fixtures replayed
+     exactly against the migrated copy.
+   - **Full decode sweep** (every migrated row through the real app
+     loaders): 632/632 users, 2,416/2,419 games clean. The three
+     exceptions are source-data quirks, not migration defects: one
+     synthetic test entity (`test-moves-game-001`) left behind in
+     explo-dev NDB, and two experimental `es_ES` games (Feb 2026) that
+     `Game.load` declines identically on the NDB backend
+     (parity-verified) because the locale is unsupported.
 4. **Rehearse** against a production Datastore export into a staging PG
    database. Measure wall-clock time — this bounds the cutover window.
-5. **Deploy the PG backend to staging** (`DATABASE_BACKEND=postgresql` +
-   `DATABASE_URL` binding) against the rehearsal database — the first
-   App-Platform deployment of the PG path, and the convergence point of
-   the two tracks.
+   (Remaining: explo-live, then netskrafl — resize the cluster first.)
+5. ✅ **Deploy the PG backend to staging** (2026-08-18): the app runs
+   `DATABASE_BACKEND=postgresql` with a `${pg.DATABASE_URL}` binding to
+   the migrated `explo_dev` database — the first App-Platform deployment
+   of the PG path, and the convergence point of the two tracks. Health
+   gate green; nightly `/stats/run` + `/stats/ratings` cron enabled on
+   the container (see the crontab), doubling as a recurring PG exercise.
 
 ### Phase E — Cutover, per project, smallest first
 
