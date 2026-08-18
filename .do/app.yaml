@@ -183,19 +183,22 @@ services:
       # --- Database backend -------------------------------------------------
       # "ndb" (default) or "postgresql". The January 2026 deployment ran ndb,
       # proving the hosting migration independently of the database migration.
+      # Since 2026-08-18 the staging app runs the PostgreSQL backend against
+      # the migrated explo_dev database (see the databases section below).
       - key: DATABASE_BACKEND
         scope: RUN_AND_BUILD_TIME
-        value: ndb
+        value: postgresql
 
       # Required only when DATABASE_BACKEND=postgresql. docker-entrypoint.sh
       # runs `alembic upgrade head` at startup when the PG backend is active -
       # safe at instance_count: 1, but concurrent instances would race, and a
       # pre-Alembic schema needs a one-time `alembic stamp head` first.
-      # Prefer the binding form: value: ${pg.DATABASE_URL}
-      # - key: DATABASE_URL
-      #   scope: RUN_TIME
-      #   type: SECRET
-      #   value: REPLACE_ME_postgres_url
+      # The ${pg.DATABASE_URL} binding resolves to a plain
+      # postgresql://...?sslmode=require URL, which psycopg2/SQLAlchemy
+      # accept directly.
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${pg.DATABASE_URL}
 
 # ---------------------------------------------------------------------------
 # Managed databases
@@ -214,18 +217,22 @@ services:
 # db 0, so REDIS_URL must stay an explicit URL with the /N database suffix.
 #
 # The staging PG cluster was provisioned 2026-08-14:
-# db-postgresql-ams3-netskrafl-staging (PG 18, ams3, db-s-1vcpu-2gb), with the
-# app database `netskrafl` created from template0 with LOCALE_PROVIDER icu
-# ICU_LOCALE 'und', owner netskrafl_app. The staging app is already a trusted
-# source on the cluster's firewall, so attaching it here is optional.
+# db-postgresql-ams3-netskrafl-staging (PG 18, ams3, db-s-1vcpu-2gb), with
+# ICU-`und` app databases `netskrafl` and `explo_dev`, owner netskrafl_app.
+# Since 2026-08-18 the staging app is attached to it (binding name `pg`,
+# referenced by DATABASE_URL above) and runs against `explo_dev`, populated
+# by scripts/migrate_to_postgres.py from the explo-dev Datastore.
 #
-# databases:
+# Unattached Valkey reference (would be merged into the databases list):
 #   - name: valkey
 #     engine: VALKEY
 #     cluster_name: db-redis-gsapi-staging
 #     production: true
-#   - name: pg
-#     engine: PG
-#     cluster_name: db-postgresql-ams3-netskrafl-staging
-#     db_name: netskrafl
-#     production: true
+
+databases:
+  - name: pg
+    engine: PG
+    cluster_name: db-postgresql-ams3-netskrafl-staging
+    db_name: explo_dev
+    db_user: netskrafl_app
+    production: true
