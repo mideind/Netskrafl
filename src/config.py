@@ -130,6 +130,16 @@ NETSKRAFL = PROJECT_ID == "netskrafl"
 
 DEV_SERVER = PROJECT_ID == "explo-dev"
 
+# The old-style, locale-ignorant Top 100 ratings tables (/stats/ratings,
+# /stats/ratings_backfill) are only maintained and displayed on Netskrafl;
+# Explo serves per-locale ratings live from EloModel via /rating_locale.
+# Other projects can opt in explicitly by setting the ENABLE_RATINGS
+# environment variable - e.g. a staging container during development and
+# testing, where the scheduled invocation is controlled via the crontab.
+RATINGS_ENABLED = NETSKRAFL or os.environ.get(
+    "ENABLE_RATINGS", ""
+).lower() in ("true", "1", "yes")
+
 DEFAULT_LOCALE = "is_IS" if NETSKRAFL else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"

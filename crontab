@@ -10,15 +10,19 @@ CRON_TZ=UTC
 # Syncs Firebase presence data to Redis cache
 */2 * * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/connect/update
 
-# NOTE (2026-08-12): the daily stats/ratings jobs are commented out while
-# GAE cron still runs them against the same project - two concurrent writers
-# would race on the stats and ratings tables. Re-enable when this container
-# is the only scheduler for its project.
+# NOTE (2026-08-18): the daily stats/ratings jobs were commented out
+# (2026-08-12) while GAE cron ran them against the same database - two
+# concurrent writers would race on the stats and ratings tables. Since the
+# staging container moved to its own independent PostgreSQL database, the
+# jobs are enabled again and double as a nightly test of the PG backend.
+# The ratings job is additionally gated by the NETSKRAFL/ENABLE_RATINGS
+# check in the route itself (see config.py), so it is a no-op on Explo
+# projects unless explicitly opted in.
 
 # Daily statistics job - 03:00 UTC
 # Computes and stores daily game statistics
-# 0 3 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/stats/run
+0 3 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/stats/run
 
 # Daily ratings job - 03:45 UTC
 # Updates Elo ratings and leaderboards
-# 45 3 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/stats/ratings
+45 3 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/stats/ratings
