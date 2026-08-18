@@ -166,8 +166,8 @@ decommissioned only then (monitor its request logs to decide).
 
 | Area | State |
 |------|-------|
-| Data migration (Datastore→PG) | **Absent** — `scripts/migrate_to_postgres.py` was never written; there is no `scripts/` directory. Note `.dockerignore`/`.gcloudignore` exclude `utils/`, so migration tooling runs outside the image. |
-| Managed PostgreSQL cluster | **Not provisioned.** Must be PG 15+ and created with the neutral ICU root collation (`und`) — see the collation note in `CLAUDE.md`. |
+| Data migration (Datastore→PG) | ✅ **Implemented (2026-08-14)** — `scripts/migrate_to_postgres.py`, per `doc/data-migration-design.md` (see its implementation notes). First rehearsal done: explo-dev bulk (19k entities, 0.7 min, verify clean) + delta pass into the `explo_dev` ICU-`und` database on the staging cluster. Remaining: point staging at it, then the explo-live and netskrafl rehearsals (resize cluster first). |
+| Managed PostgreSQL cluster | ✅ **Provisioned (2026-08-14)**: `db-postgresql-ams3-netskrafl-staging` (PG 18, ams3, `db-s-1vcpu-2gb`, 1 node). App database `netskrafl` created from `template0` with `LOCALE_PROVIDER icu ICU_LOCALE 'und'`, owner `netskrafl_app`; per-locale ICU collations (`is-x-icu` et al.) verified. Trusted sources: the dev box and the DO staging app. **Resize before the full netskrafl rehearsal** (~40 GB of entity data vs. this plan's disk). |
 | Managed Valkey | ✅ **Done (2026-08-12): reusing Miðeind's existing shared clusters** `db-redis-gsapi-staging` and `db-redis-gsapi-prod` (Valkey 8, ams3). Tenant separation via *logical databases* selected with a `/N` URL suffix (verified: URL-based selection, `SELECT`, and `FLUSHDB` scoping all work). Assignment: db 0 = gsapi; staging db 1 = explo-dev; prod db 1 = netskrafl, prod db 2 = explo-live. `cache.py`'s `flush()` deletes only the app's own key patterns (no `FLUSHDB`), so `/cacheflush` is shared-tenant-safe even within one logical database. The staging app is attached and smoke-tested (entity cache + presence sets live in db 1; gsapi's db 0 untouched). |
 | Scheduled jobs on DO | ✅ **Running (2026-08-12)**: `CRON_SECRET` set, supercronic runs `/connect/update` every 2 min (verified end-to-end into Valkey db 1). The daily `/stats/run`/`/stats/ratings` lines are deliberately **commented out in `crontab`** while GAE cron still runs them for the same project; re-enable when the container is the sole scheduler. (Fixed along the way: the Dockerfile only installed supercronic when a `CRON_SECRET` build ARG was set, which DO never supplies — now installed unconditionally, runtime-gated.) |
 | GoSkrafl on DO | **Implemented (2026-08-13)** as a loopback sidecar (see the GoSkrafl section above): Dockerfile stage builds the pinned GoSkrafl binary, `docker-entrypoint.sh` runs it when `MOVES_SIDECAR_PORT` is set, and the authenticated Flask `/moves` route + `riddle.py` forward to `MOVES_SERVICE_URL` (loopback when the sidecar is on, GAE service otherwise — `src/movesservice.py`). `/wordcheck` deliberately stays local: behind Flask, a local DAWG lookup beats a loopback hop. `/bestmoves` delegates its move generation to the sidecar **when one is local** (`MOVES_SIDECAR` in `config.py`); on GAE the in-process Python engine keeps running unchanged — same source, environment-selected. Engine equivalence is tested (`test_best_moves_equivalence`: identical move sets and scores; empty-board first moves may differ in orientation label only). Verified end-to-end against both a local sidecar and the GAE service (`test/test_moves.py`). Remaining: the trailing `explo-front` release, then the multi-month GAE drain. |
@@ -279,15 +279,24 @@ hosting problems surface with zero data-migration risk. Rollback is DNS.
 5. **Production-parity sizing**: move to an instance size with ≥2 GB RAM
    (GAE `B4_1G` equivalent) before drawing any load-testing conclusions;
    then load-test against staging.
+6. ✅ **Staging secrets on env vars** (2026-08-14), per resolved Open
+   Decision 1: `SECRETS_PROVIDER=env` with `SECRET_KEY_BIN_BASE64`,
+   `MOVES_AUTH_KEY` and `CLIENT_SECRET_EXPLO_BASE64` as encrypted env vars
+   in the app spec — the runtime Secret Manager dependency is gone.
+   Deployed and verified (health gate passed, cron/Firebase exercised).
+   `GOOGLE_CREDENTIALS_BASE64` stays regardless (Firebase Admin SDK).
 
 ### Phase D — Database track: provision, migrate, rehearse
 
-1. **Provision managed PostgreSQL** (15+, ICU `und` collation on the app
-   database — DO's stock `defaultdb` does not qualify), private VPC,
-   trusted-sources allowlist for local admin access.
-2. **Write `scripts/migrate_to_postgres.py`** per `postgresql-plan.md`:
-   batched, UTC-preserving, moves→JSONB, UUID strings preserved as-is.
-   Runs outside the container image (`utils/` is dockerignored).
+1. ✅ **Provision managed PostgreSQL** (2026-08-14) — see the table above
+   (`db-postgresql-ams3-netskrafl-staging`, PG 18, ICU `und` app database,
+   trusted-sources allowlist covering the dev box and the staging app).
+2. ✅ **`scripts/migrate_to_postgres.py`** — designed and implemented
+   2026-08-14, see **`doc/data-migration-design.md`** (REST reader with
+   sharded key ranges, NDB-layer decoding, bulk+delta phases,
+   checkpoint/resume in a `_migration_state` table; supersedes the
+   `postgresql-plan.md` sketch). Verified end-to-end with the explo-dev
+   rehearsal. Runs outside the container image (`scripts/` is ignored).
 3. **Write the verification tooling**: entity counts and row samples per
    table, plus — the strongest instrument we now have — run the
    **replay harness** and `tests/api_e2e/` against a database populated by
@@ -331,12 +340,20 @@ Order: **explo-dev → explo-live → netskrafl.**
 
 ## Open Decisions
 
-1. **Is GCP-for-secrets-and-Firebase acceptable long-term?**
-   - If **yes**: the plan above is mostly mechanical from here.
-   - If **no**: still execute the plan unchanged; a Firebase replacement
-     (presence, realtime push, FCM, custom auth tokens, plus `explo-front`
-     client changes) is a separate follow-on project. Env-var secrets are
-     already done (`SECRETS_PROVIDER=env`).
+1. **GCP for secrets and Firebase — ✅ RESOLVED (2026-08-14):**
+   - **Secrets move to environment variables** on DO: set
+     `SECRETS_PROVIDER=env` and supply `SECRET_KEY_BIN_BASE64`,
+     `MOVES_AUTH_KEY` and the project's `CLIENT_SECRET_*` JSON as encrypted
+     env vars in the app spec. The code side is already done — the
+     `SecretProvider` ABC in `src/secret_manager.py` with
+     `EnvSecretProvider` (`<SECRET_ID>` or `<SECRET_ID>_BASE64`).
+   - **Firebase is retained** (presence, realtime push, FCM, custom auth
+     tokens) and is used from the DO container. Its client-side config
+     values travel inside the `CLIENT_SECRET_*` JSON, and the Firebase
+     Admin SDK authenticates via the Google service-account credential
+     (`GOOGLE_CREDENTIALS_BASE64`) — so that credential stays in the
+     container even once Secret Manager is no longer consulted. A Firebase
+     replacement, if ever, is a separate follow-on project.
 2. **Riddle endpoint for production netskrafl** — it currently uses the
    explo-dev `moves` service (TODO in `src/riddle.py`). The GoSkrafl port
    is the natural moment to decide which instance each project should use.

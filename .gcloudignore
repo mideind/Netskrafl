@@ -95,3 +95,6 @@ nginx.conf
 alembic.ini
 migrations/
 
+
+# Data migration tooling - runs outside the image
+scripts/

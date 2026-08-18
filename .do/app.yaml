@@ -124,11 +124,38 @@ services:
         type: SECRET
         value: REPLACE_ME_rediss_url_with_db_number
 
-      # --- Firebase ---------------------------------------------------------
-      # No env var needed: FIREBASE_DB_URL, FIREBASE_API_KEY et al. are read
-      # from the per-project client secret via Secret Manager
-      # (src/config.py:231-243), so they follow PROJECT_ID automatically.
-      # The service account above must have Secret Manager access.
+      # --- Application secrets ----------------------------------------------
+      # SECRETS_PROVIDER=env selects EnvSecretProvider (src/secret_manager.py):
+      # secrets come from env vars instead of GCP Secret Manager (decision
+      # 2026-08-14, see doc/migration-strategy.md, Open Decisions). Each secret
+      # id is read from <SECRET_ID> or, base64-decoded, from <SECRET_ID>_BASE64.
+      # The app needs three: SECRET_KEY_BIN (64 raw bytes, so _BASE64 form),
+      # MOVES_AUTH_KEY (plain string), and the per-project client secret JSON
+      # (CLIENT_SECRET_EXPLO for explo-dev; CLIENT_SECRET_NETSKRAFL /
+      # CLIENT_SECRET_EXPLO_LIVE for the other projects - _BASE64 form since
+      # the value is multi-line JSON). The client secret JSON also carries the
+      # Firebase client config (FIREBASE_DB_URL, FIREBASE_API_KEY et al.), so
+      # no separate Firebase env vars are needed. The Firebase Admin SDK still
+      # authenticates with GOOGLE_CREDENTIALS_BASE64 above - that credential
+      # stays even though Secret Manager is no longer consulted.
+      - key: SECRETS_PROVIDER
+        scope: RUN_TIME
+        value: env
+
+      - key: SECRET_KEY_BIN_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_64_raw_bytes
+
+      - key: MOVES_AUTH_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_moves_auth_key
+
+      - key: CLIENT_SECRET_EXPLO_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_client_secret_json
 
       # --- Scheduled jobs ---------------------------------------------------
       # docker-entrypoint.sh starts supercronic only when CRON_SECRET is set;
@@ -156,19 +183,22 @@ services:
       # --- Database backend -------------------------------------------------
       # "ndb" (default) or "postgresql". The January 2026 deployment ran ndb,
       # proving the hosting migration independently of the database migration.
+      # Since 2026-08-18 the staging app runs the PostgreSQL backend against
+      # the migrated explo_dev database (see the databases section below).
       - key: DATABASE_BACKEND
         scope: RUN_AND_BUILD_TIME
-        value: ndb
+        value: postgresql
 
       # Required only when DATABASE_BACKEND=postgresql. docker-entrypoint.sh
       # runs `alembic upgrade head` at startup when the PG backend is active -
       # safe at instance_count: 1, but concurrent instances would race, and a
       # pre-Alembic schema needs a one-time `alembic stamp head` first.
-      # Prefer the binding form: value: ${pg.DATABASE_URL}
-      # - key: DATABASE_URL
-      #   scope: RUN_TIME
-      #   type: SECRET
-      #   value: REPLACE_ME_postgres_url
+      # The ${pg.DATABASE_URL} binding resolves to a plain
+      # postgresql://...?sslmode=require URL, which psycopg2/SQLAlchemy
+      # accept directly.
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${pg.DATABASE_URL}
 
 # ---------------------------------------------------------------------------
 # Managed databases
@@ -186,13 +216,23 @@ services:
 # cluster's trusted sources — but its ${valkey.DATABASE_URL} binding points at
 # db 0, so REDIS_URL must stay an explicit URL with the /N database suffix.
 #
-# databases:
+# The staging PG cluster was provisioned 2026-08-14:
+# db-postgresql-ams3-netskrafl-staging (PG 18, ams3, db-s-1vcpu-2gb), with
+# ICU-`und` app databases `netskrafl` and `explo_dev`, owner netskrafl_app.
+# Since 2026-08-18 the staging app is attached to it (binding name `pg`,
+# referenced by DATABASE_URL above) and runs against `explo_dev`, populated
+# by scripts/migrate_to_postgres.py from the explo-dev Datastore.
+#
+# Unattached Valkey reference (would be merged into the databases list):
 #   - name: valkey
 #     engine: VALKEY
 #     cluster_name: db-redis-gsapi-staging
 #     production: true
-#   - name: pg
-#     engine: PG
-#     cluster_name: netskrafl-pg-staging
-#     db_name: netskrafl
-#     production: true
+
+databases:
+  - name: pg
+    engine: PG
+    cluster_name: db-postgresql-ams3-netskrafl-staging
+    db_name: explo_dev
+    db_user: netskrafl_app
+    production: true

@@ -92,3 +92,6 @@ Thumbs.db
 # Claude AI config
 .claude/
 CLAUDE.md
+
+# Data migration tooling - runs outside the image (see doc/data-migration-design.md)
+scripts/
