@@ -180,6 +180,16 @@ services:
         scope: RUN_TIME
         value: "8090"
 
+      # --- Ratings job opt-in -----------------------------------------------
+      # The old-style Top 100 ratings tables (/stats/ratings) are normally
+      # Netskrafl-only; this opts the staging app in during development and
+      # testing so the crontab's nightly ratings job runs against the PG
+      # backend (see RATINGS_ENABLED in src/config.py). Remove when the
+      # dev/test phase ends.
+      - key: ENABLE_RATINGS
+        scope: RUN_TIME
+        value: "true"
+
       # --- Database backend -------------------------------------------------
       # "ndb" (default) or "postgresql". The January 2026 deployment ran ndb,
       # proving the hosting migration independently of the database migration.
