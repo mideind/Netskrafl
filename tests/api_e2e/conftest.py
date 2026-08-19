@@ -79,17 +79,23 @@ def _reset_postgresql_tables() -> Iterator[None]:
     """Session-scoped fixture that resets PostgreSQL tables once per test session.
 
     This fixture drops and recreates all tables to ensure a clean state.
+    Set E2E_KEEP_TABLES=1 to skip the reset and run against a database
+    with pre-existing data - e.g. one populated by a real Datastore
+    migration (scripts/migrate_to_postgres.py), where the point is to
+    exercise the app against migrated rows. Only ever point the suite
+    at an expendable copy: the tests still create and modify entities.
     """
     from src.db.config import get_config, DEFAULT_TEST_DATABASE_URL
     from src.db.postgresql import PostgreSQLBackend
 
     url = get_config().get_database_url(DEFAULT_TEST_DATABASE_URL)
 
-    # Reset tables at session start
-    db = PostgreSQLBackend(database_url=url)
-    db.drop_tables()
-    db.create_tables()
-    db.close()
+    if os.environ.get("E2E_KEEP_TABLES", "").lower() not in ("1", "true"):
+        # Reset tables at session start
+        db = PostgreSQLBackend(database_url=url)
+        db.drop_tables()
+        db.create_tables()
+        db.close()
 
     yield
 
