@@ -60,10 +60,15 @@ ROWIDS = "ABCDEFGHIJKLMNO"
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "replay_fixtures")
 FIXTURE_FILES = sorted(glob(os.path.join(FIXTURE_DIR, "game_*.json")))
 
-pytestmark = pytest.mark.skipif(
-    not FIXTURE_FILES,
-    reason="No replay fixtures found; run utils/sample_replay_games.py first",
-)
+pytestmark = [
+    # Deselected by default via '-m "not slow"' in pytest.ini;
+    # run explicitly with: pytest test/test_replay.py -m slow
+    pytest.mark.slow,
+    pytest.mark.skipif(
+        not FIXTURE_FILES,
+        reason="No replay fixtures found; run utils/sample_replay_games.py first",
+    ),
+]
 
 Fixture = Dict[str, Any]
 MoveDict = Dict[str, Any]

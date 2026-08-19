@@ -496,9 +496,12 @@ class User:
         return self.account().startswith(ANONYMOUS_PREFIX)
 
     def nickname(self) -> str:
-        """Returns the human-readable nickname of a user,
-        or userid if a nick is not available"""
-        return self._nickname or self._user_id or ""
+        """Returns the human-readable nickname of a user.
+        Note: this must never fall back to the user/account id,
+        which could leak device-derived ids (e.g. for anonymous
+        accounts) to other clients. An empty string is fine; the
+        clients render their own localized placeholder for it."""
+        return self._nickname or ""
 
     def set_nickname(self, nickname: str) -> None:
         """Sets the human-readable nickname of a user"""
