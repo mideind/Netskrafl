@@ -198,7 +198,9 @@ class PostgreSQLBackend:
         self._submissions: "SubmissionRepositoryProtocol" = SubmissionRepository(session)
         self._completions: "CompletionRepositoryProtocol" = CompletionRepository(session)
         self._robots: "RobotRepositoryProtocol" = RobotRepository(session)
-        self._app_versions: "AppVersionRepositoryProtocol" = AppVersionRepository(session)
+        self._app_versions: "AppVersionRepositoryProtocol" = cast(
+            "AppVersionRepositoryProtocol", AppVersionRepository(session)
+        )
 
     @property
     def users(self) -> "UserRepositoryProtocol":

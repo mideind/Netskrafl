@@ -27,6 +27,7 @@ from datetime import datetime
 import skrafldb_ndb as skrafldb
 
 from ..protocols import (
+    AppVersionDict,
     PrefsDict,
     EloDict,
     UserPrefixInfo,
@@ -942,5 +943,13 @@ class AppVersionRepository:
         """Retrieve the app version entity."""
         from .entities import AppVersionEntity
 
-        model = skrafldb.AppVersionModel.get_by_id("app_version")
+        model = skrafldb.AppVersionModel.get_versions()
         return AppVersionEntity(model) if model is not None else None
+
+    def set_versions(self, values: AppVersionDict) -> None:
+        """Create or replace the app version entity."""
+        skrafldb.AppVersionModel.set_versions(values)
+
+    def delete_versions(self) -> None:
+        """Delete the app version entity, if it exists."""
+        skrafldb.AppVersionModel.delete_versions()

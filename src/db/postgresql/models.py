@@ -839,6 +839,24 @@ class AppVersion(Base):
     # Optional custom message to display in the update prompt
     update_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Optional per-platform overrides of the two version fields
+    ios_min_supported_version: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )
+    android_min_supported_version: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )
+    ios_latest_version: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )
+    android_latest_version: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )
+
+    # Optional backend endpoint overrides (see AppVersionDict)
+    api_url: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    moves_url: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+
     @property
     def key_id(self) -> str:
         return self.id

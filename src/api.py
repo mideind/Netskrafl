@@ -34,6 +34,8 @@ from typing import (
 import os
 import io
 import logging
+
+import appversion
 from datetime import UTC, datetime
 import base64
 from functools import wraps
@@ -62,6 +64,8 @@ from config import (
 from autoplayers import autoplayer_for_level
 from basics import (
     is_mobile_client,
+    is_cron_request,
+    client_type,
     jsonify,
     auth_required,
     RequestData,
@@ -82,7 +86,6 @@ from skraflmechanics import BOARD_SIZE, Rack
 from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
-    AppVersionModel,
     ChatModel,
     GameModel,
     ImageModel,
@@ -1460,19 +1463,9 @@ def inituser_api() -> ResponseType:
     except Exception:
         return jsonify(ok=False)
 
-    # Fetch app version requirements from the datastore
-    app_version: dict[str, str] | None = None
-    try:
-        av = AppVersionModel.get_versions()
-        if av is not None:
-            app_version = {
-                "min_supported_version": av.min_supported_version,
-                "latest_version": av.latest_version,
-            }
-            if av.update_message:
-                app_version["update_message"] = av.update_message
-    except Exception:
-        return jsonify(ok=False)
+    # Obtain the app version requirements and optional endpoint
+    # overrides applicable to this client (fails open to None)
+    app_version, endpoints = appversion.client_config(client_type())
 
     return jsonify(
         ok=True,
@@ -1480,7 +1473,33 @@ def inituser_api() -> ResponseType:
         userstats=us,
         firebase_token=token,
         app_version=app_version,
+        endpoints=endpoints,
     )
+
+
+@api_route("/appversion", methods=["GET", "POST"])
+def appversion_api() -> ResponseType:
+    """Read (GET) or update (POST) the mobile app version and client
+    configuration record that is reported to clients via /inituser.
+    Restricted to authorized scheduler/operations requests, i.e. those
+    carrying a valid X-Cron-Secret header. A POST body of {"delete": true}
+    removes the record; otherwise the body replaces it in full and must
+    contain at least min_supported_version and latest_version."""
+    if not is_cron_request():
+        return jsonify(ok=False, err="Restricted URL"), 403
+    if request.method == "POST":
+        j = request.get_json(silent=True)
+        if not isinstance(j, dict):
+            return jsonify(ok=False, err="Invalid JSON body"), 400
+        body = cast(Dict[str, Any], j)
+        if body.get("delete") is True:
+            appversion.delete_config()
+            return jsonify(ok=True, config=None)
+        config, err = appversion.validate_config(body)
+        if config is None:
+            return jsonify(ok=False, err=err), 400
+        appversion.save_config(config)
+    return jsonify(ok=True, config=appversion.load_config())
 
 
 @api_route("/initgame")

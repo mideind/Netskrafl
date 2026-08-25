@@ -56,6 +56,7 @@ from config import (
 # keeps the PostgreSQL backend free of any dependency on skrafldb_ndb
 # and thereby on the google-cloud-ndb package.
 from db.protocols import (
+    AppVersionDict,
     PrefsDict,
     ChallengeTuple,
     StatsDict,
@@ -2416,31 +2417,68 @@ class RiddleModel:
 
 
 class AppVersionModel:
-    """PostgreSQL facade for AppVersionModel."""
+    """PostgreSQL facade for AppVersionModel, the app version / client
+    configuration singleton."""
 
-    min_supported_version: str = ""
-    latest_version: str = ""
-    update_message: Optional[str] = None
-
-    def __init__(
-        self,
-        min_supported_version: str = "",
-        latest_version: str = "",
-        update_message: Optional[str] = None,
-    ) -> None:
-        self.min_supported_version = min_supported_version
-        self.latest_version = latest_version
-        self.update_message = update_message
+    def __init__(self, values: AppVersionDict) -> None:
+        self.min_supported_version: str = values.get("min_supported_version") or ""
+        self.latest_version: str = values.get("latest_version") or ""
+        self.update_message: Optional[str] = values.get("update_message")
+        self.ios_min_supported_version: Optional[str] = values.get(
+            "ios_min_supported_version"
+        )
+        self.android_min_supported_version: Optional[str] = values.get(
+            "android_min_supported_version"
+        )
+        self.ios_latest_version: Optional[str] = values.get("ios_latest_version")
+        self.android_latest_version: Optional[str] = values.get(
+            "android_latest_version"
+        )
+        self.api_url: Optional[str] = values.get("api_url")
+        self.moves_url: Optional[str] = values.get("moves_url")
 
     @classmethod
-    def get_versions(cls) -> Optional["AppVersionModel"]:
+    def get_versions(cls) -> Optional[AppVersionModel]:
         """Retrieve the app version config from PostgreSQL."""
         db = _get_db()
         av = db.app_versions.get_versions()
         if av is None:
             return None
         return cls(
-            min_supported_version=av.min_supported_version,
-            latest_version=av.latest_version,
-            update_message=av.update_message,
+            AppVersionDict(
+                min_supported_version=av.min_supported_version,
+                latest_version=av.latest_version,
+                update_message=av.update_message,
+                ios_min_supported_version=av.ios_min_supported_version,
+                android_min_supported_version=av.android_min_supported_version,
+                ios_latest_version=av.ios_latest_version,
+                android_latest_version=av.android_latest_version,
+                api_url=av.api_url,
+                moves_url=av.moves_url,
+            )
         )
+
+    @classmethod
+    def set_versions(cls, values: AppVersionDict) -> None:
+        """Create or replace the app version config"""
+        _get_db().app_versions.set_versions(values)
+
+    @classmethod
+    def delete_versions(cls) -> None:
+        """Delete the app version config, if it exists"""
+        _get_db().app_versions.delete_versions()
+
+    def as_dict(self) -> AppVersionDict:
+        """Return the entity contents as a plain dictionary"""
+        return AppVersionDict(
+            min_supported_version=self.min_supported_version,
+            latest_version=self.latest_version,
+            update_message=self.update_message,
+            ios_min_supported_version=self.ios_min_supported_version,
+            android_min_supported_version=self.android_min_supported_version,
+            ios_latest_version=self.ios_latest_version,
+            android_latest_version=self.android_latest_version,
+            api_url=self.api_url,
+            moves_url=self.moves_url,
+        )
+

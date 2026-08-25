@@ -549,3 +549,27 @@ class AppVersionEntity:
     @property
     def update_message(self) -> Optional[str]:
         return self._model.update_message
+
+    @property
+    def ios_min_supported_version(self) -> Optional[str]:
+        return self._model.ios_min_supported_version
+
+    @property
+    def android_min_supported_version(self) -> Optional[str]:
+        return self._model.android_min_supported_version
+
+    @property
+    def ios_latest_version(self) -> Optional[str]:
+        return self._model.ios_latest_version
+
+    @property
+    def android_latest_version(self) -> Optional[str]:
+        return self._model.android_latest_version
+
+    @property
+    def api_url(self) -> Optional[str]:
+        return self._model.api_url
+
+    @property
+    def moves_url(self) -> Optional[str]:
+        return self._model.moves_url
