@@ -109,8 +109,6 @@ from authmanager import auth_manager
 
 # Shared type definitions - canonical definitions are in src.db.protocols
 from db.protocols import (
-    APP_VERSION_ID,
-    AppVersionDict,
     PrefsDict,
     ChallengeTuple,
     StatsDict,
@@ -3082,66 +3080,31 @@ class RiddleModel(Model["RiddleModel"]):
         return json.loads(self.riddle_json)
 
 
-class AppVersionModel(Model["AppVersionModel"]):
-    """Models the minimum supported and latest app version, plus optional
-    per-platform overrides and backend endpoint overrides. This is a
-    singleton entity with the id APP_VERSION_ID."""
+class ConfigModel(Model["ConfigModel"]):
+    """Models a configuration document (JSON), keyed by id. Used for
+    singleton records such as the app version / client configuration
+    (id APP_VERSION_ID). The document content is validated in the
+    application layer, so that new fields do not require schema changes."""
 
-    # Minimum version that the app must have to function
-    min_supported_version = Model.Str()
-    # Latest available version of the app
-    latest_version = Model.Str()
-    # Optional custom message to display in the update prompt
-    update_message = Model.OptionalStr()
-    # Optional per-platform overrides of the two version fields
-    ios_min_supported_version = Model.OptionalStr()
-    android_min_supported_version = Model.OptionalStr()
-    ios_latest_version = Model.OptionalStr()
-    android_latest_version = Model.OptionalStr()
-    # Optional backend endpoint overrides
-    api_url = Model.OptionalStr()
-    moves_url = Model.OptionalStr()
+    doc = cast(Dict[str, Any], ndb.JsonProperty(required=True))
 
     @classmethod
-    def get_versions(cls) -> Optional[AppVersionModel]:
-        """Retrieve the app version entity"""
-        return cls.get_by_id(APP_VERSION_ID)
+    def get_doc(cls, id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve the configuration document with the given id"""
+        c = cls.get_by_id(id)
+        return None if c is None else c.doc
 
     @classmethod
-    def set_versions(cls, values: AppVersionDict) -> None:
-        """Create or replace the app version entity"""
-        av = cls(id=APP_VERSION_ID)
-        av.min_supported_version = values.get("min_supported_version") or ""
-        av.latest_version = values.get("latest_version") or ""
-        av.update_message = values.get("update_message")
-        av.ios_min_supported_version = values.get("ios_min_supported_version")
-        av.android_min_supported_version = values.get(
-            "android_min_supported_version"
-        )
-        av.ios_latest_version = values.get("ios_latest_version")
-        av.android_latest_version = values.get("android_latest_version")
-        av.api_url = values.get("api_url")
-        av.moves_url = values.get("moves_url")
-        av.put()
+    def set_doc(cls, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id"""
+        c = cls(id=id)
+        c.doc = dict(doc)
+        c.put()
 
     @classmethod
-    def delete_versions(cls) -> None:
-        """Delete the app version entity, if it exists"""
-        av = cls.get_by_id(APP_VERSION_ID)
-        if av is not None:
-            av.key.delete()
-
-    def as_dict(self) -> AppVersionDict:
-        """Return the entity contents as a plain dictionary"""
-        return AppVersionDict(
-            min_supported_version=self.min_supported_version,
-            latest_version=self.latest_version,
-            update_message=self.update_message,
-            ios_min_supported_version=self.ios_min_supported_version,
-            android_min_supported_version=self.android_min_supported_version,
-            ios_latest_version=self.ios_latest_version,
-            android_latest_version=self.android_latest_version,
-            api_url=self.api_url,
-            moves_url=self.moves_url,
-        )
+    def delete_doc(cls, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists"""
+        c = cls.get_by_id(id)
+        if c is not None:
+            c.key.delete()
 

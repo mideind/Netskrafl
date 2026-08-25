@@ -1289,7 +1289,7 @@ class CompletionRepositoryProtocol(Protocol):
         ...
 
 
-# Key/id of the singleton app version entity
+# Id of the app version / client configuration document (see ConfigModel)
 APP_VERSION_ID = "app_version"
 
 
@@ -1314,50 +1314,26 @@ class AppVersionDict(TypedDict, total=False):
     moves_url: Optional[str]
 
 
-class AppVersionEntityProtocol(EntityProtocol, Protocol):
-    """Protocol for AppVersion entities."""
+class ConfigEntityProtocol(EntityProtocol, Protocol):
+    """Protocol for Config entities: singleton JSON documents keyed by id"""
 
     @property
-    def min_supported_version(self) -> str: ...
-
-    @property
-    def latest_version(self) -> str: ...
-
-    @property
-    def update_message(self) -> Optional[str]: ...
-
-    @property
-    def ios_min_supported_version(self) -> Optional[str]: ...
-
-    @property
-    def android_min_supported_version(self) -> Optional[str]: ...
-
-    @property
-    def ios_latest_version(self) -> Optional[str]: ...
-
-    @property
-    def android_latest_version(self) -> Optional[str]: ...
-
-    @property
-    def api_url(self) -> Optional[str]: ...
-
-    @property
-    def moves_url(self) -> Optional[str]: ...
+    def doc(self) -> Dict[str, Any]: ...
 
 
-class AppVersionRepositoryProtocol(Protocol):
-    """Protocol for app version repository operations."""
+class ConfigRepositoryProtocol(Protocol):
+    """Protocol for configuration document repository operations."""
 
-    def get_versions(self) -> Optional[AppVersionEntityProtocol]:
-        """Retrieve the app version entity."""
+    def get(self, id: str) -> Optional[ConfigEntityProtocol]:
+        """Retrieve the configuration document with the given id."""
         ...
 
-    def set_versions(self, values: AppVersionDict) -> None:
-        """Create or replace the app version entity."""
+    def set(self, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id."""
         ...
 
-    def delete_versions(self) -> None:
-        """Delete the app version entity, if it exists."""
+    def delete(self, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists."""
         ...
 
 
@@ -1496,8 +1472,8 @@ class DatabaseBackendProtocol(Protocol):
         ...
 
     @property
-    def app_versions(self) -> AppVersionRepositoryProtocol:
-        """Access the AppVersion repository."""
+    def configs(self) -> ConfigRepositoryProtocol:
+        """Access the Config (JSON document) repository."""
         ...
 
     def transaction(self) -> TransactionContextProtocol:

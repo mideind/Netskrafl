@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session, aliased
 from config import DEFAULT_LOCALE
 
 from .models import (
-    AppVersion,
+    Config,
     User,
     Game,
     EloRating,
@@ -53,8 +53,6 @@ from .models import (
 )
 
 from ..protocols import (
-    APP_VERSION_ID,
-    AppVersionDict,
     PrefsDict,
     EloDict,
     UserPrefixInfo,
@@ -1678,40 +1676,30 @@ class RobotRepository:
         return True
 
 
-class AppVersionRepository:
-    """PostgreSQL implementation of AppVersionRepositoryProtocol."""
+class ConfigRepository:
+    """PostgreSQL implementation of ConfigRepositoryProtocol."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_versions(self) -> Optional[AppVersion]:
-        """Retrieve the app version entity."""
-        return self._session.get(AppVersion, APP_VERSION_ID)
+    def get(self, id: str) -> Optional[Config]:
+        """Retrieve the configuration document with the given id."""
+        return self._session.get(Config, id)
 
-    def set_versions(self, values: AppVersionDict) -> None:
-        """Create or replace the app version entity."""
-        av = self._session.get(AppVersion, APP_VERSION_ID)
-        if av is None:
-            av = AppVersion(id=APP_VERSION_ID)
-            self._session.add(av)
-        av.min_supported_version = values.get("min_supported_version") or ""
-        av.latest_version = values.get("latest_version") or ""
-        av.update_message = values.get("update_message")
-        av.ios_min_supported_version = values.get("ios_min_supported_version")
-        av.android_min_supported_version = values.get(
-            "android_min_supported_version"
-        )
-        av.ios_latest_version = values.get("ios_latest_version")
-        av.android_latest_version = values.get("android_latest_version")
-        av.api_url = values.get("api_url")
-        av.moves_url = values.get("moves_url")
+    def set(self, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id."""
+        c = self._session.get(Config, id)
+        if c is None:
+            c = Config(id=id)
+            self._session.add(c)
+        c.doc = dict(doc)
         self._session.flush()
 
-    def delete_versions(self) -> None:
-        """Delete the app version entity, if it exists."""
-        av = self._session.get(AppVersion, APP_VERSION_ID)
-        if av is not None:
-            self._session.delete(av)
+    def delete(self, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists."""
+        c = self._session.get(Config, id)
+        if c is not None:
+            self._session.delete(c)
             self._session.flush()
 
 

@@ -14,23 +14,25 @@
     record, which tells mobile clients (via /inituser) which app versions
     are supported and, optionally, which backend endpoints they should use.
 
-    The record is stored in the database (AppVersionModel) and cached in
-    Redis for a short time, since /inituser is a hot path. All reads fail
-    open: if the record is missing or cannot be read, no constraints are
-    reported to the client.
+    The record is a JSON document (see AppVersionDict) stored in the
+    database as the ConfigModel document with id APP_VERSION_ID, and
+    cached in Redis for a short time, since /inituser is a hot path.
+    New fields only require changes to AppVersionDict and validate_config()
+    below - no database schema changes. All reads fail open: if the record
+    is missing or cannot be read, no constraints are reported to the client.
 
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple, cast
 
 import logging
 import re
 
 from cache import memcache
-from db.protocols import AppVersionDict
-from skrafldb import AppVersionModel
+from db.protocols import APP_VERSION_ID, AppVersionDict
+from skrafldb import ConfigModel
 
 
 # Cache namespace and key for the configuration record
@@ -73,11 +75,11 @@ def load_config() -> Optional[AppVersionDict]:
     if cached is not None:
         return None if not cached else AppVersionDict(**cached)
     try:
-        av = AppVersionModel.get_versions()
+        doc = ConfigModel.get_doc(APP_VERSION_ID)
     except Exception as e:
         logging.warning(f"Unable to load app version config: {e}")
         return None
-    d: Optional[AppVersionDict] = None if av is None else av.as_dict()
+    d: Optional[AppVersionDict] = None if doc is None else cast(AppVersionDict, doc)
     memcache.set(
         _CACHE_KEY,
         _NOT_CONFIGURED if d is None else dict(d),
@@ -115,13 +117,13 @@ def validate_config(values: Mapping[str, Any]) -> Tuple[Optional[AppVersionDict]
 
 def save_config(values: AppVersionDict) -> None:
     """Store a (validated) configuration and invalidate the cache"""
-    AppVersionModel.set_versions(values)
+    ConfigModel.set_doc(APP_VERSION_ID, dict(values))
     memcache.delete(_CACHE_KEY, namespace=_CACHE_NAMESPACE)
 
 
 def delete_config() -> None:
     """Remove the configuration and invalidate the cache"""
-    AppVersionModel.delete_versions()
+    ConfigModel.delete_doc(APP_VERSION_ID)
     memcache.delete(_CACHE_KEY, namespace=_CACHE_NAMESPACE)
 
 

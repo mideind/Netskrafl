@@ -27,7 +27,6 @@ from datetime import datetime
 import skrafldb_ndb as skrafldb
 
 from ..protocols import (
-    AppVersionDict,
     PrefsDict,
     EloDict,
     UserPrefixInfo,
@@ -936,20 +935,21 @@ class NDBQueryWrapper:
             yield self._entity_class(item)
 
 
-class AppVersionRepository:
-    """NDB implementation of AppVersionRepositoryProtocol."""
+class ConfigRepository:
+    """NDB implementation of ConfigRepositoryProtocol."""
 
-    def get_versions(self) -> Optional[Any]:
-        """Retrieve the app version entity."""
-        from .entities import AppVersionEntity
+    def get(self, id: str) -> Optional[Any]:
+        """Retrieve the configuration document with the given id."""
+        from .entities import ConfigEntity
 
-        model = skrafldb.AppVersionModel.get_versions()
-        return AppVersionEntity(model) if model is not None else None
+        model = skrafldb.ConfigModel.get_by_id(id)
+        return ConfigEntity(model) if model is not None else None
 
-    def set_versions(self, values: AppVersionDict) -> None:
-        """Create or replace the app version entity."""
-        skrafldb.AppVersionModel.set_versions(values)
+    def set(self, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id."""
+        skrafldb.ConfigModel.set_doc(id, doc)
 
-    def delete_versions(self) -> None:
-        """Delete the app version entity, if it exists."""
-        skrafldb.AppVersionModel.delete_versions()
+    def delete(self, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists."""
+        skrafldb.ConfigModel.delete_doc(id)
+

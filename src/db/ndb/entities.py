@@ -18,7 +18,7 @@ if TYPE_CHECKING:
         StatsModel as NDBStatsModel,
         ChatModel as NDBChatModel,
         RiddleModel as NDBRiddleModel,
-        AppVersionModel as NDBAppVersionModel,
+        ConfigModel as NDBConfigModel,
     )
 
 from ..protocols import MoveDict, PrefsDict
@@ -526,12 +526,12 @@ class RiddleEntity:
         return self._model
 
 
-class AppVersionEntity:
-    """Wrapper around NDB AppVersionModel implementing AppVersionEntityProtocol."""
+class ConfigEntity:
+    """Wrapper around NDB ConfigModel implementing ConfigEntityProtocol."""
 
     __slots__ = ("_model",)
 
-    def __init__(self, model: "NDBAppVersionModel") -> None:
+    def __init__(self, model: "NDBConfigModel") -> None:
         self._model = model
 
     @property
@@ -539,37 +539,6 @@ class AppVersionEntity:
         return self._model.key.id()
 
     @property
-    def min_supported_version(self) -> str:
-        return self._model.min_supported_version
+    def doc(self) -> Dict[str, Any]:
+        return self._model.doc
 
-    @property
-    def latest_version(self) -> str:
-        return self._model.latest_version
-
-    @property
-    def update_message(self) -> Optional[str]:
-        return self._model.update_message
-
-    @property
-    def ios_min_supported_version(self) -> Optional[str]:
-        return self._model.ios_min_supported_version
-
-    @property
-    def android_min_supported_version(self) -> Optional[str]:
-        return self._model.android_min_supported_version
-
-    @property
-    def ios_latest_version(self) -> Optional[str]:
-        return self._model.ios_latest_version
-
-    @property
-    def android_latest_version(self) -> Optional[str]:
-        return self._model.android_latest_version
-
-    @property
-    def api_url(self) -> Optional[str]:
-        return self._model.api_url
-
-    @property
-    def moves_url(self) -> Optional[str]:
-        return self._model.moves_url

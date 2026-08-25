@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from .connection import create_db_engine
 from .models import Base
 from .repositories import (
-    AppVersionRepository,
+    ConfigRepository,
     UserRepository,
     GameRepository,
     EloRepository,
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
         SubmissionRepositoryProtocol,
         CompletionRepositoryProtocol,
         RobotRepositoryProtocol,
-        AppVersionRepositoryProtocol,
+        ConfigRepositoryProtocol,
     )
 
 
@@ -198,8 +198,8 @@ class PostgreSQLBackend:
         self._submissions: "SubmissionRepositoryProtocol" = SubmissionRepository(session)
         self._completions: "CompletionRepositoryProtocol" = CompletionRepository(session)
         self._robots: "RobotRepositoryProtocol" = RobotRepository(session)
-        self._app_versions: "AppVersionRepositoryProtocol" = cast(
-            "AppVersionRepositoryProtocol", AppVersionRepository(session)
+        self._configs: "ConfigRepositoryProtocol" = cast(
+            "ConfigRepositoryProtocol", ConfigRepository(session)
         )
 
     @property
@@ -298,9 +298,9 @@ class PostgreSQLBackend:
         return self._robots
 
     @property
-    def app_versions(self) -> "AppVersionRepositoryProtocol":
-        """Access the AppVersion repository."""
-        return self._app_versions
+    def configs(self) -> "ConfigRepositoryProtocol":
+        """Access the Config (JSON document) repository."""
+        return self._configs
 
     def transaction(self) -> PostgreSQLTransactionContext:
         """Begin a database transaction.

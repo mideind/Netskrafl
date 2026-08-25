@@ -822,47 +822,20 @@ class Riddle(Base):
             return None
 
 
-class AppVersion(Base):
-    """App version requirements - mirrors NDB AppVersionModel."""
+class Config(Base):
+    """Configuration documents (JSON), keyed by id - mirrors NDB ConfigModel.
+    Used for singleton records such as the app version / client configuration
+    (id APP_VERSION_ID), which are validated in the application layer."""
 
-    __tablename__ = "app_versions"
+    __tablename__ = "configs"
 
-    # Singleton row, always "app_version"
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-
-    # Minimum version the app must have to function
-    min_supported_version: Mapped[str] = mapped_column(String(20), nullable=False)
-
-    # Latest available version of the app
-    latest_version: Mapped[str] = mapped_column(String(20), nullable=False)
-
-    # Optional custom message to display in the update prompt
-    update_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    # Optional per-platform overrides of the two version fields
-    ios_min_supported_version: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
-    )
-    android_min_supported_version: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
-    )
-    ios_latest_version: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
-    )
-    android_latest_version: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
-    )
-
-    # Optional backend endpoint overrides (see AppVersionDict)
-    api_url: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
-    moves_url: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    doc: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
     @property
     def key_id(self) -> str:
         return self.id
 
     def __repr__(self) -> str:
-        return (
-            f"<AppVersion(min={self.min_supported_version!r}, "
-            f"latest={self.latest_version!r})>"
-        )
+        return f"<Config(id={self.id!r})>"
+
