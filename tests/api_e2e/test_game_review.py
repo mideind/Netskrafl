@@ -131,6 +131,7 @@ class TestBestMoves:
             sub="bestmoves-user-001",
             name="Best Moves User",
             email="bestmoves@example.com",
+            paid=True,
         )
 
         # Create and complete a game
@@ -177,6 +178,7 @@ class TestBestMoves:
             sub="specific-bestmoves-001",
             name="Specific Best User",
             email="specificbest@example.com",
+            paid=True,
         )
 
         # Create a game and make moves
@@ -232,6 +234,7 @@ class TestGameReview:
             sub="review-user-001",
             name="Review User",
             email="review@example.com",
+            paid=True,
         )
 
         # Create and complete a game
@@ -283,6 +286,7 @@ class TestGameReview:
             sub="all-moves-review-001",
             name="All Moves User",
             email="allmoves@example.com",
+            paid=True,
         )
 
         # Create game
@@ -337,6 +341,7 @@ class TestGameStatsReview:
             sub="stats-review-001",
             name="Stats Review User",
             email="statsreview@example.com",
+            paid=True,
         )
 
         # Create and complete a game
@@ -388,6 +393,7 @@ class TestReviewPermissions:
             sub="own-review-001",
             name="Own Review User",
             email="ownreview@example.com",
+            paid=True,
         )
 
         # Create and complete game
@@ -425,6 +431,7 @@ class TestReviewPermissions:
             sub="review-alice-001",
             name="Review Alice",
             email="reviewalice@example.com",
+            paid=True,
         )
         create_response = client.post("/initgame", json={"opp": "robot-5"})
         game_id = create_response.get_json()["uuid"]
@@ -467,6 +474,7 @@ class TestSubmitWord:
             sub="submit-word-001",
             name="Submit Word User",
             email="submitword@example.com",
+            paid=True,
         )
 
         # Create a game first

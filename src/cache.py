@@ -36,6 +36,24 @@ import redis
 from authmanager import running_local
 
 
+# Key patterns owned by this application in its Redis logical database.
+# flush() deletes exactly these, so the cache can safely live on a Valkey/
+# Redis server (or even in a logical database) shared with other tenants.
+# If you introduce a new cache namespace or key prefix anywhere in the
+# application, add its pattern here - otherwise flush() will miss it.
+_OWNED_KEY_PATTERNS: Tuple[str, ...] = (
+    # NDB global entity cache (google.cloud.ndb RedisCache);
+    # the prefix is _PREFIX = b"NDB30" in google/cloud/ndb/_cache.py
+    "NDB30*",
+    # Namespaced app caches, stored as "<namespace>|<key>"
+    "userlist|*",
+    "rating|*",
+    "rating-locale|*",
+    # Online-presence sets, one per locale ("live:is_IS", ...)
+    "live:*",
+)
+
+
 # A cache of imported modules, used to create fresh instances
 # when de-serializing JSON objects
 _modules: Dict[str, ModuleType] = dict()
@@ -273,8 +291,22 @@ class RedisWrapper:
         return self._call_with_retry(self._client.delete, False, key)
 
     def flush(self) -> None:
-        """Flush all keys from the current cache"""
-        return self._call_with_retry(self._client.flushdb, None)
+        """Delete this application's keys (see _OWNED_KEY_PATTERNS) from
+        the current Redis logical database, leaving any keys belonging to
+        other tenants untouched. This deliberately does not use FLUSHDB:
+        the Valkey/Redis server may be shared with other applications."""
+        deleted = 0
+        for pattern in _OWNED_KEY_PATTERNS:
+            cursor = 0
+            while True:
+                cursor, keys = self._call_with_retry(
+                    self._client.scan, (0, []), cursor=cursor, match=pattern, count=500
+                )
+                if keys:
+                    deleted += self._call_with_retry(self._client.unlink, 0, *keys)
+                if cursor == 0:
+                    break
+        logging.info(f"Cache flush deleted {deleted} keys")
 
     def init_set(
         self,

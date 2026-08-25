@@ -17,7 +17,6 @@ from typing import List, NamedTuple, Protocol, Dict, Any
 
 from functools import lru_cache
 
-from config import NETSKRAFL
 from skraflplayer import AutoPlayer, AutoPlayer_Custom, AutoPlayerKwargs
 from skraflmechanics import State
 
@@ -39,6 +38,7 @@ class AutoPlayerTuple(NamedTuple):
     level: int
     ctor: AutoPlayerCtor
     kwargs: AutoPlayerKwargs
+    premium: bool = False
 
 
 AutoPlayerList = List[AutoPlayerTuple]
@@ -56,38 +56,6 @@ ADAPTIVE = 20
 # The available autoplayers (robots) for each locale.
 # The list for each locale should be ordered in ascending order by level.
 
-# Legacy autoplayers matching the old 'netskrafl' branch (as of Feb 3, 2025)
-# Used to exactly replicate the behavior of the deployed GAE backend
-AUTOPLAYERS_IS_NETSKRAFL: AutoPlayerList = [
-    AutoPlayerTuple(
-        "Fullsterkur",
-        "Velur stigahæsta leik í hverri stöðu",
-        TOP_SCORE,
-        AutoPlayer,
-        {},
-    ),
-    AutoPlayerTuple(
-        "Miðlungur",
-        "Forðast allra sjaldgæfustu orðin; velur úr 10 stigahæstu leikjum",
-        MEDIUM,
-        AutoPlayer_Custom,
-        AutoPlayerKwargs(
-            vocab="midlungur",
-            pick_from=10,
-        ),
-    ),
-    AutoPlayerTuple(
-        "Amlóði",
-        "Forðast sjaldgæf orð og velur úr 20 leikjum sem koma til álita",
-        COMMON,
-        AutoPlayer_Custom,
-        AutoPlayerKwargs(
-            vocab="amlodi",
-            pick_from=20,
-        ),
-    ),
-]
-
 AUTOPLAYERS_IS: AutoPlayerList = [
     AutoPlayerTuple(
         "Fullsterkur",
@@ -95,6 +63,7 @@ AUTOPLAYERS_IS: AutoPlayerList = [
         TOP_SCORE,
         AutoPlayer,
         {},
+        premium=True,
     ),
     AutoPlayerTuple(
         "Miðlungur",
@@ -105,6 +74,7 @@ AUTOPLAYERS_IS: AutoPlayerList = [
             vocab="midlungur",
             pick_from=20,
         ),
+        premium=True,
     ),
     AutoPlayerTuple(
         "Hálfdrættingur",
@@ -146,6 +116,7 @@ AUTOPLAYERS_EN_US: AutoPlayerList = [
         TOP_SCORE,
         AutoPlayer,
         {},
+        premium=True,
     ),
     AutoPlayerTuple(
         "Idun",
@@ -153,6 +124,7 @@ AUTOPLAYERS_EN_US: AutoPlayerList = [
         MEDIUM,
         AutoPlayer_Custom,
         AutoPlayerKwargs(pick_from=20),
+        premium=True,
     ),
     AutoPlayerTuple(
         "Frigg",
@@ -189,6 +161,7 @@ AUTOPLAYERS_EN: AutoPlayerList = [
         TOP_SCORE,
         AutoPlayer,
         {},
+        premium=True,
     ),
     AutoPlayerTuple(
         "Idun",
@@ -196,6 +169,7 @@ AUTOPLAYERS_EN: AutoPlayerList = [
         MEDIUM,
         AutoPlayer_Custom,
         AutoPlayerKwargs(pick_from=20),
+        premium=True,
     ),
     AutoPlayerTuple(
         "Frigg",
@@ -234,6 +208,7 @@ AUTOPLAYERS_NB: AutoPlayerList = [
         TOP_SCORE,
         AutoPlayer,
         {},
+        premium=True,
     ),
     AutoPlayerTuple(
         "Idunn",
@@ -241,6 +216,7 @@ AUTOPLAYERS_NB: AutoPlayerList = [
         MEDIUM,
         AutoPlayer_Custom,
         AutoPlayerKwargs(pick_from=20),
+        premium=True,
     ),
     AutoPlayerTuple(
         "Frigg",
@@ -277,6 +253,7 @@ AUTOPLAYERS_NN: AutoPlayerList = [
         TOP_SCORE,
         AutoPlayer,
         {},
+        premium=True,
     ),
     AutoPlayerTuple(
         "Idunn",
@@ -284,6 +261,7 @@ AUTOPLAYERS_NN: AutoPlayerList = [
         MEDIUM,
         AutoPlayer_Custom,
         AutoPlayerKwargs(pick_from=20),
+        premium=True,
     ),
     AutoPlayerTuple(
         "Frigg",
@@ -320,6 +298,7 @@ AUTOPLAYERS_PL: AutoPlayerList = [
         TOP_SCORE,
         AutoPlayer,
         {},
+        premium=True,
     ),
     AutoPlayerTuple(
         "Maria",
@@ -327,6 +306,7 @@ AUTOPLAYERS_PL: AutoPlayerList = [
         MEDIUM,
         AutoPlayer_Custom,
         AutoPlayerKwargs(pick_from=20),
+        premium=True,
     ),
     AutoPlayerTuple(
         "Stefan",
@@ -358,7 +338,7 @@ AUTOPLAYERS_PL: AutoPlayerList = [
 
 AUTOPLAYERS: Dict[str, AutoPlayerList] = {
     # Icelandic
-    "is": AUTOPLAYERS_IS_NETSKRAFL if NETSKRAFL else AUTOPLAYERS_IS,
+    "is": AUTOPLAYERS_IS,
     # U.S. English
     "en_US": AUTOPLAYERS_EN_US,
     # Default English (UK & Rest Of World)
@@ -414,3 +394,9 @@ def autoplayer_create(state: State, robot_level: int = TOP_SCORE) -> AutoPlayer:
 def autoplayer_name(locale: str, level: int) -> str:
     """ Return the autoplayer name for a given level """
     return autoplayer_for_level(locale, level).name
+
+
+@lru_cache(maxsize=None)
+def autoplayer_is_premium(locale: str, level: int) -> bool:
+    """Return True if the autoplayer at the given level requires a subscription"""
+    return autoplayer_for_level(locale, level).premium

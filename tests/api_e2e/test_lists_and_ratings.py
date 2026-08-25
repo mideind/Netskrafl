@@ -123,6 +123,7 @@ class TestGameList:
             sub="active-games-001",
             name="Active Games User",
             email="activegames@example.com",
+            paid=True,
         )
 
         # Create a game to ensure there's at least one
@@ -205,6 +206,7 @@ class TestRecentList:
             sub="complete-recent-001",
             name="Complete Recent User",
             email="completerecent@example.com",
+            paid=True,
         )
 
         # Create and complete a game
@@ -405,6 +407,7 @@ class TestGameStats:
             sub="gamestats-user-001",
             name="Game Stats User",
             email="gamestats@example.com",
+            paid=True,
         )
 
         # Create a game first

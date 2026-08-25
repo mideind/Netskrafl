@@ -171,6 +171,11 @@ class UserRepository:
         result = skrafldb.UserModel.list_similar_elo(elo, max_len, locale)
         return [(uid, EloDict(e.elo, e.human_elo, e.manual_elo)) for uid, e in result]
 
+    def list_top_elo(self, kind: str, limit: int) -> List[str]:
+        """List the ids of the users with the highest current 'old style'
+        Elo rating of the given kind, in descending order."""
+        return skrafldb.UserModel.list_top_elo(kind, limit)
+
     def query(self) -> "QueryProtocol[UserEntity]":
         """Return a query object for users."""
         # Return a wrapper that converts NDB query results to UserEntity
@@ -180,8 +185,10 @@ class UserRepository:
 class GameRepository:
     """NDB implementation of GameRepositoryProtocol."""
 
-    def get_by_id(self, game_id: str) -> Optional[GameEntity]:
-        """Fetch a game by its UUID."""
+    def get_by_id(self, game_id: str, for_update: bool = False) -> Optional[GameEntity]:
+        """Fetch a game by its UUID. The for_update flag is ignored here:
+        under NDB, concurrent game modifications are serialized by the
+        @ndb.transactional decorator on the calling code instead."""
         model = skrafldb.GameModel.fetch(game_id)
         return GameEntity(model) if model else None
 
@@ -270,6 +277,11 @@ class GameRepository:
                 tile_count=r["tile_count"],
                 locale=r.get("locale") or "",
             )
+
+    def count_live_games(self, user_id: str, max_count: int = 0) -> int:
+        """Return the number of live (active) games for a user.
+        If max_count > 0, stop counting once that threshold is reached."""
+        return skrafldb.GameModel.count_live_games(user_id, max_count)
 
     def delete_for_user(self, user_id: str) -> None:
         """Delete all games for a user."""
@@ -379,11 +391,21 @@ class StatsRepository:
         return StatsEntity(model)
 
     def newest_before(
-        self, ts: datetime, user_id: str, robot_level: int = 0
+        self, ts: datetime, user_id: Optional[str], robot_level: int = 0
     ) -> StatsEntity:
-        """Get the most recent stats before a timestamp."""
+        """Get the most recent stats at or before a timestamp.
+        A user_id of None denotes a robot, further identified
+        by its robot_level."""
         model = skrafldb.StatsModel.newest_before(ts, user_id, robot_level)
         return StatsEntity(model)
+
+    def newest_before_multi(
+        self, ts: datetime, keys: Sequence[Tuple[Optional[str], int]]
+    ) -> List[StatsEntity]:
+        """Get the most recent stats at or before a timestamp for multiple
+        (user_id, robot_level) keys at once, in parallel."""
+        models = skrafldb.StatsModel.newest_before_multi(ts, keys)
+        return [StatsEntity(m) for m in models]
 
     def last_for_user(self, user_id: str, days: int) -> List[StatsEntity]:
         """Get stats entries for a user over the last N days."""
@@ -601,6 +623,10 @@ class ChatRepository:
             for r in results
         ]
 
+    def delete_for_user(self, user_id: str) -> None:
+        """Delete all chat messages sent or received by a user."""
+        skrafldb.ChatModel.delete_for_user(user_id)
+
 
 class BlockRepository:
     """NDB implementation of BlockRepositoryProtocol."""
@@ -708,6 +734,22 @@ class RatingRepository:
     def delete_all(self) -> None:
         """Delete all rating entries."""
         skrafldb.RatingModel.delete_all()
+
+
+class RatingArchiveRepository:
+    """NDB implementation of RatingArchiveRepositoryProtocol."""
+
+    def put_archive(self, kind: str, key_date: str, table_json: str) -> None:
+        """Store or overwrite the archived table for a kind and ISO date."""
+        skrafldb.RatingArchiveModel.store(kind, key_date, table_json)
+
+    def get_archive(self, kind: str, key_date: str) -> Optional[str]:
+        """Fetch the archived table for a kind and ISO date, or None."""
+        return skrafldb.RatingArchiveModel.fetch_json(kind, key_date)
+
+    def delete_archive(self, kind: str, key_date: str) -> None:
+        """Delete the archived table for a kind and ISO date, if present."""
+        skrafldb.RatingArchiveModel.delete(kind, key_date)
 
 
 class RiddleRepository:

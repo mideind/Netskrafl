@@ -142,6 +142,11 @@ class SessionManager:
             _thread_local.backend = backend
         return backend
 
+    def has_backend(self) -> bool:
+        """Return True if a backend/session scope is already active
+        on the current thread (e.g. inside a WSGI request)."""
+        return getattr(_thread_local, "backend", None) is not None
+
     def _cleanup_backend(self) -> None:
         """Clean up the request-scoped backend."""
         backend: Optional["DatabaseBackendProtocol"] = getattr(

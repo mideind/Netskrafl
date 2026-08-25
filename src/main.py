@@ -66,6 +66,7 @@ from config import (
     FLASK_SESSION_KEY,
     AUTH_SECRET,
     TRANSITION_KEY,
+    SKIP_TRANSITION,
 )
 from basics import (
     FlaskWithCaching,
@@ -255,6 +256,10 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
         firebase_app_id=FIREBASE_APP_ID,
         measurement_id=MEASUREMENT_ID,
         transition_key=TRANSITION_KEY,
+        # Suppress the transition-UI redirect when smoke testing the
+        # legacy web UI; explicit render_template() arguments (as used
+        # by the transition pages themselves) override this default
+        skip_transition_check=SKIP_TRANSITION,
     )
 
 
@@ -338,13 +343,22 @@ def health_ready() -> ResponseType:
     # Check that vocabularies are loaded
     if not Wordbase.is_initialized():
         return "Warming up - vocabularies not loaded", 503
-    # Check Redis connectivity
-    try:
-        from cache import memcache
-        memcache.get_redis_client().ping()
-    except Exception as e:
-        logging.warning(f"Health check: Redis unavailable - {repr(e)}")
-        return "Redis unavailable", 503
+    # Check Redis connectivity. The first attempt may hit a pooled
+    # connection that the (shared, managed) Redis server silently closed
+    # while it sat idle; redis-py only discards such a connection after
+    # the failure, so a single retry runs on a fresh connection. Only
+    # two consecutive failures indicate genuine unavailability - a lone
+    # stale-connection blip must not fail the probe, since consecutive
+    # 503s can get the container restarted by the platform.
+    from cache import memcache
+    for attempt in range(2):
+        try:
+            memcache.get_redis_client().ping()
+            break
+        except Exception as e:
+            if attempt > 0:
+                logging.warning(f"Health check: Redis unavailable - {repr(e)}")
+                return "Redis unavailable", 503
     return "OK", 200
 
 

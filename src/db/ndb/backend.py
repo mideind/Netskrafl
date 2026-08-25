@@ -24,6 +24,7 @@ from .repositories import (
     BlockRepository,
     ZombieRepository,
     RatingRepository,
+    RatingArchiveRepository,
     RiddleRepository,
     ImageRepository,
     ReportRepository,
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
         BlockRepositoryProtocol,
         ZombieRepositoryProtocol,
         RatingRepositoryProtocol,
+        RatingArchiveRepositoryProtocol,
         RiddleRepositoryProtocol,
         ImageRepositoryProtocol,
         ReportRepositoryProtocol,
@@ -120,6 +122,7 @@ class NDBBackend:
         self._blocks = BlockRepository()
         self._zombies = ZombieRepository()
         self._ratings = RatingRepository()
+        self._rating_archive = RatingArchiveRepository()
         self._riddles = RiddleRepository()
         self._images = ImageRepository()
         self._reports = ReportRepository()
@@ -179,6 +182,11 @@ class NDBBackend:
     def ratings(self) -> "RatingRepositoryProtocol":
         """Access the Rating repository."""
         return self._ratings
+
+    @property
+    def rating_archive(self) -> "RatingArchiveRepositoryProtocol":
+        """Access the RatingArchive repository."""
+        return self._rating_archive
 
     @property
     def riddles(self) -> "RiddleRepositoryProtocol":

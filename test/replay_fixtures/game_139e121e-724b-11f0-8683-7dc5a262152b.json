@@ -1,0 +1,221 @@
+{
+  "game_id": "139e121e-724b-11f0-8683-7dc5a262152b",
+  "ts_last_move": "2025-08-11T16:50:50.062206+00:00",
+  "locale": "is_IS",
+  "prefs": {
+    "duration": 0,
+    "fairplay": false,
+    "newbag": true,
+    "manual": false
+  },
+  "manual": false,
+  "irack0": "eansrnt",
+  "irack1": "rémuukk",
+  "moves": [
+    {
+      "player": 0,
+      "coord": "8C",
+      "tiles": "setnar",
+      "score": 24,
+      "rack": "nlrýmða"
+    },
+    {
+      "player": 1,
+      "coord": "9B",
+      "tiles": "mér",
+      "score": 36,
+      "rack": "uukksfd"
+    },
+    {
+      "player": 0,
+      "coord": "10A",
+      "tiles": "lýr",
+      "score": 44,
+      "rack": "nmðaiöo"
+    },
+    {
+      "player": 1,
+      "coord": "D7",
+      "tiles": "fersku",
+      "score": 33,
+      "rack": "ukdbv?ó"
+    },
+    {
+      "player": 0,
+      "coord": "13C",
+      "tiles": "im",
+      "score": 20,
+      "rack": "nðaöoúg"
+    },
+    {
+      "player": 1,
+      "coord": "9G",
+      "tiles": "kó?ðu",
+      "score": 18,
+      "rack": "dbvnsða"
+    },
+    {
+      "player": 0,
+      "coord": "11D",
+      "tiles": "koðna",
+      "score": 22,
+      "rack": "öúgeæuj"
+    },
+    {
+      "player": 1,
+      "coord": "H11",
+      "tiles": "andað",
+      "score": 33,
+      "rack": "bvslaux"
+    },
+    {
+      "player": 0,
+      "coord": "A10",
+      "tiles": "lúgu",
+      "score": 14,
+      "rack": "öeæjþti"
+    },
+    {
+      "player": 1,
+      "coord": "J9",
+      "tiles": "uxu",
+      "score": 34,
+      "rack": "bvslahg"
+    },
+    {
+      "player": 0,
+      "coord": "F6",
+      "tiles": "þön",
+      "score": 28,
+      "rack": "eæjtiár"
+    },
+    {
+      "player": 1,
+      "coord": "11J",
+      "tiles": "ugla",
+      "score": 16,
+      "rack": "bvshaif"
+    },
+    {
+      "player": 0,
+      "coord": "I13",
+      "tiles": "át",
+      "score": 22,
+      "rack": "eæjirðm"
+    },
+    {
+      "player": 1,
+      "coord": "L8",
+      "tiles": "hvali",
+      "score": 34,
+      "rack": "bsfsæig"
+    },
+    {
+      "player": 0,
+      "coord": "8L",
+      "tiles": "hæði",
+      "score": 33,
+      "rack": "ejrmp?f"
+    },
+    {
+      "player": 1,
+      "coord": "J13",
+      "tiles": "iss",
+      "score": 20,
+      "rack": "bfægaik"
+    },
+    {
+      "player": 0,
+      "coord": "14A",
+      "tiles": "rem",
+      "score": 27,
+      "rack": "jp?frau"
+    },
+    {
+      "player": 1,
+      "coord": "7M",
+      "tiles": "bæ",
+      "score": 34,
+      "rack": "fgaiktn"
+    },
+    {
+      "player": 0,
+      "coord": "6N",
+      "tiles": "fa",
+      "score": 25,
+      "rack": "jp?rule"
+    },
+    {
+      "player": 1,
+      "coord": "O2",
+      "tiles": "fanga",
+      "score": 10,
+      "rack": "ikttsat"
+    },
+    {
+      "player": 0,
+      "coord": "3K",
+      "tiles": "rupla",
+      "score": 22,
+      "rack": "j?eóðná"
+    },
+    {
+      "player": 1,
+      "coord": "K1",
+      "tiles": "skratti",
+      "score": 20,
+      "rack": "tylsani"
+    },
+    {
+      "player": 0,
+      "coord": "1H",
+      "tiles": "jóðs",
+      "score": 36,
+      "rack": "?enáara"
+    },
+    {
+      "player": 1,
+      "coord": "15J",
+      "tiles": "syltin",
+      "score": 45,
+      "rack": "saríkrn"
+    },
+    {
+      "player": 0,
+      "coord": "1N",
+      "tiles": "rá",
+      "score": 48,
+      "rack": "?enaalu"
+    },
+    {
+      "player": 1,
+      "coord": "G1",
+      "tiles": "skrín",
+      "score": 23,
+      "rack": "arits"
+    },
+    {
+      "player": 0,
+      "coord": "F10",
+      "tiles": "eðluna",
+      "score": 19,
+      "rack": "?a"
+    },
+    {
+      "player": 1,
+      "coord": "3B",
+      "tiles": "starir",
+      "score": 14,
+      "rack": ""
+    }
+  ],
+  "score0": 384,
+  "score1": 372,
+  "rack0_final": "?a",
+  "rack1_final": "",
+  "num_moves": 28,
+  "num_challenges": 0,
+  "num_challenges_upheld": 0,
+  "num_challenges_rejected": 0,
+  "ends_with_resignation": false
+}

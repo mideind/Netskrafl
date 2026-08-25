@@ -55,6 +55,40 @@ class TestReportRepository:
 
         assert result is True
 
+    def test_report_nonexistent_user_returns_false(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """Reporting a user that does not exist returns False (both backends)."""
+        result = backend.reports.report_user(
+            reporter_id="report-user-1",
+            reported_id="does-not-exist",
+            code=1,
+            text="Test report",
+        )
+
+        assert result is False
+        # The bogus report must not show up in list_reported_by
+        assert "report-user-1" not in list(
+            backend.reports.list_reported_by("does-not-exist")
+        )
+
+    def test_report_empty_id_returns_false(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """Reporting with an empty id returns False (both backends)."""
+        assert (
+            backend.reports.report_user(
+                reporter_id="report-user-1", reported_id="", code=1, text=""
+            )
+            is False
+        )
+        assert (
+            backend.reports.report_user(
+                reporter_id="", reported_id="report-user-2", code=1, text=""
+            )
+            is False
+        )
+
     def test_list_reported_by(self, backend: "DatabaseBackendProtocol") -> None:
         """Can list users who have reported a user."""
         # user-1 reports user-2

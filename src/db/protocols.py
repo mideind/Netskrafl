@@ -818,6 +818,12 @@ class UserRepositoryProtocol(Protocol):
         """List users with similar Elo ratings."""
         ...
 
+    def list_top_elo(self, kind: str, limit: int) -> List[str]:
+        """List the ids of the users with the highest current 'old style'
+        Elo rating of the given kind ('all', 'human' or 'manual'),
+        in descending order."""
+        ...
+
     def query(self) -> QueryProtocol[UserEntityProtocol]:
         """Return a query object for users."""
         ...
@@ -826,8 +832,12 @@ class UserRepositoryProtocol(Protocol):
 class GameRepositoryProtocol(Protocol):
     """Protocol for Game repository operations."""
 
-    def get_by_id(self, game_id: str) -> Optional[GameEntityProtocol]:
-        """Fetch a game by its UUID."""
+    def get_by_id(
+        self, game_id: str, for_update: bool = False
+    ) -> Optional[GameEntityProtocol]:
+        """Fetch a game by its UUID. If for_update is True, backends that
+        support row locking lock the game row for the duration of the
+        enclosing transaction; other backends may ignore the flag."""
         ...
 
     def create(self, **kwargs: Any) -> GameEntityProtocol:
@@ -850,6 +860,11 @@ class GameRepositoryProtocol(Protocol):
 
     def iter_live_games(self, user_id: str, max_len: int = 10) -> Iterator[LiveGameInfo]:
         """Iterate over live (active) games for a user."""
+        ...
+
+    def count_live_games(self, user_id: str, max_count: int = 0) -> int:
+        """Return the number of live (active) games for a user.
+        If max_count > 0, stop counting once that threshold is reached."""
         ...
 
     def delete_for_user(self, user_id: str) -> None:
@@ -923,9 +938,20 @@ class StatsRepositoryProtocol(Protocol):
         ...
 
     def newest_before(
-        self, ts: datetime, user_id: str, robot_level: int = 0
+        self, ts: datetime, user_id: Optional[str], robot_level: int = 0
     ) -> StatsEntityProtocol:
-        """Get the most recent stats before a timestamp."""
+        """Get the most recent stats at or before a timestamp.
+        A user_id of None denotes a robot, further identified
+        by its robot_level."""
+        ...
+
+    def newest_before_multi(
+        self, ts: datetime, keys: Sequence[Tuple[Optional[str], int]]
+    ) -> Sequence[StatsEntityProtocol]:
+        """Get the most recent stats at or before a timestamp for multiple
+        (user_id, robot_level) keys at once. The result is aligned with
+        the keys sequence; keys without a stored record yield an
+        unpersisted default entity."""
         ...
 
     def last_for_user(self, user_id: str, days: int) -> Sequence[StatsEntityProtocol]:
@@ -1072,6 +1098,10 @@ class ChatRepositoryProtocol(Protocol):
         """Get chat history for a user."""
         ...
 
+    def delete_for_user(self, user_id: str) -> None:
+        """Delete all chat messages sent or received by a user."""
+        ...
+
 
 class BlockRepositoryProtocol(Protocol):
     """Protocol for Block (user blocking) repository operations."""
@@ -1130,6 +1160,24 @@ class RatingRepositoryProtocol(Protocol):
 
     def delete_all(self) -> None:
         """Delete all rating entries."""
+        ...
+
+
+class RatingArchiveRepositoryProtocol(Protocol):
+    """Protocol for archived daily rating table storage.
+    Tables are stored as opaque JSON documents, keyed by
+    (kind, ISO date), and are only ever accessed by key."""
+
+    def put_archive(self, kind: str, key_date: str, table_json: str) -> None:
+        """Store or overwrite the archived table for a kind and ISO date."""
+        ...
+
+    def get_archive(self, kind: str, key_date: str) -> Optional[str]:
+        """Fetch the archived table for a kind and ISO date, or None."""
+        ...
+
+    def delete_archive(self, kind: str, key_date: str) -> None:
+        """Delete the archived table for a kind and ISO date, if present."""
         ...
 
 
@@ -1349,6 +1397,11 @@ class DatabaseBackendProtocol(Protocol):
     @property
     def ratings(self) -> RatingRepositoryProtocol:
         """Access the Rating repository."""
+        ...
+
+    @property
+    def rating_archive(self) -> RatingArchiveRepositoryProtocol:
+        """Access the RatingArchive repository."""
         ...
 
     @property

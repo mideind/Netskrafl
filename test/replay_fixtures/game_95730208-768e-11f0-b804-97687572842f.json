@@ -1,0 +1,221 @@
+{
+  "game_id": "95730208-768e-11f0-b804-97687572842f",
+  "ts_last_move": "2025-08-11T16:18:28.871693+00:00",
+  "locale": "is_IS",
+  "prefs": {
+    "duration": 0,
+    "fairplay": false,
+    "newbag": true,
+    "manual": false
+  },
+  "manual": false,
+  "irack0": "supaðlh",
+  "irack1": "uosyólæ",
+  "moves": [
+    {
+      "player": 0,
+      "coord": "H4",
+      "tiles": "hlaups",
+      "score": 38,
+      "rack": "ðtrsnón"
+    },
+    {
+      "player": 1,
+      "coord": "G9",
+      "tiles": "ysu",
+      "score": 28,
+      "rack": "oólæasr"
+    },
+    {
+      "player": 0,
+      "coord": "F9",
+      "tiles": "nó",
+      "score": 28,
+      "rack": "ðtrsnþt"
+    },
+    {
+      "player": 1,
+      "coord": "5G",
+      "tiles": "ólæsar",
+      "score": 24,
+      "rack": "oljrigý"
+    },
+    {
+      "player": 0,
+      "coord": "",
+      "tiles": "EXCH ðtrsnþt",
+      "score": 0,
+      "rack": "aileöik"
+    },
+    {
+      "player": 1,
+      "coord": "M3",
+      "tiles": "ýgi",
+      "score": 31,
+      "rack": "oljrtui"
+    },
+    {
+      "player": 0,
+      "coord": "4K",
+      "tiles": "lög",
+      "score": 39,
+      "rack": "aieikta"
+    },
+    {
+      "player": 1,
+      "coord": "E10",
+      "tiles": "jurt",
+      "score": 32,
+      "rack": "oliuaua"
+    },
+    {
+      "player": 0,
+      "coord": "J5",
+      "tiles": "steiki",
+      "score": 16,
+      "rack": "aatvmtk"
+    },
+    {
+      "player": 1,
+      "coord": "13B",
+      "tiles": "lautu",
+      "score": 18,
+      "rack": "oiaélrr"
+    },
+    {
+      "player": 0,
+      "coord": "H11",
+      "tiles": "makta",
+      "score": 31,
+      "rack": "vtxtsfi"
+    },
+    {
+      "player": 1,
+      "coord": "14B",
+      "tiles": "él",
+      "score": 39,
+      "rack": "oiarrka"
+    },
+    {
+      "player": 0,
+      "coord": "15A",
+      "tiles": "vitts",
+      "score": 54,
+      "rack": "xfálsðn"
+    },
+    {
+      "player": 1,
+      "coord": "11J",
+      "tiles": "roki",
+      "score": 29,
+      "rack": "ararþib"
+    },
+    {
+      "player": 0,
+      "coord": "12K",
+      "tiles": "fáðs",
+      "score": 39,
+      "rack": "xlndrðt"
+    },
+    {
+      "player": 1,
+      "coord": "2J",
+      "tiles": "barri",
+      "score": 48,
+      "rack": "aþ?nm?m"
+    },
+    {
+      "player": 0,
+      "coord": "",
+      "tiles": "EXCH lndrðt",
+      "score": 0,
+      "rack": "xðkaúeæ"
+    },
+    {
+      "player": 1,
+      "coord": "7A",
+      "tiles": "þ?ramm?inu",
+      "score": 67,
+      "rack": "dfágfna"
+    },
+    {
+      "player": 0,
+      "coord": "A7",
+      "tiles": "þúað",
+      "score": 42,
+      "rack": "xkeægei"
+    },
+    {
+      "player": 1,
+      "coord": "13L",
+      "tiles": "fa",
+      "score": 24,
+      "rack": "dágfnrn"
+    },
+    {
+      "player": 0,
+      "coord": "10M",
+      "tiles": "exi",
+      "score": 41,
+      "rack": "kægeana"
+    },
+    {
+      "player": 1,
+      "coord": "O7",
+      "tiles": "fánir",
+      "score": 27,
+      "rack": "dgnrsít"
+    },
+    {
+      "player": 0,
+      "coord": "14K",
+      "tiles": "gana",
+      "score": 29,
+      "rack": "kæeðlrn"
+    },
+    {
+      "player": 1,
+      "coord": "O14",
+      "tiles": "rí",
+      "score": 22,
+      "rack": "dgnstuð"
+    },
+    {
+      "player": 0,
+      "coord": "O1",
+      "tiles": "æð",
+      "score": 29,
+      "rack": "kelrnns"
+    },
+    {
+      "player": 1,
+      "coord": "C3",
+      "tiles": "dugnað",
+      "score": 28,
+      "rack": "st"
+    },
+    {
+      "player": 0,
+      "coord": "9L",
+      "tiles": "slen",
+      "score": 34,
+      "rack": "krnn"
+    },
+    {
+      "player": 1,
+      "coord": "K1",
+      "tiles": "tasla",
+      "score": 7,
+      "rack": ""
+    }
+  ],
+  "score0": 420,
+  "score1": 434,
+  "rack0_final": "krnn",
+  "rack1_final": "",
+  "num_moves": 28,
+  "num_challenges": 0,
+  "num_challenges_upheld": 0,
+  "num_challenges_rejected": 0,
+  "ends_with_resignation": false
+}

@@ -496,9 +496,12 @@ class User:
         return self.account().startswith(ANONYMOUS_PREFIX)
 
     def nickname(self) -> str:
-        """Returns the human-readable nickname of a user,
-        or userid if a nick is not available"""
-        return self._nickname or self._user_id or ""
+        """Returns the human-readable nickname of a user.
+        Note: this must never fall back to the user/account id,
+        which could leak device-derived ids (e.g. for anonymous
+        accounts) to other clients. An empty string is fine; the
+        clients render their own localized placeholder for it."""
+        return self._nickname or ""
 
     def set_nickname(self, nickname: str) -> None:
         """Sets the human-readable nickname of a user"""
@@ -873,6 +876,11 @@ class User:
         assert sid is not None
         self._load_favorites()
         assert self._favorites is not None
+        if destuser_id in self._favorites:
+            # Already a favorite: don't write a duplicate relation. (NDB's
+            # FavoriteModel.add_relation has no uniqueness guard, unlike the
+            # PostgreSQL backend's composite PK, so guard here at the call site.)
+            return
         self._favorites.add(destuser_id)
         FavoriteModel.add_relation(sid, destuser_id)
 
@@ -1092,12 +1100,17 @@ class User:
         return True
 
     @classmethod
-    def load_if_exists(cls, uid: Optional[str]) -> Optional[User]:
-        """Load a user by id if she exists, otherwise return None"""
+    def load_if_exists(
+        cls, uid: Optional[str], *, cached: bool = False
+    ) -> Optional[User]:
+        """Load a user by id if she exists, otherwise return None.
+        With cached=True, the entity cache may serve the result
+        (stale until the entity's next put()); this is appropriate
+        for the hot session-authentication path."""
         if not uid:
             return None
         with User._lock:
-            um = UserModel.fetch(uid)
+            um = UserModel.fetch_cached(uid) if cached else UserModel.fetch(uid)
             if um is None:
                 return None
             u = cls(uid=uid)

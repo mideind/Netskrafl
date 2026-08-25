@@ -34,6 +34,7 @@ from typing import (
 )
 
 import io
+import os
 from datetime import UTC, datetime
 from functools import wraps
 import socket
@@ -63,6 +64,9 @@ from config import (
     RouteType,
     RouteFunc,
     ResponseType,
+    running_local,
+    ON_GAE,
+    ON_GCP,
 )
 from languages import set_locale
 from skrafluser import User, verify_explo_token
@@ -71,6 +75,50 @@ from skrafldb import Client
 
 # Generic placeholder type
 T = TypeVar("T")
+
+# Optional secret token for authenticating cron requests from external
+# schedulers (e.g. supercronic when running in Docker/Kubernetes
+# instead of GAE)
+CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
+
+
+def cron_request_source() -> Optional[str]:
+    """Return the source of an authorized scheduler request, or None
+    if the current request is not from an authorized scheduler.
+
+    Supports multiple authentication methods for different deployment environments:
+    - GAE Task Queue (X-AppEngine-QueueName header) - only on GAE
+    - GAE Cron (X-Appengine-Cron header) - only on GAE
+    - Cloud Scheduler (HTTP_X_CLOUDSCHEDULER) - only on GCP (GAE or Cloud Run)
+    - External scheduler with secret token (X-Cron-Secret header)
+    - Local development (always allowed)
+    """
+    # Local development: always allow
+    if running_local:
+        return "local"
+    headers = request.headers
+    # GAE-specific headers: only trust these when running on GAE
+    # (these headers can be spoofed on non-GAE platforms)
+    if ON_GAE:
+        # GAE Task Queue
+        if queue_name := headers.get("X-AppEngine-QueueName", ""):
+            return f"task-queue:{queue_name}"
+        # GAE Cron
+        if headers.get("X-Appengine-Cron", "") == "true":
+            return "gae-cron"
+    # Cloud Scheduler: only trust on GCP (GAE or Cloud Run)
+    # (this header can be spoofed on non-GCP platforms)
+    if ON_GCP and request.environ.get("HTTP_X_CLOUDSCHEDULER", "") == "true":
+        return "cloud-scheduler"
+    # External scheduler with secret token (for Docker/Kubernetes deployments)
+    if CRON_SECRET and headers.get("X-Cron-Secret", "") == CRON_SECRET:
+        return "external"
+    return None
+
+
+def is_cron_request() -> bool:
+    """Check if the current request is from an authorized scheduler"""
+    return cron_request_source() is not None
 
 
 class UserIdDict(TypedDict):
@@ -267,9 +315,12 @@ def session_user() -> Optional[User]:
         # Old-style session: nested user id dictionary
         userid = u.get("id", "")
 
-    # First, try to resolve a user from the session cookie
+    # First, try to resolve a user from the session cookie.
+    # This runs on every authenticated request, so the entity cache is
+    # allowed to serve the user record (a Datastore round trip here was
+    # measured at ~99% of the total cost of light API calls).
     if userid:
-        user = User.load_if_exists(userid)
+        user = User.load_if_exists(userid, cached=True)
         if user is not None:
             return user
 
@@ -282,7 +333,7 @@ def session_user() -> Optional[User]:
         if claims:
             userid = claims.get("sub", "")
             if userid:
-                return User.load_if_exists(userid)
+                return User.load_if_exists(userid, cached=True)
 
     return None
 

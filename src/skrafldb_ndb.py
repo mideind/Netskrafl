@@ -576,6 +576,17 @@ class UserModel(Model["UserModel"]):
         return cls.get_by_id(user_id, use_cache=False, use_global_cache=False)
 
     @classmethod
+    def fetch_cached(cls, user_id: str) -> Optional[UserModel]:
+        """Fetch a user entity by id, allowing the NDB context cache and
+        the Redis global cache to serve the result. Used on the hot
+        session-authentication path, where a Datastore round trip per
+        request is prohibitively expensive. The global cache is
+        invalidated by put(), so in-application updates remain coherent;
+        out-of-band writers (local utility scripts) must be followed by
+        a /cacheflush, as documented in CLAUDE.md."""
+        return cls.get_by_id(user_id, use_cache=True, use_global_cache=True)
+
+    @classmethod
     def fetch_account(cls, account: str) -> Optional[UserModel]:
         """Attempt to fetch a user by OAuth2 account id,
         eventually prefixed by the authentication provider"""
@@ -671,6 +682,23 @@ class UserModel(Model["UserModel"]):
         """Return a count of user entities"""
         # Beware: this seems to be EXTREMELY slow on Google Cloud Datastore
         return cls.query().count()
+
+    @classmethod
+    def list_top_elo(cls, kind: str, limit: int) -> List[str]:
+        """Return the ids of the users with the highest current
+        'old style' (locale-independent) Elo rating of the given kind
+        ('all', 'human' or 'manual'), in descending order. These fields
+        are maintained canonically by the nightly stats run."""
+        prop: int
+        if kind == "human":
+            prop = UserModel.human_elo
+        elif kind == "manual":
+            prop = UserModel.manual_elo
+        else:
+            # Default, kind == 'all'
+            prop = UserModel.elo
+        q = cls.query().order(-cast(int, prop))
+        return [k.id() for k in q.fetch(keys_only=True, limit=limit)]
 
     @classmethod
     def filter_locale(
@@ -1289,8 +1317,13 @@ class GameModel(Model["GameModel"]):
         return p.id()
 
     @classmethod
-    def fetch(cls, game_uuid: str, use_cache: bool = True) -> Optional[GameModel]:
-        """Fetch a game entity given its uuid"""
+    def fetch(
+        cls, game_uuid: str, use_cache: bool = True, for_update: bool = False
+    ) -> Optional[GameModel]:
+        """Fetch a game entity given its uuid. The for_update flag is
+        ignored here: under NDB, concurrent game modifications are
+        serialized by the @ndb.transactional decorator on the calling
+        code (see logic.submit_move) instead of row locking."""
         if not use_cache:
             return cls.get_by_id(game_uuid, use_cache=False, use_global_cache=False)
         # Default caching policy if caching is not explictly prohibited
@@ -1456,6 +1489,28 @@ class GameModel(Model["GameModel"]):
     def manual_wordcheck(self) -> bool:
         """Returns true if the game preferences specify a manual wordcheck"""
         return self.prefs is not None and self.prefs.get("manual", False)
+
+    @classmethod
+    def count_live_games(cls, user_id: str, max_count: int = 0) -> int:
+        """Return the number of live (active) games for a user.
+        If max_count > 0, stop counting once that threshold is reached."""
+        if not user_id:
+            return 0
+        k: Key[UserModel] = Key(UserModel, user_id)
+        q0 = (
+            cls.query(GameModel.player0 == k)
+            .filter(GameModel.over == False)  # noqa: E712
+        )
+        q1 = (
+            cls.query(GameModel.player1 == k)
+            .filter(GameModel.over == False)  # noqa: E712
+        )
+        if max_count > 0:
+            c0 = q0.count(limit=max_count)
+            if c0 >= max_count:
+                return c0
+            return c0 + q1.count(limit=max_count - c0)
+        return q0.count() + q1.count()
 
     @classmethod
     def delete_for_user(cls, uid: str) -> None:
@@ -1684,7 +1739,14 @@ class ChallengeModel(Model["ChallengeModel"]):
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
-        # List issued challenges in ascending order by timestamp (oldest first)
+        # We want the newest max_len challenges, in newest-first order, because
+        # the list is capped: showing the newest ensures recent challenges are
+        # visible rather than buried behind an old, never-cleaned-up backlog.
+        # We deliberately reuse the existing ascending (ancestor, timestamp)
+        # index and reverse in memory, rather than adding a descending-timestamp
+        # index (which would require a disruptive production index rebuild).
+        # The number of challenges per user is small in practice.
+        # (The PostgreSQL backend orders by timestamp DESC directly.)
         q = cls.query(ancestor=k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
@@ -1694,7 +1756,12 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        for cm in q.fetch(max_len):
+        # Fetch all matching challenges (oldest-first) in a single query and
+        # yield the newest max_len, newest-first. ChallengeModel entities are
+        # small and the count per user is bounded (typically <5, rarely ~100),
+        # so one query/roundtrip is cheaper than a keys-only fetch followed by
+        # a get_multi (two roundtrips).
+        for cm in reversed(q.fetch()[-max_len:]):
             yield ch_callback(cm)
 
     @classmethod
@@ -1705,7 +1772,14 @@ class ChallengeModel(Model["ChallengeModel"]):
         if not user_id:
             return
         k: Key[UserModel] = Key(UserModel, user_id)
-        # List received challenges in ascending order by timestamp (oldest first)
+        # We want the newest max_len challenges, in newest-first order, because
+        # the list is capped: showing the newest ensures recent challenges are
+        # visible rather than buried behind an old, never-cleaned-up backlog.
+        # We deliberately reuse the existing ascending (destuser, timestamp)
+        # index and reverse in memory, rather than adding a descending-timestamp
+        # index (which would require a disruptive production index rebuild).
+        # The number of challenges per user is small in practice.
+        # (The PostgreSQL backend orders by timestamp DESC directly.)
         q = cls.query(ChallengeModel.destuser == k).order(ChallengeModel.timestamp)
 
         def ch_callback(cm: ChallengeModel) -> ChallengeTuple:
@@ -1716,7 +1790,12 @@ class ChallengeModel(Model["ChallengeModel"]):
             # to str for internal use
             return ChallengeTuple(id0, cm.prefs, cm.timestamp, str(cm.key.id()))
 
-        for cm in q.fetch(max_len):
+        # Fetch all matching challenges (oldest-first) in a single query and
+        # yield the newest max_len, newest-first. ChallengeModel entities are
+        # small and the count per user is bounded (typically <5, rarely ~100),
+        # so one query/roundtrip is cheaper than a keys-only fetch followed by
+        # a get_multi (two roundtrips).
+        for cm in reversed(q.fetch()[-max_len:]):
             yield ch_callback(cm)
 
 
@@ -2096,6 +2175,39 @@ class StatsModel(Model["StatsModel"]):
         return sm
 
     @classmethod
+    def newest_before_multi(
+        cls, ts: datetime, keys: Sequence[Tuple[Optional[str], int]]
+    ) -> List[StatsModel]:
+        """Returns the newest available stats records at or before the
+        given time, for multiple (user_id, robot_level) keys at once.
+        The result list is aligned with the keys sequence. Queries are
+        issued asynchronously and in parallel, which makes this much
+        faster than repeated newest_before() calls."""
+        futures: List[Future[StatsModel]] = []
+        for user_id, robot_level in keys:
+            k: Optional[Key[UserModel]] = (
+                None if user_id is None else Key(UserModel, user_id)
+            )
+            # Use a common query structure and index for humans and robots
+            q = cls.query(
+                ndb.AND(StatsModel.robot_level == robot_level, StatsModel.user == k)  # type: ignore
+            )
+            q = q.filter(StatsModel.timestamp <= ts).order(
+                -cast(int, StatsModel.timestamp)
+            )
+            futures.append(q.fetch_async(limit=1))
+        Future.wait_all(futures)
+        result: List[StatsModel] = []
+        for (user_id, robot_level), fut in zip(keys, futures):
+            sm = cls.create(user_id, robot_level)
+            sm_list = fut.get_result()
+            if sm_list:
+                # Found: copy the stats
+                sm.copy_from(sm_list[0])
+            result.append(sm)
+        return result
+
+    @classmethod
     def newest_for_user(cls, user_id: str) -> Optional[StatsModel]:
         """Returns the newest available stats record for the user"""
         # This does not work for robots
@@ -2265,6 +2377,58 @@ class RatingModel(Model["RatingModel"]):
     def delete_all(cls) -> None:
         """Delete all ratings records"""
         delete_multi(cls.query().iter(keys_only=True))
+
+
+class RatingArchiveModel(Model["RatingArchiveModel"]):
+    """Stores an archived daily top-ratings table as a JSON text blob.
+    One entity is written per (kind, date) each time the ratings task
+    runs; historical comparisons (yesterday/week/month ago) are then
+    simple keyed lookups instead of expensive recomputations over the
+    entire StatsModel history. Entities are only accessed by key, so
+    no composite indexes are required."""
+
+    # Typically "all", "human" or "manual"
+    kind = Model.Str()
+
+    # The date that the table was (or would have been) computed,
+    # in ISO format (YYYY-MM-DD). The table reflects games finished
+    # before 00:00 UTC on this date.
+    key_date = Model.Str()
+
+    # The rating table rows as a JSON document
+    table_json = Model.Text()
+
+    # The time at which this entity was actually written
+    timestamp = Model.Datetime(auto_now_add=True)
+
+    @staticmethod
+    def _id(kind: str, key_date: str) -> str:
+        """Return the entity id for a (kind, date) combination"""
+        return f"{kind}:{key_date}"
+
+    @classmethod
+    def store(cls, kind: str, key_date: str, table_json: str) -> None:
+        """Store or overwrite the archived table for the given kind and date"""
+        cls(
+            id=cls._id(kind, key_date),
+            kind=kind,
+            key_date=key_date,
+            table_json=table_json,
+        ).put()
+
+    @classmethod
+    def fetch_json(cls, kind: str, key_date: str) -> Optional[str]:
+        """Fetch the archived table for the given kind and date,
+        or None if it does not exist"""
+        k: Key[RatingArchiveModel] = Key(cls, cls._id(kind, key_date))
+        ra = k.get()
+        return None if ra is None else ra.table_json
+
+    @classmethod
+    def delete(cls, kind: str, key_date: str) -> None:
+        """Delete the archived table for the given kind and date, if present"""
+        k: Key[RatingArchiveModel] = Key(cls, cls._id(kind, key_date))
+        k.delete()
 
 
 class ChatModelFuture(Future["ChatModel"]):
@@ -2819,8 +2983,16 @@ class ReportModel(Model["ReportModel"]):
             return
         k: Key[UserModel] = Key(UserModel, user_id)
         q = cls.query(ReportModel.reported == k)
-        for bm in q.fetch(limit=max_len):
-            yield bm.reporter.id()
+        # De-duplicate reporters and return at most max_len distinct ones,
+        # matching the PostgreSQL backend (SELECT DISTINCT ... LIMIT).
+        seen: Set[str] = set()
+        for bm in iter_q(q, chunk_size=max_len):
+            rid = bm.reporter.id()
+            if rid not in seen:
+                seen.add(rid)
+                yield rid
+                if len(seen) >= max_len:
+                    return
 
 
 class TransactionModel(Model["TransactionModel"]):

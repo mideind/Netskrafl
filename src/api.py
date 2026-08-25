@@ -40,6 +40,7 @@ from functools import wraps
 
 from flask import (
     Blueprint,
+    Response,
     request,
     send_file,  # type: ignore
 )
@@ -49,6 +50,7 @@ from werkzeug.utils import redirect
 
 from config import (
     NETSKRAFL,
+    MAX_FREE_GAMES,
     RC_WEBHOOK_AUTH,
     RouteType,
     RouteFunc,
@@ -57,6 +59,7 @@ from config import (
     ResponseType,
     Error,
 )
+from autoplayers import autoplayer_for_level
 from basics import (
     is_mobile_client,
     jsonify,
@@ -75,12 +78,13 @@ from languages import (
     to_supported_locale,
 )
 from wordbase import Wordbase
-from skraflmechanics import BOARD_SIZE
+from skraflmechanics import BOARD_SIZE, Rack
 from skrafluser import User
 from skraflgame import BestMoveList, Game
 from skrafldb import (
     AppVersionModel,
     ChatModel,
+    GameModel,
     ImageModel,
     ZombieModel,
     PrefsDict,
@@ -88,6 +92,7 @@ from skrafldb import (
 )
 import firebase
 from billing import cancel_plan
+from movesservice import post_to_moves_service
 import auth
 from logic import (
     EXPLO_LOGO_URL,
@@ -98,8 +103,8 @@ from logic import (
     process_move,
     rating_for_locale,
     set_online_status_for_chats,
-    autoplayer_lock,
     submit_move,
+    force_resign,
     userlist,
     gamelist,
     recentlist,
@@ -151,6 +156,9 @@ class RevenueCatEvent(TypedDict, total=False):
 DEFAULT_BEST_MOVES = 19
 # Maximum number of best moves to return from /bestmoves
 MAX_BEST_MOVES = 20
+# Maximum number of moves to return from /moves (which, unlike /bestmoves,
+# is served by the GoSkrafl moves service and supports larger analyses)
+MAX_MOVES_LIMIT = 100
 # Only allow POST requests to the API endpoints
 _ONLY_POST: Sequence[str] = ["POST"]
 # How long to cache a thumbnail image client-side, in seconds
@@ -353,26 +361,7 @@ def forceresign_api() -> ResponseType:
     rq = RequestData(request)
     uuid = rq.get("game")
     movecount = rq.get_int("mcount", -1)
-
-    game = None if uuid is None else Game.load(uuid, use_cache=False, set_locale=True)
-
-    if game is None:
-        return jsonify(result=Error.GAME_NOT_FOUND)
-
-    # Only the user who is the opponent of the tardy user can force a resign
-    if game.player_id(1 - game.player_to_move()) != user_id:
-        return jsonify(result=Error.WRONG_USER)
-
-    # Make sure the client is in sync with the server:
-    # check the move count
-    if movecount != game.num_moves():
-        return jsonify(result=Error.OUT_OF_SYNC)
-
-    if not game.is_overdue():
-        return jsonify(result=Error.GAME_NOT_OVERDUE)
-
-    # Send in a resign move on behalf of the opponent
-    return process_move(game, ["rsgn"], force_resign=True)
+    return force_resign(uuid, user_id, movecount)
 
 
 @api_route("/wordcheck")
@@ -403,6 +392,54 @@ def wordcheck_api() -> ResponseType:
     valid = [(w, w in wdb) for w in words]
     ok = all(v[1] for v in valid)
     return jsonify(word=word, ok=ok, valid=valid)
+
+
+@api_route("/moves")
+@auth_required(result=Error.LOGIN_REQUIRED)
+def moves_api() -> ResponseType:
+    """Generate all valid moves for a given board and rack, in descending
+    score order, by forwarding the request to the GoSkrafl moves service
+    (an external service or a loopback sidecar - see movesservice.py).
+    This is the authenticated equivalent of the moves service's own
+    /moves endpoint, which clients have hitherto called directly with
+    a bearer token."""
+    rq = RequestData(request)
+    board: List[str] = rq.get_list("board")
+    rack: str = rq["rack"]
+    board_type: str = rq.get("board_type", "standard")
+    locale: str = to_supported_locale(rq.get("locale", ""))
+    # Cap the number of returned moves; the default matches /bestmoves
+    limit: int = min(rq.get_int("limit", DEFAULT_BEST_MOVES), MAX_MOVES_LIMIT)
+    # Cheap local sanity checks; the moves service does full validation
+    # and replies with a plain-text 4xx error, which is relayed below
+    if len(board) != BOARD_SIZE or not rack or len(rack) > Rack.MAX_TILES:
+        return jsonify(ok=False), 400
+    response = post_to_moves_service(
+        "/moves",
+        {
+            "locale": locale,
+            "board_type": board_type,
+            "board": board,
+            "rack": rack,
+            "limit": limit,
+        },
+        timeout=10,
+    )
+    if response is None:
+        return jsonify(ok=False), 503
+    # Relay the moves service response: {version, count, moves} JSON on
+    # success, or a plain-text error with a 4xx status. The service does
+    # not set a Content-Type header itself (Go's sniffed default is
+    # text/plain), so declare the success payload as JSON explicitly.
+    if response.status_code == 200:
+        content_type = "application/json"
+    else:
+        content_type = response.headers.get("Content-Type", "text/plain")
+    return Response(
+        response=response.content,
+        status=response.status_code,
+        content_type=content_type,
+    )
 
 
 @api_route("/gamestats")
@@ -1205,9 +1242,7 @@ def bestmoves_api() -> ResponseType:
     if rq_move_number <= move_number:
         # How many best moves are being requested?
         num_moves = rq.get_int("num_moves", DEFAULT_BEST_MOVES)
-        # Serialize access to the following section
-        with autoplayer_lock:
-            best_moves = game.best_moves(state, min(num_moves, MAX_BEST_MOVES))
+        best_moves = game.best_moves(state, min(num_moves, MAX_BEST_MOVES))
 
     uid = user.id()
     if uid is not None and game.has_player(uid):
@@ -1464,6 +1499,11 @@ def initgame_api() -> ResponseType:
         # Unknown opponent
         return jsonify(ok=False)
 
+    # Enforce game count limit for non-paying users
+    if not user.has_paid():
+        if GameModel.count_live_games(uid, max_count=MAX_FREE_GAMES) >= MAX_FREE_GAMES:
+            return jsonify(ok=False, err="game_limit_reached")
+
     if NETSKRAFL:
         board_type = rq.get("board_type", current_board_type())
     else:
@@ -1477,7 +1517,16 @@ def initgame_api() -> ResponseType:
 
     if opp.startswith("robot-"):
         # Start a new game against an autoplayer (robot)
-        robot_level = int(opp[6:])
+        try:
+            robot_level = int(opp[6:])
+        except ValueError:
+            return jsonify(ok=False)
+        # Normalize to the canonical autoplayer level
+        apl = autoplayer_for_level(user.locale, robot_level)
+        robot_level = apl.level
+        # Check whether this robot requires a subscription
+        if apl.premium and not user.has_paid():
+            return jsonify(ok=False, err="premium_required")
         # The game is always in the user's locale
         prefs = PrefsDict(newbag=True, locale=user.locale)
         prefs["board_type"] = board_type

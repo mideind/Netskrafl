@@ -1,0 +1,108 @@
+# docker-compose.pg.yml - Full self-contained PostgreSQL deployment topology
+#
+# Runs the complete stack: app (DATABASE_BACKEND=postgresql) + PostgreSQL
+# + Redis, with no dependencies on host-installed services. This is the
+# reference topology for containerized PostgreSQL deployments; on
+# DigitalOcean App Platform, the postgres service is replaced by a
+# managed PostgreSQL database (set DATABASE_URL accordingly).
+#
+# The app entrypoint runs `alembic upgrade head` before starting
+# gunicorn, so a fresh PostgreSQL volume is schema-initialized
+# automatically.
+#
+# Usage:
+#   docker compose -f docker-compose.pg.yml up --build
+#   docker compose -f docker-compose.pg.yml down          # keep data
+#   docker compose -f docker-compose.pg.yml down -v       # drop data
+#
+# Prerequisites:
+#   1. GCP credentials in ./credentials/{PROJECT_ID}/service-account.json
+#      (still required for Firebase RTDB/FCM and, unless
+#      SECRETS_PROVIDER=env is configured, for Google Secret Manager)
+#
+# Note on collation: the postgres image below initializes the cluster
+# with ICU collation (und-x-icu), matching the production database
+# recommendation in doc/postgresql-plan.md.
+
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PROJECT_ID: ${PROJECT_ID:-netskrafl}
+      # PostgreSQL backend, served by the postgres service below
+      DATABASE_BACKEND: postgresql
+      DATABASE_URL: postgresql://netskrafl:${POSTGRES_PASSWORD:-netskrafl}@postgres:5432/netskrafl
+      # Redis connection (uses service name as hostname)
+      REDIS_URL: redis://redis:6379
+      RUNNING_LOCAL: "false"
+      APP_VERSION: ${APP_VERSION:-docker-pg}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/service-account.json
+      # Optional: uncomment to source secrets from the environment
+      # instead of Google Secret Manager (see src/secret_manager.py)
+      # SECRETS_PROVIDER: env
+    volumes:
+      - ./credentials/${PROJECT_ID:-netskrafl}:/app/credentials:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      start_interval: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: netskrafl
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-netskrafl}
+      POSTGRES_DB: netskrafl
+      # ICU collation for multilingual text sorting (Unicode root locale),
+      # per doc/postgresql-plan.md
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=und --locale=C"
+      # All timestamps are stored and served in UTC
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Uncomment to expose PostgreSQL for debugging/admin access
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netskrafl -d netskrafl"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:

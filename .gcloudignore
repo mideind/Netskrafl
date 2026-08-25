@@ -91,3 +91,10 @@ docker-compose.yml
 crontab
 nginx.conf
 
+# Alembic schema migrations (PostgreSQL only, not needed on GAE/NDB)
+alembic.ini
+migrations/
+
+
+# Data migration tooling - runs outside the image
+scripts/

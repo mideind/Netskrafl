@@ -1,0 +1,221 @@
+{
+  "game_id": "fa9c14a4-7093-11f0-9f91-377560c064d3",
+  "ts_last_move": "2025-08-11T16:16:21.676739+00:00",
+  "locale": "is_IS",
+  "prefs": {
+    "duration": 0,
+    "fairplay": false,
+    "newbag": true,
+    "manual": false
+  },
+  "manual": false,
+  "irack0": "áiveous",
+  "irack1": "lrnnðúa",
+  "moves": [
+    {
+      "player": 0,
+      "coord": "H8",
+      "tiles": "vosi",
+      "score": 24,
+      "rack": "áeuntuý"
+    },
+    {
+      "player": 1,
+      "coord": "12D",
+      "tiles": "lúnað",
+      "score": 40,
+      "rack": "rnlréþb"
+    },
+    {
+      "player": 0,
+      "coord": "8H",
+      "tiles": "ventu",
+      "score": 15,
+      "rack": "áuýffur"
+    },
+    {
+      "player": 1,
+      "coord": "11C",
+      "tiles": "þél",
+      "score": 53,
+      "rack": "rnrbuær"
+    },
+    {
+      "player": 0,
+      "coord": "M7",
+      "tiles": "frý",
+      "score": 31,
+      "rack": "áufuánl"
+    },
+    {
+      "player": 1,
+      "coord": "10K",
+      "tiles": "bæru",
+      "score": 26,
+      "rack": "nrrtrls"
+    },
+    {
+      "player": 0,
+      "coord": "K10",
+      "tiles": "blánu",
+      "score": 26,
+      "rack": "fuáíari"
+    },
+    {
+      "player": 1,
+      "coord": "12J",
+      "tiles": "láts",
+      "score": 16,
+      "rack": "nrrrgsö"
+    },
+    {
+      "player": 0,
+      "coord": "13B",
+      "tiles": "fáir",
+      "score": 33,
+      "rack": "uíaóksm"
+    },
+    {
+      "player": 1,
+      "coord": "11J",
+      "tiles": "öls",
+      "score": 24,
+      "rack": "nrrrgln"
+    },
+    {
+      "player": 0,
+      "coord": "O7",
+      "tiles": "skímu",
+      "score": 47,
+      "rack": "aótty?æ"
+    },
+    {
+      "player": 1,
+      "coord": "I7",
+      "tiles": "leg",
+      "score": 24,
+      "rack": "nrrrnfs"
+    },
+    {
+      "player": 0,
+      "coord": "15K",
+      "tiles": "?mætta",
+      "score": 52,
+      "rack": "óyedemr"
+    },
+    {
+      "player": 1,
+      "coord": "E10",
+      "tiles": "flúrs",
+      "score": 11,
+      "rack": "nrrrnii"
+    },
+    {
+      "player": 0,
+      "coord": "10E",
+      "tiles": "fers",
+      "score": 14,
+      "rack": "óydemia"
+    },
+    {
+      "player": 1,
+      "coord": "N4",
+      "tiles": "inni",
+      "score": 11,
+      "rack": "rrrgnua"
+    },
+    {
+      "player": 0,
+      "coord": "A12",
+      "tiles": "dómi",
+      "score": 59,
+      "rack": "yeaðópk"
+    },
+    {
+      "player": 1,
+      "coord": "14I",
+      "tiles": "gruna",
+      "score": 18,
+      "rack": "rrukara"
+    },
+    {
+      "player": 0,
+      "coord": "3K",
+      "tiles": "keypa",
+      "score": 43,
+      "rack": "ðóimass"
+    },
+    {
+      "player": 1,
+      "coord": "2G",
+      "tiles": "kurrar",
+      "score": 17,
+      "rack": "aaa?ðkð"
+    },
+    {
+      "player": 0,
+      "coord": "O1",
+      "tiles": "móað",
+      "score": 35,
+      "rack": "iassiaj"
+    },
+    {
+      "player": 1,
+      "coord": "H1",
+      "tiles": "kuða",
+      "score": 24,
+      "rack": "aa?ðttx"
+    },
+    {
+      "player": 0,
+      "coord": "14A",
+      "tiles": "mas",
+      "score": 20,
+      "rack": "isiajhu"
+    },
+    {
+      "player": 1,
+      "coord": "4K",
+      "tiles": "ax",
+      "score": 54,
+      "rack": "a?ðttng"
+    },
+    {
+      "player": 0,
+      "coord": "5L",
+      "tiles": "asni",
+      "score": 28,
+      "rack": "ijhua"
+    },
+    {
+      "player": 1,
+      "coord": "6J",
+      "tiles": "tað",
+      "score": 26,
+      "rack": "?tng"
+    },
+    {
+      "player": 0,
+      "coord": "G1",
+      "tiles": "aki",
+      "score": 12,
+      "rack": "jhu"
+    },
+    {
+      "player": 1,
+      "coord": "3C",
+      "tiles": "t?engið",
+      "score": 18,
+      "rack": ""
+    }
+  ],
+  "score0": 439,
+  "score1": 386,
+  "rack0_final": "jhu",
+  "rack1_final": "",
+  "num_moves": 28,
+  "num_challenges": 0,
+  "num_challenges_upheld": 0,
+  "num_challenges_rejected": 0,
+  "ends_with_resignation": false
+}

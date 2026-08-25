@@ -57,6 +57,7 @@ class TestMoveTimestampRoundTrip:
             sub="ts-pass-user-001",
             name="Timestamp Tester",
             email="tspass@example.com",
+            paid=True,
         )
 
         # Ensure the human player moves first so we can submit immediately
@@ -134,6 +135,7 @@ class TestMoveTimestampRoundTrip:
             sub="ts-multi-user-001",
             name="Multi Move",
             email="tsmulti@example.com",
+            paid=True,
         )
 
         deterministic_game.set_player_order(player0_first=True)
@@ -206,6 +208,7 @@ class TestMoveTimestampRoundTrip:
             sub="ts-reload-user-001",
             name="Reload Tester",
             email="tsreload@example.com",
+            paid=True,
         )
 
         deterministic_game.set_player_order(player0_first=True)
@@ -276,6 +279,7 @@ class TestMoveTimestampRoundTrip:
             sub="ts-resign-user-001",
             name="Resign Tester",
             email="tsresign@example.com",
+            paid=True,
         )
 
         deterministic_game.set_player_order(player0_first=True)
@@ -331,6 +335,7 @@ class TestMoveTimestampRoundTrip:
             sub="ts-exch-user-001",
             name="Exchange Tester",
             email="tsexch@example.com",
+            paid=True,
         )
 
         deterministic_game.set_player_order(player0_first=True)
@@ -389,6 +394,7 @@ class TestMoveTimestampRoundTrip:
             sub="ts-lastmove-user-001",
             name="LastMove Tester",
             email="tslast@example.com",
+            paid=True,
         )
 
         deterministic_game.set_player_order(player0_first=True)

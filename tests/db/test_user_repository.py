@@ -202,6 +202,24 @@ class TestUserQueries:
         nicknames = {m.nickname for m in matches}
         assert "Jon" in nicknames or "Jonatan" in nicknames
 
+    def test_list_prefix_no_limit(self, backend: "DatabaseBackendProtocol") -> None:
+        """max_len <= 0 means 'no limit', matching NDB's `0 < max_len` check.
+        (PG previously applied LIMIT 0 here, returning nothing.)"""
+        prefix = "Zzqprefix"
+        for i in range(3):
+            uid = f"prefix-nolimit-{i}"
+            if backend.users.get_by_id(uid) is None:
+                backend.users.create(
+                    user_id=uid, account=f"test:pnl{i}", email=None,
+                    nickname=f"{prefix}{i}", locale="is_IS",
+                )
+        # A positive cap limits the result...
+        capped = list(backend.users.list_prefix(prefix, max_len=2, locale="is_IS"))
+        assert len(capped) <= 2
+        # ...while max_len <= 0 returns all matches (no LIMIT 0 truncation)
+        nicks = {m.nickname for m in backend.users.list_prefix(prefix, max_len=0, locale="is_IS")}
+        assert {f"{prefix}0", f"{prefix}1", f"{prefix}2"} <= nicks
+
     def test_count(self, backend: "DatabaseBackendProtocol") -> None:
         """Count returns the total number of users."""
         count = backend.users.count()

@@ -33,12 +33,12 @@ from typing import (
     cast,
 )
 
-import threading
+import logging
 from random import randint
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 
-from config import DEFAULT_LOCALE, running_local, Error, BoardTypes
+from config import DEFAULT_LOCALE, running_local, Error, BoardTypes, MOVES_SIDECAR
 
 from languages import (
     Alphabet,
@@ -75,6 +75,7 @@ from skraflmechanics import (
     SummaryTuple,
 )
 from skraflplayer import AutoPlayer
+from movesservice import best_moves_from_service
 from skrafluser import User
 from skraflelo import compute_elo_for_game, compute_locale_elo_for_game
 from autoplayers import autoplayer_create, autoplayer_name
@@ -198,8 +199,6 @@ class Game:
     # waiting player can force the tardy opponent to resign
     OVERDUE_DAYS = 14
 
-    _lock = threading.Lock()
-
     def __init__(self, *, locale: str, uuid: Optional[str] = None) -> None:
         # Unique id of the game
         self.uuid = uuid
@@ -286,47 +285,62 @@ class Game:
 
     @classmethod
     def load(
-        cls, uuid: str, *, use_cache: bool = True, set_locale: bool = False
+        cls,
+        uuid: str,
+        *,
+        use_cache: bool = True,
+        set_locale: bool = False,
+        for_update: bool = False,
     ) -> Optional[Game]:
         """Load an already existing game from persistent storage.
         If set_locale is True, set the current thread's locale
-        to the game locale."""
-        with Game._lock:
-            # Ensure that the game load does not introduce race conditions
-            try:
-                return cls._load_locked(
-                    uuid, use_cache=use_cache, set_locale=set_locale
+        to the game locale. If for_update is True, backends that
+        support row locking (PostgreSQL) lock the game row until the
+        end of the current request transaction, serializing concurrent
+        modifications of the same game. Note that no in-process locking
+        is done here: each request deserializes its own Game instance,
+        and concurrent modification of the same game is serialized by
+        the database layer (row locking on PostgreSQL, transactions
+        on NDB)."""
+        try:
+            return cls._do_load(
+                uuid,
+                use_cache=use_cache,
+                set_locale=set_locale,
+                for_update=for_update,
+            )
+        except KeyError:
+            # Hack to handle older game objects that have no associated
+            # locale. If we run Explo on such data, the default locale
+            # is en_US, but the game may use the Icelandic tile set, which
+            # causes KeyError to be raised upon loading. In that case,
+            # we try again with the locale forced to is_IS.
+            if set_locale and DEFAULT_LOCALE != "is_IS":
+                return cls._do_load(
+                    uuid,
+                    use_cache=use_cache,
+                    force_locale="is_IS",
+                    for_update=for_update,
                 )
-            except KeyError:
-                # Hack to handle older game objects that have no associated
-                # locale. If we run Explo on such data, the default locale
-                # is en_US, but the game may use the Icelandic tile set, which
-                # causes KeyError to be raised upon loading. In that case,
-                # we try again with the locale forced to is_IS.
-                if set_locale and DEFAULT_LOCALE != "is_IS":
-                    return cls._load_locked(
-                        uuid, use_cache=use_cache, force_locale="is_IS"
-                    )
-            return None
+        return None
 
     def store(self, *, calc_elo_points: bool) -> None:
         """Store the game state in persistent storage"""
-        # Avoid race conditions by securing the lock before storing
-        with Game._lock:
-            self._store_locked(calc_elo_points=calc_elo_points)
+        self._do_store(calc_elo_points=calc_elo_points)
 
     @classmethod
-    def _load_locked(
+    def _do_load(
         cls,
         uuid: str,
         *,
         use_cache: bool = True,
         set_locale: bool = False,
         force_locale: str = "",
+        for_update: bool = False,
     ) -> Optional[Game]:
         """Load an existing game from cache or persistent storage under lock"""
 
-        gm = GameModel.fetch(uuid, use_cache)
+        gm = GameModel.fetch(uuid, use_cache, for_update=for_update)
         if gm is None:
             # A game with this uuid is not found in the database: give up
             return None
@@ -460,15 +474,15 @@ class Game:
                 # the datastore, but it is over now. One of the players must
                 # have lost on overtime. We need to update the persistent state.
                 # (This also calls game.set_elo_delta())
-                game._store_locked(calc_elo_points=True)
+                game._do_store(calc_elo_points=True)
             else:
                 # Fill in the game.elo_delta and game.elo_now dictionaries
                 game.set_elo_delta(gm)
 
         return game
 
-    def _store_locked(self, *, calc_elo_points: bool) -> None:
-        """Store the game after having acquired the object lock"""
+    def _do_store(self, *, calc_elo_points: bool) -> None:
+        """Store the game in persistent storage"""
 
         assert self.uuid is not None
 
@@ -973,6 +987,23 @@ class Game:
             # querying for best moves is prohibited
             return []
         player_index = state.player_to_move()
+        if MOVES_SIDECAR:
+            # A GoSkrafl moves sidecar runs alongside this process:
+            # delegate the CPU-heavy move generation to it. The Go engine
+            # and the in-process Python engine use the same vocabularies
+            # and return identical (coordinate, tiles, score) summaries.
+            moves = best_moves_from_service(
+                locale=self.locale,
+                board_type=self.board_type,
+                board=state.board().row_strings(),
+                rack=state.rack(player_index),
+                limit=n,
+            )
+            if moves is not None:
+                return [(player_index, m) for m in moves]
+            logging.warning(
+                "Moves sidecar unavailable; falling back to in-process engine"
+            )
         # Create an AutoPlayer instance that always finds the top-scoring moves
         apl = AutoPlayer(0, state)
         return [(player_index, m.summary(state)) for m, _ in apl.generate_best_moves(n)]

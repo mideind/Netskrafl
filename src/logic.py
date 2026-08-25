@@ -33,7 +33,6 @@ from typing import (
 )
 
 import logging
-import threading
 import re
 import functools
 import random
@@ -95,11 +94,6 @@ from cache import memcache
 # Type definitions
 T = TypeVar("T")
 UserPrefsType = Dict[str, Union[str, bool]]
-
-# To try to finish requests as soon as possible and avoid GAE DeadlineExceeded
-# exceptions, run the AutoPlayer move generators serially and exclusively
-# within an instance
-autoplayer_lock = threading.Lock()
 
 # Maximum number of online users to display
 MAX_ONLINE = 80
@@ -212,6 +206,7 @@ class UserListDict(TypedDict):
     ready_timed: bool
     live: bool
     image: str
+    premium: bool
 
 
 UserList = List[UserListDict]
@@ -610,50 +605,47 @@ def process_move(
 
     opponent: Optional[str] = None
 
-    # Serialize access to the following code section
-    with autoplayer_lock:
+    # Move is OK: register it and update the state
+    game.register_move(m)
 
-        # Move is OK: register it and update the state
-        game.register_move(m)
+    # If it's the autoplayer's move, respond immediately
+    # (can be a bit time consuming if rack has one or two blank tiles)
+    # Note that if force_resign is True, opponent is the id
+    # of the player who initiates the resignation (not the tardy player)
+    opponent = game.player_id_to_move()
 
-        # If it's the autoplayer's move, respond immediately
-        # (can be a bit time consuming if rack has one or two blank tiles)
-        # Note that if force_resign is True, opponent is the id
-        # of the player who initiates the resignation (not the tardy player)
-        opponent = game.player_id_to_move()
+    is_over = game.is_over()
 
-        is_over = game.is_over()
+    if not is_over:
 
-        if not is_over:
+        if opponent is None:
+            # Generate an autoplayer move in response
+            game.autoplayer_move()
+            is_over = game.is_over()  # State may change during autoplayer_move()
+        elif m.needs_response_move:
+            # Challenge move: generate a response move
+            game.response_move()
+            is_over = game.is_over()  # State may change during response_move()
 
-            if opponent is None:
-                # Generate an autoplayer move in response
-                game.autoplayer_move()
-                is_over = game.is_over()  # State may change during autoplayer_move()
-            elif m.needs_response_move:
-                # Challenge move: generate a response move
-                game.response_move()
-                is_over = game.is_over()  # State may change during response_move()
+    if is_over:
+        # If the game is now over, tally the final score
+        game.finalize_score()
 
-        if is_over:
-            # If the game is now over, tally the final score
-            game.finalize_score()
+    # Make sure the new game state is persistently recorded
+    game.store(calc_elo_points=is_over)
 
-        # Make sure the new game state is persistently recorded
-        game.store(calc_elo_points=is_over)
+    if force_resign:
+        # Reverse the opponent and the player_index, since we want
+        # to notify the tardy opponent, not the player who forced the resignation
+        # Make sure that opponent is the tardy player
+        opponent_index = player_index
+        opponent = game.player_id(opponent_index)
 
-        if force_resign:
-            # Reverse the opponent and the player_index, since we want
-            # to notify the tardy opponent, not the player who forced the resignation
-            # Make sure that opponent is the tardy player
-            opponent_index = player_index
-            opponent = game.player_id(opponent_index)
-
-        # If the game is now over, and the opponent is human, add it to the
-        # zombie game list so that the opponent has a better chance to notice
-        # the result
-        if is_over and opponent is not None:
-            ZombieModel.add_game(game_id, opponent)
+    # If the game is now over, and the opponent is human, add it to the
+    # zombie game list so that the opponent has a better chance to notice
+    # the result
+    if is_over and opponent is not None:
+        ZombieModel.add_game(game_id, opponent)
 
     # Prepare the messages/notifications to be sent via Firebase
     now = datetime.now(UTC).isoformat()
@@ -680,9 +672,11 @@ def process_move(
             f"user/{opponent}/move": move_dict,
         }
         # Push a Firebase notification message to the opponent,
-        # in the correct language for each client session
+        # in the correct language for each client session.
+        # Fire-and-forget: the per-session FCM round trips should not
+        # delay the reply to the player who submitted the move.
         opp_nick = game.player_nickname(1 - opponent_index)
-        firebase.push_to_user(
+        firebase.push_to_user_in_background(
             opponent,
             {
                 "title": lambda locale: localize_push_message("title", locale),
@@ -703,7 +697,11 @@ def process_move(
         msg_dict[f"user/{player}/move"] = move_dict
 
     if msg_dict:
-        firebase.send_message(msg_dict)
+        # Fire-and-forget: the Firebase PATCH (~40-100 ms round trip)
+        # notifies the other party and other client sessions; the player
+        # who submitted the move gets the new state in the HTTP response
+        # below and should not wait for it
+        firebase.send_message_in_background(msg_dict)
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(1 - opponent_index))
@@ -714,7 +712,15 @@ def submit_move(
     uuid: str, movelist: List[Any], movecount: int, validate: bool
 ) -> ResponseType:
     """Idempotent, transactional function to process an incoming move"""
-    game = Game.load(uuid, use_cache=False, set_locale=True) if uuid else None
+    # for_update=True locks the game row on the PostgreSQL backend,
+    # serializing concurrent submissions for the same game; under NDB
+    # the flag is a no-op and @transactional() provides the equivalent
+    # optimistic-concurrency protection
+    game = (
+        Game.load(uuid, use_cache=False, set_locale=True, for_update=True)
+        if uuid
+        else None
+    )
     if game is None:
         return jsonify(result=Error.GAME_NOT_FOUND)
     # Make sure the client is in sync with the server:
@@ -725,6 +731,37 @@ def submit_move(
         return jsonify(result=Error.WRONG_USER)
     # Parameters look superficially OK: process the move
     return process_move(game, movelist, validate=validate)
+
+
+@transactional()
+def force_resign(
+    uuid: Optional[str], user_id: Optional[str], movecount: int
+) -> ResponseType:
+    """Idempotent, transactional function to force a tardy user
+    to resign, invoked by the user's opponent"""
+    # As in submit_move(), for_update=True locks the game row on the
+    # PostgreSQL backend, serializing this against concurrent move
+    # submissions for the same game; under NDB the flag is a no-op
+    # and @transactional() provides the equivalent protection
+    game = (
+        Game.load(uuid, use_cache=False, set_locale=True, for_update=True)
+        if uuid
+        else None
+    )
+    if game is None:
+        return jsonify(result=Error.GAME_NOT_FOUND)
+    # Only the user who is the opponent of the tardy user
+    # can force a resign
+    if game.player_id(1 - game.player_to_move()) != user_id:
+        return jsonify(result=Error.WRONG_USER)
+    # Make sure the client is in sync with the server:
+    # check the move count
+    if movecount != game.num_moves():
+        return jsonify(result=Error.OUT_OF_SYNC)
+    if not game.is_overdue():
+        return jsonify(result=Error.GAME_NOT_OVERDUE)
+    # Send in a resign move on behalf of the tardy player
+    return process_move(game, ["rsgn"], force_resign=True)
 
 
 # Kludge to create reasonably type-safe functions for each type of
@@ -791,6 +828,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready_timed=False,  # Timed games are not available for robots
                     live=True,  # Robots are always online
                     image="",
+                    premium=r.premium,
                 )
             )
         # That's it; we're done (no sorting required)
@@ -860,6 +898,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready_timed=lu.is_ready_timed(),
                     live=True,
                     image=lu.thumbnail(),
+                    premium=False,
                 )
             )
 
@@ -897,6 +936,7 @@ def userlist(query: str, spec: str) -> UserList:
                         ready=fu.is_ready(),
                         ready_timed=fu.is_ready_timed(),
                         image=fu.thumbnail(),
+                        premium=False,
                     )
                 )
 
@@ -947,6 +987,7 @@ def userlist(query: str, spec: str) -> UserList:
                         ready=au.is_ready(),
                         ready_timed=au.is_ready_timed(),
                         image=au.thumbnail(),
+                        premium=False,
                     )
                 )
 
@@ -988,6 +1029,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready_timed=True,
                     live=True,
                     image=user.thumbnail(),
+                    premium=False,
                 )
             )
 
@@ -1042,6 +1084,7 @@ def userlist(query: str, spec: str) -> UserList:
                     ready=ud["ready"] or False,
                     ready_timed=ud["ready_timed"] or False,
                     image=User.thumbnail_url(uid, ud["image"], ud["has_image_blob"]),
+                    premium=False,
                 )
             )
 

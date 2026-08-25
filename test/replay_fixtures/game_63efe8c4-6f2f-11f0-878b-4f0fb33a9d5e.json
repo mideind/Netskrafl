@@ -1,0 +1,221 @@
+{
+  "game_id": "63efe8c4-6f2f-11f0-878b-4f0fb33a9d5e",
+  "ts_last_move": "2025-08-11T17:31:05.712161+00:00",
+  "locale": "is_IS",
+  "prefs": {
+    "duration": 0,
+    "fairplay": true,
+    "newbag": true,
+    "manual": false
+  },
+  "manual": false,
+  "irack0": "ólvf?kx",
+  "irack1": "áseryaa",
+  "moves": [
+    {
+      "player": 0,
+      "coord": "",
+      "tiles": "PASS",
+      "score": 0,
+      "rack": "ólvf?kx"
+    },
+    {
+      "player": 1,
+      "coord": "8F",
+      "tiles": "seyra",
+      "score": 24,
+      "rack": "áagðtri"
+    },
+    {
+      "player": 0,
+      "coord": "K5",
+      "tiles": "fló?n",
+      "score": 28,
+      "rack": "vkxriuá"
+    },
+    {
+      "player": 1,
+      "coord": "L3",
+      "tiles": "gráa",
+      "score": 25,
+      "rack": "ðtitirl"
+    },
+    {
+      "player": 0,
+      "coord": "9H",
+      "tiles": "ráki",
+      "score": 36,
+      "rack": "vxubasð"
+    },
+    {
+      "player": 1,
+      "coord": "F8",
+      "tiles": "stirtlið",
+      "score": 66,
+      "rack": "gauúhuö"
+    },
+    {
+      "player": 0,
+      "coord": "11C",
+      "tiles": "uxar",
+      "score": 28,
+      "rack": "vbsðgan"
+    },
+    {
+      "player": 1,
+      "coord": "D10",
+      "tiles": "uxa",
+      "score": 26,
+      "rack": "gúhuöru"
+    },
+    {
+      "player": 0,
+      "coord": "7J",
+      "tiles": "bóna",
+      "score": 28,
+      "rack": "vsðguét"
+    },
+    {
+      "player": 1,
+      "coord": "8M",
+      "tiles": "rög",
+      "score": 32,
+      "rack": "úhuuðmþ"
+    },
+    {
+      "player": 0,
+      "coord": "15D",
+      "tiles": "téðuð",
+      "score": 51,
+      "rack": "vsgnðnu"
+    },
+    {
+      "player": 1,
+      "coord": "3J",
+      "tiles": "huguð",
+      "score": 26,
+      "rack": "úmþrnos"
+    },
+    {
+      "player": 0,
+      "coord": "O1",
+      "tiles": "gvuðs",
+      "score": 60,
+      "rack": "nnklfks"
+    },
+    {
+      "player": 1,
+      "coord": "10J",
+      "tiles": "snú",
+      "score": 29,
+      "rack": "mþrottd"
+    },
+    {
+      "player": 0,
+      "coord": "D8",
+      "tiles": "sluxa",
+      "score": 17,
+      "rack": "nnkfkm?"
+    },
+    {
+      "player": 1,
+      "coord": "13B",
+      "tiles": "þor",
+      "score": 43,
+      "rack": "mttdnla"
+    },
+    {
+      "player": 0,
+      "coord": "14A",
+      "tiles": "k?áf",
+      "score": 32,
+      "rack": "nnkmýij"
+    },
+    {
+      "player": 1,
+      "coord": "8A",
+      "tiles": "dals",
+      "score": 27,
+      "rack": "mttnnlp"
+    },
+    {
+      "player": 0,
+      "coord": "9B",
+      "tiles": "kýl",
+      "score": 29,
+      "rack": "nnmijse"
+    },
+    {
+      "player": 1,
+      "coord": "M6",
+      "tiles": "part",
+      "score": 19,
+      "rack": "mtnnlka"
+    },
+    {
+      "player": 0,
+      "coord": "L9",
+      "tiles": "súmin",
+      "score": 28,
+      "rack": "njeótmf"
+    },
+    {
+      "player": 1,
+      "coord": "H7",
+      "tiles": "kyrtla",
+      "score": 15,
+      "rack": "mnnaaræ"
+    },
+    {
+      "player": 0,
+      "coord": "M12",
+      "tiles": "mót",
+      "score": 25,
+      "rack": "njefsai"
+    },
+    {
+      "player": 1,
+      "coord": "4D",
+      "tiles": "ræmanna",
+      "score": 79,
+      "rack": "nrieisa"
+    },
+    {
+      "player": 0,
+      "coord": "15L",
+      "tiles": "jafi",
+      "score": 59,
+      "rack": "nesæí"
+    },
+    {
+      "player": 1,
+      "coord": "5D",
+      "tiles": "esin",
+      "score": 31,
+      "rack": "ria"
+    },
+    {
+      "player": 0,
+      "coord": "N12",
+      "tiles": "sníf",
+      "score": 39,
+      "rack": "eæ"
+    },
+    {
+      "player": 1,
+      "coord": "13F",
+      "tiles": "lari",
+      "score": 22,
+      "rack": ""
+    }
+  ],
+  "score0": 460,
+  "score1": 478,
+  "rack0_final": "eæ",
+  "rack1_final": "",
+  "num_moves": 28,
+  "num_challenges": 0,
+  "num_challenges_upheld": 0,
+  "num_challenges_rejected": 0,
+  "ends_with_resignation": false
+}

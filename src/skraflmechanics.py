@@ -263,6 +263,26 @@ class Board:
         """Return the letter at the specified co-ordinate"""
         return self._letters[row][col]
 
+    def row_strings(self) -> List[str]:
+        """Return the board contents as a list of strings, one per row,
+        in the format used by the GoSkrafl moves service: '.' for an
+        empty square, a lowercase letter for a normal tile, and an
+        uppercase letter for a blank tile that has been assigned that
+        letter (stored here as tile '?' with the letter as its meaning)"""
+        rows: List[str] = []
+        for row in range(BOARD_SIZE):
+            chars: List[str] = []
+            for col in range(BOARD_SIZE):
+                tile = self._tiles[row][col]
+                if tile == " ":
+                    chars.append(".")
+                elif tile == "?":
+                    chars.append(self._letters[row][col].upper())
+                else:
+                    chars.append(tile)
+            rows.append("".join(chars))
+        return rows
+
     def tile_at(self, row: int, col: int) -> str:
         """Return the tile at the specified co-ordinate (may be '?' for blank tile)"""
         return self._tiles[row][col]

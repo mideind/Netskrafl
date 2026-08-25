@@ -1380,20 +1380,20 @@ class View {
             );
           }
 
+          // Trigger a reload on every redraw where the list has been
+          // invalidated, mirroring vwGamelist()/vwRecentList(); an oninit
+          // hook would not fire again when navigating to the main route
+          // with these divs already in the DOM
           let cList: ChallengeListItem[] = [];
-          if (model.challengeList)
+          if (model.challengeList === null)
+            model.loadChallengeList();
+          else
             cList = showReceived ?
               model.challengeList.filter((item) => item.received) :
               model.challengeList.filter((item) => !item.received);
 
           return m("div",
-            {
-              id: showReceived ? 'chall-received' : 'chall-sent',
-              oninit: () => {
-                if (model.challengeList === null)
-                  model.loadChallengeList();
-              }
-            },
+            { id: showReceived ? 'chall-received' : 'chall-sent' },
             cList.map(itemize)
           );
         }

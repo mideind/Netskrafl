@@ -45,7 +45,7 @@ from logging.config import dictConfig
 # Import authmanager first to ensure credentials are set up
 # before any Google Cloud libraries are imported (via secret_manager)
 from authmanager import running_local
-from secret_manager import SecretManager
+from secret_manager import SecretProvider, get_secret_provider
 
 
 T = TypeVar('T')
@@ -130,6 +130,16 @@ NETSKRAFL = PROJECT_ID == "netskrafl"
 
 DEV_SERVER = PROJECT_ID == "explo-dev"
 
+# The old-style, locale-ignorant Top 100 ratings tables (/stats/ratings,
+# /stats/ratings_backfill) are only maintained and displayed on Netskrafl;
+# Explo serves per-locale ratings live from EloModel via /rating_locale.
+# Other projects can opt in explicitly by setting the ENABLE_RATINGS
+# environment variable - e.g. a staging container during development and
+# testing, where the scheduled invocation is controlled via the crontab.
+RATINGS_ENABLED = NETSKRAFL or os.environ.get(
+    "ENABLE_RATINGS", ""
+).lower() in ("true", "1", "yes")
+
 DEFAULT_LOCALE = "is_IS" if NETSKRAFL else "en_US"
 
 DEFAULT_OAUTH_CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
@@ -159,8 +169,11 @@ COOKIE_DOMAIN: Optional[str] = (
     else None
 )
 
-# Initialize the Google Cloud SecretManager with the project ID
-sm = SecretManager(PROJECT_ID)
+# Initialize the secret provider with the project ID. By default this is
+# Google Cloud Secret Manager; setting SECRETS_PROVIDER=env selects an
+# environment-variable-based provider instead (for containerized
+# deployments without GCP Secret Manager access).
+sm: SecretProvider = get_secret_provider(PROJECT_ID)
 
 # Read the Flask secret session key from Google secret manager
 FLASK_SESSION_KEY = sm.get_secret("SECRET_KEY_BIN")
@@ -169,6 +182,32 @@ assert len(FLASK_SESSION_KEY) == 64, "Flask session key is expected to be 64 byt
 # Read the Moves service authentication key from Google secret manager
 MOVES_AUTH_KEY = sm.get_secret("MOVES_AUTH_KEY").decode("utf-8")
 assert MOVES_AUTH_KEY, "MOVES_AUTH_KEY missing from Secret Manager"
+
+# Base URL of the GoSkrafl 'moves' service, which serves the /moves,
+# /wordcheck and /riddle endpoints. Resolution order:
+# 1) the MOVES_SERVICE_URL environment variable, as an explicit override;
+# 2) the loopback sidecar, if MOVES_SIDECAR_PORT is set (container
+#    deployments, where docker-entrypoint.sh runs the GoSkrafl server
+#    as a sidecar process alongside gunicorn);
+# 3) the GAE-hosted moves service: the explo-live instance for the
+#    explo-live project, otherwise the explo-dev instance (the legacy
+#    default, used by Netskrafl production and all development setups).
+MOVES_SERVICE_URL = os.environ.get("MOVES_SERVICE_URL", "")
+if not MOVES_SERVICE_URL:
+    _sidecar_port = os.environ.get("MOVES_SIDECAR_PORT", "")
+    if _sidecar_port:
+        MOVES_SERVICE_URL = f"http://127.0.0.1:{_sidecar_port}"
+    elif PROJECT_ID == "explo-live":
+        MOVES_SERVICE_URL = "https://moves-dot-explo-live.appspot.com"
+    else:
+        MOVES_SERVICE_URL = "https://moves-dot-explo-dev.appspot.com"
+
+# True when the moves service is local to this instance, i.e. the GoSkrafl
+# sidecar in a container deployment (or an explicitly configured local
+# instance during development). In that case, CPU-heavy move generation
+# such as /bestmoves is delegated to it instead of running in-process;
+# on GAE this is always False and the in-process Python engine is used.
+MOVES_SIDECAR: bool = MOVES_SERVICE_URL.startswith("http://127.0.0.1")
 
 # Load the correct client secret for the project (Explo/Netskrafl)
 CLIENT_SECRET_IDS: Mapping[str, str] = {
@@ -262,6 +301,11 @@ if not NETSKRAFL:
 # Valid token issuers for OAuth2 login
 VALID_ISSUERS = frozenset(("accounts.google.com", "https://accounts.google.com"))
 
+# Maximum number of concurrent games for non-paying users
+MAX_FREE_GAMES: int = 3
+# Maximum number of concurrent games for paying users
+MAX_GAMES: int = 50
+
 # How many games a player plays as a provisional player
 # before becoming an established one
 ESTABLISHED_MARK: int = 10
@@ -278,6 +322,16 @@ PROMO_INTERVAL = timedelta(days=4)  # Min interval between promo displays
 
 # Key for transition state in local storage ('legacy' or 'malstadur')
 TRANSITION_KEY = "transition"
+
+# Set SKIP_TRANSITION=true to disable the client-side redirect to the
+# transition/Málstaður UI on Netskrafl, keeping the legacy built-in web
+# UI usable. Intended for smoke testing (e.g. local containers);
+# never set in production.
+SKIP_TRANSITION: bool = os.environ.get("SKIP_TRANSITION", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 
 class Error:

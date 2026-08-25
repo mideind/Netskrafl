@@ -60,6 +60,7 @@ class TestCreateRobotGame:
             sub="robot-level-user-001",
             name="Level Tester",
             email="levels@example.com",
+            paid=True,
         )
 
         for level in [0, 5, 10, 15, 20]:
@@ -293,6 +294,7 @@ class TestRobotGameJourney:
             sub="journey-user-001",
             name="Journey Player",
             email="journey@example.com",
+            paid=True,
         )
 
         # Create a game
@@ -349,6 +351,7 @@ class TestRobotGameJourney:
             sub="stats-journey-user-001",
             name="Stats Journey",
             email="statsjourney@example.com",
+            paid=True,
         )
 
         # Create a game

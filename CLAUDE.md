@@ -133,7 +133,45 @@ multiple languages through separate DAWG files and tile sets.
 - Elo rating system tracks player performance
 - Google App Engine deployment with multiple environments (Netskrafl/Explo, demo/live)
 - A project is underway to migrate from Google Cloud to a containerized deployment,
-  probably on Digital Ocean, with PostgreSQL replacing Google NDB
+  probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
+  current status are tracked in `doc/migration-strategy.md`
+
+### PostgreSQL collation (detail to attend to later)
+
+The PostgreSQL database uses the neutral ICU root collation (`und`) as its
+default - the only coherent choice, since users of all locales share the same
+tables. PostgreSQL simultaneously provides per-locale ICU collations
+(`is-x-icu`, `pl-x-icu`, `nb-x-icu`, `nn-x-icu`, `ga-x-icu`, `gd-x-icu`, ...)
+that produce correct national alphabetical order (e.g. Icelandic þ/æ/ö at the
+end; Norwegian æ/ø/å after z), applied per query with
+`ORDER BY col COLLATE "is-x-icu"` (plus a collated index if the query is hot;
+app locale codes map trivially: `is_IS` → `is-IS`). **Deferred decision:**
+which server-side-sorted list/leaderboard endpoints should switch from neutral
+to locale-strict ordering after the PG cutover - a product-visible change, so
+it deserves a deliberate pass rather than a blanket swap. Note that NDB sorts
+strings by UTF-8 bytes (code-point order), so root ICU is already an
+improvement; parts of the app also sort client-side via `Alphabet` in
+`languages.py`. Ops note: after a managed-PG engine/ICU upgrade, watch for
+"collation version mismatch" warnings and `REINDEX` affected text indexes.
+
+### Scheduled jobs (GAE)
+
+- `cron.yaml` defines three jobs: `/stats/run` (03:00), `/stats/ratings` (03:45)
+  and `/connect/update` ("Online users", every 2 minutes). It is deployed on all
+  three projects (netskrafl, explo-dev, explo-live), where the jobs run via
+  legacy App Engine cron, always targeting the promoted version. No per-version
+  scheduler updates are needed after deploys. (Consolidated 2026-08-07; before
+  that, netskrafl triggered `/connect/update` via a version-pinned Cloud
+  Scheduler job that had to be re-pinned after every promotion.)
+- The only remaining Cloud Scheduler job is `Clear-Redis` on netskrafl (yearly);
+  explo-dev also has a daily `clear-cache` job. The container migration will
+  replace GAE cron with supercronic.
+- `/stats/ratings` (and `/stats/ratings_backfill`) are no-ops outside the
+  netskrafl project (guarded by the `NETSKRAFL` config flag): the old-style,
+  locale-ignorant rating tables are only displayed on Netskrafl, while Explo
+  serves per-locale ratings live from `EloModel` via `/rating_locale`.
+  `/stats/run` remains essential in all projects (profile stats, 30-day Elo
+  history, `UserModel` Elo fallback fields).
 
 ## Coding Standards
 
@@ -161,3 +199,43 @@ multiple languages through separate DAWG files and tile sets.
   are being run locally.* Also, adding comments to utility programs to this effect is useful.
 - `netskrafl_lint.py` is **not** a linter - it is a separate utility program.
   Do not invoke it for code quality checks. Only run it when specifically asked.
+
+## Digital Ocean deployment experiment (status as of 2026-08-12)
+
+A container deployment test runs on DO App Platform as the app
+`netskrafl-staging` (region ams,
+`https://netskrafl-staging-fvmuj.ondigitalocean.app`). It was first stood up in
+January 2026 against the **NDB** backend, proving that hosting can be migrated
+independently of the database, and was revived and repointed on 2026-08-12. The
+app spec is checked in at `.do/app.yaml` as a reference copy; the live spec
+remains the source of truth, so edit it by round-tripping
+`doctl apps spec get` → edit → `doctl apps update` rather than applying the
+checked-in file (which would overwrite encrypted secrets with placeholders).
+
+**Current configuration:** `PROJECT_ID=explo-dev` with the explo-dev service
+account, `DATABASE_BACKEND=ndb`, one `apps-s-1vcpu-1gb` instance, auto-deploying
+on push to the dedicated `do-deploy` branch. Firebase and other client-secret
+values are *not* set as env vars - they are fetched from Secret Manager keyed by
+`PROJECT_ID` (`src/config.py:166,186`), so they follow the project automatically.
+
+**Redis/Valkey (since 2026-08-12):** the app uses Miðeind's shared Valkey
+cluster `db-redis-gsapi-staging`, **logical database 1** (`REDIS_URL` set to
+the cluster URI with a `/1` suffix; db 0 belongs to gsapi — see the Valkey
+notes in `.do/app.yaml` for the full tenant assignment, and note that
+`cache.py`'s `flush()` deliberately avoids `FLUSHDB` for this reason).
+`/health/ready` passes and a `health_check` on it gates deployments.
+
+**Not yet exercised:** `CRON_SECRET` is deliberately unset (which keeps
+supercronic, and therefore all scheduled jobs, switched off - see
+`docker-entrypoint.sh`). The PostgreSQL backend has never been deployed here.
+Note the instance has 1 GB against GAE production's 2 GB (`B4_1G`) with the same
+three gunicorn workers, so it is not a valid load-testing baseline as sized.
+
+**Build gotcha - App Platform builds with kaniko, not BuildKit.** kaniko does
+not support heredocs in `RUN`: it passes only the first line and silently
+discards the body, so failures surface later and misleadingly. The DAWG list
+derivation was affected and now lives in `utils/list_dawgs.py` instead. Related:
+`.dockerignore` excludes `utils/` wholesale, so build-time helpers there need an
+explicit `!utils/<file>` re-inclusion or their `COPY` fails during context
+resolution, before any stage runs. Validate Dockerfile changes against a kaniko
+build, not just a local `docker build`.

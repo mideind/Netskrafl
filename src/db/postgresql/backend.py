@@ -26,6 +26,7 @@ from .repositories import (
     BlockRepository,
     ZombieRepository,
     RatingRepository,
+    RatingArchiveRepository,
     RiddleRepository,
     ImageRepository,
     ReportRepository,
@@ -48,6 +49,7 @@ if TYPE_CHECKING:
         BlockRepositoryProtocol,
         ZombieRepositoryProtocol,
         RatingRepositoryProtocol,
+        RatingArchiveRepositoryProtocol,
         RiddleRepositoryProtocol,
         ImageRepositoryProtocol,
         ReportRepositoryProtocol,
@@ -186,6 +188,9 @@ class PostgreSQLBackend:
         self._blocks: "BlockRepositoryProtocol" = BlockRepository(session)
         self._zombies: "ZombieRepositoryProtocol" = ZombieRepository(session)
         self._ratings: "RatingRepositoryProtocol" = RatingRepository(session)
+        self._rating_archive: "RatingArchiveRepositoryProtocol" = (
+            RatingArchiveRepository(session)
+        )
         self._images: "ImageRepositoryProtocol" = ImageRepository(session)
         self._reports: "ReportRepositoryProtocol" = ReportRepository(session)
         self._promos: "PromoRepositoryProtocol" = PromoRepository(session)
@@ -244,6 +249,11 @@ class PostgreSQLBackend:
     def ratings(self) -> "RatingRepositoryProtocol":
         """Access the Rating repository."""
         return self._ratings
+
+    @property
+    def rating_archive(self) -> "RatingArchiveRepositoryProtocol":
+        """Access the RatingArchive repository."""
+        return self._rating_archive
 
     @property
     def riddles(self) -> "RiddleRepositoryProtocol":

@@ -7,6 +7,8 @@ Use --backend option to select which backend(s) to test.
 
 from __future__ import annotations
 
+import time
+
 import pytest
 from typing import TYPE_CHECKING
 
@@ -169,6 +171,79 @@ class TestChallengeLists:
 
         assert len(issued) >= 1
         assert issued[0].ts is not None
+
+    def test_list_issued_newest_first(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """Issued challenges are returned newest-first.
+
+        The list is capped at max_len, so newest-first ordering ensures recent
+        challenges are shown rather than buried behind an old backlog. This is a
+        regression test for a bug where the NDB backend returned the oldest
+        challenges first, hiding newer ones once a user had >max_len of them.
+        """
+        for uid, account, nick in [
+            ("chal-order-issuer", "test:chalorderissuer", "ChalOrderIssuer"),
+            ("chal-order-dest-1", "test:chalorderdest1", "ChalOrderDest1"),
+            ("chal-order-dest-2", "test:chalorderdest2", "ChalOrderDest2"),
+            ("chal-order-dest-3", "test:chalorderdest3", "ChalOrderDest3"),
+        ]:
+            if backend.users.get_by_id(uid) is None:
+                backend.users.create(
+                    user_id=uid, account=account, email=None,
+                    nickname=nick, locale="is_IS",
+                )
+
+        # Start from a clean slate: the NDB backend persists to a shared
+        # Datastore, so clear any challenges left over from previous runs.
+        backend.challenges.delete_for_user("chal-order-issuer")
+
+        # Issue challenges in a known order, with distinct timestamps
+        order = ["chal-order-dest-1", "chal-order-dest-2", "chal-order-dest-3"]
+        for dest in order:
+            backend.challenges.add_relation("chal-order-issuer", dest)
+            time.sleep(0.01)
+
+        issued = list(backend.challenges.list_issued("chal-order-issuer"))
+        opps = [c.opp for c in issued]
+        # Newest-first: the last one issued comes first. Assert on the newest
+        # len(order) entries to be robust against any lingering data.
+        assert opps[: len(order)] == list(reversed(order))
+        # Timestamps are non-increasing
+        ts = [c.ts for c in issued]
+        assert ts == sorted(ts, reverse=True)
+
+    def test_list_received_newest_first(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """Received challenges are returned newest-first (see above)."""
+        for uid, account, nick in [
+            ("chal-order-recipient", "test:chalorderrecip", "ChalOrderRecip"),
+            ("chal-order-src-1", "test:chalordersrc1", "ChalOrderSrc1"),
+            ("chal-order-src-2", "test:chalordersrc2", "ChalOrderSrc2"),
+            ("chal-order-src-3", "test:chalordersrc3", "ChalOrderSrc3"),
+        ]:
+            if backend.users.get_by_id(uid) is None:
+                backend.users.create(
+                    user_id=uid, account=account, email=None,
+                    nickname=nick, locale="is_IS",
+                )
+
+        # Start from a clean slate (see note in test_list_issued_newest_first).
+        backend.challenges.delete_for_user("chal-order-recipient")
+
+        order = ["chal-order-src-1", "chal-order-src-2", "chal-order-src-3"]
+        for src in order:
+            backend.challenges.add_relation(src, "chal-order-recipient")
+            time.sleep(0.01)
+
+        received = list(backend.challenges.list_received("chal-order-recipient"))
+        opps = [c.opp for c in received]
+        # Newest-first: the last issuer to challenge comes first. Assert on the
+        # newest len(order) entries to be robust against any lingering data.
+        assert opps[: len(order)] == list(reversed(order))
+        ts = [c.ts for c in received]
+        assert ts == sorted(ts, reverse=True)
 
 
 class TestChallengeDeleteForUser:

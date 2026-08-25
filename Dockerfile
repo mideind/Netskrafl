@@ -59,35 +59,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 WORKDIR /dawg
 
-# List of all DAWG files to download
-# These are the vocabulary files for different languages and robot difficulty levels
-# NOTE: The authoritative list of DAWGs used by the app is in src/wordbase.py (_ALL_DAWGS).
-# This list should include all files from there (with .bin.dawg extension) plus any legacy files.
-# If you add or remove DAWGs in wordbase.py, update this list accordingly.
-RUN for dawg in \
-    algeng.bin.dawg \
-    amlodi.bin.dawg \
-    midlungur.bin.dawg \
-    nsf2023.aml.bin.dawg \
-    nsf2023.bin.dawg \
-    nsf2023.mid.bin.dawg \
-    nynorsk2024.aml.bin.dawg \
-    nynorsk2024.bin.dawg \
-    nynorsk2024.mid.bin.dawg \
-    ordalisti.bin.dawg \
-    osps37.aml.bin.dawg \
-    osps37.bin.dawg \
-    osps37.mid.bin.dawg \
-    otcwl2014.aml.bin.dawg \
-    otcwl2014.bin.dawg \
-    otcwl2014.mid.bin.dawg \
-    sowpods.aml.bin.dawg \
-    sowpods.bin.dawg \
-    sowpods.mid.bin.dawg \
-    twl06.bin.dawg; do \
+# The authoritative list of DAWG vocabulary files is _ALL_DAWGS in
+# src/wordbase.py. Derive the download list from it at build time so the
+# Dockerfile can never drift out of sync with the application code:
+# adding or removing a DAWG in wordbase.py is automatically reflected here.
+#
+# list_dawgs.py parses wordbase.py with `ast` rather than importing it,
+# because this stage has none of the app's dependencies installed and
+# importing `config` would reach out to Google Secret Manager. See the
+# module docstring for the full rationale.
+#
+# NOTE: this deliberately does NOT use a `RUN python - <<'EOF'` heredoc.
+# Digital Ocean App Platform builds with kaniko, which does not support
+# heredocs in RUN and silently discards the body, yielding an empty list
+# and an image with no vocabularies. Keep the script in a file.
+COPY src/wordbase.py /tmp/wordbase.py
+COPY utils/list_dawgs.py /tmp/list_dawgs.py
+RUN python /tmp/list_dawgs.py /tmp/wordbase.py > /tmp/dawgs.txt
+RUN echo "DAWG files to download:" && cat /tmp/dawgs.txt && \
+    while read -r dawg; do \
         echo "Downloading $dawg..." && \
         curl -fsSL "${DAWG_BASE_URL}/${dawg}" -o "${dawg}" || exit 1; \
-    done
+    done < /tmp/dawgs.txt
 
 # =============================================================================
 # Stage 4: Build frontend assets (CSS and JS)
@@ -98,8 +91,10 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Install build tools globally (smaller than full npm install)
-RUN npm install -g less typescript uglify-js
+# Install build tools globally (smaller than full npm install).
+# Majors are pinned to match package.json: TypeScript 6+ removed the
+# module=AMD/outFile options that this project's tsconfig relies on.
+RUN npm install -g less@4 typescript@5 uglify-js@3
 
 # Copy frontend source files
 COPY static/ ./static/
@@ -116,7 +111,28 @@ RUN cd static && tsc && \
     uglifyjs built/netskrafl.js -o built/netskrafl.min.js --source-map
 
 # =============================================================================
-# Stage 5: Runtime - minimal production image
+# Stage 5: Build the GoSkrafl 'moves' sidecar server
+# The GoSkrafl engine (github.com/vthorsteinsson/GoSkrafl) serves /moves,
+# /wordcheck and /riddle. In the container it runs as a loopback sidecar
+# process, started by docker-entrypoint.sh when MOVES_SIDECAR_PORT is set,
+# and fronted by authenticated Flask routes (see src/movesservice.py).
+# The binary is self-contained: the DAWG dictionaries are go:embed-ded.
+# =============================================================================
+FROM golang:1.25-bookworm AS goskrafl-builder
+
+# Pin an exact commit for reproducible builds; bump deliberately.
+ARG GOSKRAFL_REPO=https://github.com/vthorsteinsson/GoSkrafl
+ARG GOSKRAFL_COMMIT=58ca414173766e308031d05dc1d8cdc19f58d9d9
+
+RUN git clone --no-checkout ${GOSKRAFL_REPO} /goskrafl && \
+    cd /goskrafl && \
+    git checkout ${GOSKRAFL_COMMIT}
+WORKDIR /goskrafl
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+    -o /goskrafl-server ./go-app
+
+# =============================================================================
+# Stage 6: Runtime - minimal production image
 # =============================================================================
 FROM python:3.11-slim
 
@@ -128,27 +144,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Optional: Install supercronic for container-friendly cron scheduling
-# Only installed if CRON_SECRET is set at build time (same var used at runtime)
-# TARGETARCH is set by BuildKit; default to amd64 for platforms that don't set it
+# Install supercronic for container-friendly cron scheduling. The binary is
+# installed unconditionally (small static executable); whether it *runs* is
+# decided at container start by docker-entrypoint.sh, which only launches it
+# when CRON_SECRET is set. (It was previously gated on a CRON_SECRET build
+# ARG, but on DO App Platform the secret is a runtime env var, so the binary
+# was silently absent from the image - and image content should not depend
+# on a secret's build-time presence in any case.)
+# TARGETARCH is set by BuildKit; default to amd64 for builders that don't
+# set it (e.g. kaniko on DO App Platform)
 # SHA1 checksums from https://github.com/aptible/supercronic/releases/tag/v0.2.42
-ARG CRON_SECRET
 ARG TARGETARCH=amd64
 RUN set -e; \
-    if [ -n "${CRON_SECRET}" ]; then \
-      SUPERCRONIC_VERSION=v0.2.42; \
-      case "${TARGETARCH}" in \
-        amd64) SUPERCRONIC_SHA1=b444932b81583b7860849f59fdb921217572ece2 ;; \
-        arm64) SUPERCRONIC_SHA1=5193ea5292dda3ad949d0623e178e420c26bfad2 ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
-      esac; \
-      curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
-        -o /usr/local/bin/supercronic \
-      && echo "${SUPERCRONIC_SHA1}  /usr/local/bin/supercronic" | sha1sum -c - \
-      && chmod +x /usr/local/bin/supercronic; \
-    else \
-      echo "Skipping supercronic installation (CRON_SECRET not set)"; \
-    fi
+    SUPERCRONIC_VERSION=v0.2.42; \
+    case "${TARGETARCH}" in \
+      amd64) SUPERCRONIC_SHA1=b444932b81583b7860849f59fdb921217572ece2 ;; \
+      arm64) SUPERCRONIC_SHA1=5193ea5292dda3ad949d0623e178e420c26bfad2 ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/aptible/supercronic/releases/download/${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" \
+      -o /usr/local/bin/supercronic \
+    && echo "${SUPERCRONIC_SHA1}  /usr/local/bin/supercronic" | sha1sum -c - \
+    && chmod +x /usr/local/bin/supercronic
 
 WORKDIR /app
 
@@ -168,10 +185,19 @@ COPY --link --chown=appuser:appuser --from=frontend-builder /app/static/built/ .
 # Copy DAWG files from downloader stage
 COPY --link --chown=appuser:appuser --from=dawg-downloader /dawg/*.bin.dawg ./resources/
 
+# Copy the GoSkrafl moves sidecar server (self-contained static binary;
+# its DAWG dictionaries are embedded via go:embed)
+COPY --link --from=goskrafl-builder /goskrafl-server /usr/local/bin/goskrafl-server
+
 # Copy crontab and entrypoint script
 COPY --link --chown=appuser:appuser crontab ./crontab
 COPY --link --chown=appuser:appuser docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
+
+# Copy Alembic schema migrations (used by the entrypoint when
+# DATABASE_BACKEND=postgresql)
+COPY --link --chown=appuser:appuser alembic.ini ./alembic.ini
+COPY --link --chown=appuser:appuser migrations/ ./migrations/
 
 # Switch to non-root user
 USER appuser

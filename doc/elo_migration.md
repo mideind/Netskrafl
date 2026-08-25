@@ -4,7 +4,7 @@
 
 The Netskrafl/Explo codebase supports two different products:
 
-1. **Netskrafl** - An Icelandic-only web-based crossword game (netskrafl.is)
+1. **Netskrafl** - An Icelandic-only web-based crossword game (malstadur.mideind.is/netskrafl)
 2. **Explo** - A multilingual mobile crossword app (supports Icelandic, English, Polish, Norwegian)
 
 Both products share the same backend codebase but run on separate Google App Engine projects with different approaches to Elo rating calculations.

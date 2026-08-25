@@ -62,6 +62,29 @@ def test_anonymous_login(client: CustomClient, u1: str) -> None:
     assert resp.status_code == 401  # Unauthorized
 
 
+def test_anonymous_no_id_leak(client: CustomClient) -> None:
+    """The server must never expose the raw account/user id of a
+    nickless (e.g. anonymous) user as a display name; clients render
+    their own localized 'Guest' placeholder for an empty name"""
+    client.set_authorization(True)
+    resp = login_anonymous_user(client, 1, locale="en_US")
+    client.set_authorization(False)
+    assert resp.status_code == 200
+    assert resp.json is not None
+    # No nickname is stored for a fresh anonymous account
+    assert resp.json.get("nickname", "MISSING") == ""
+    # The profile must not leak the account id in the name fields
+    resp = client.post("/userstats")
+    assert resp.status_code == 200
+    assert resp.json is not None
+    assert resp.json.get("result", -1) == 0
+    assert resp.json.get("nickname", "MISSING") == ""
+    assert resp.json.get("fullname", "MISSING") == ""
+    # Log out
+    resp = client.post("/logout")
+    assert resp.status_code == 200
+
+
 def test_anonymous_upgrade(client: CustomClient, u1: str) -> None:
     """Test upgrading of an anonymous account to a regular account"""
     # Start by logging in as an anonymous user
