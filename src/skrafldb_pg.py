@@ -2413,3 +2413,25 @@ class RiddleModel:
         if len(parts) != 2:
             return None
         return cls.get_riddle(parts[0], parts[1])
+
+
+class ConfigModel:
+    """PostgreSQL facade for ConfigModel: configuration documents
+    (JSON), keyed by id."""
+
+    @classmethod
+    def get_doc(cls, id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve the configuration document with the given id"""
+        c = _get_db().configs.get(id)
+        return None if c is None else dict(c.doc)
+
+    @classmethod
+    def set_doc(cls, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id"""
+        _get_db().configs.set(id, doc)
+
+    @classmethod
+    def delete_doc(cls, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists"""
+        _get_db().configs.delete(id)
+

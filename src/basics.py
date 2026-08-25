@@ -368,6 +368,14 @@ def anonymous_user() -> bool:
     return sd.get("method", "") == "Anonymous"
 
 
+def client_type() -> str:
+    """Return the client type ('web', 'ios', 'android') of the currently
+    logged in client, defaulting to 'web'"""
+    if (s := session_data()) is None:
+        return "web"
+    return s.get("client_type", "web")
+
+
 def is_mobile_client() -> bool:
     """Return True if the currently logged in client is a mobile client"""
     if (s := session_data()) is None:

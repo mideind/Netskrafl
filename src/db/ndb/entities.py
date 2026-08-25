@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         StatsModel as NDBStatsModel,
         ChatModel as NDBChatModel,
         RiddleModel as NDBRiddleModel,
+        ConfigModel as NDBConfigModel,
     )
 
 from ..protocols import MoveDict, PrefsDict
@@ -523,3 +524,21 @@ class RiddleEntity:
     @property
     def _ndb_model(self) -> "NDBRiddleModel":
         return self._model
+
+
+class ConfigEntity:
+    """Wrapper around NDB ConfigModel implementing ConfigEntityProtocol."""
+
+    __slots__ = ("_model",)
+
+    def __init__(self, model: "NDBConfigModel") -> None:
+        self._model = model
+
+    @property
+    def key_id(self) -> str:
+        return self._model.key.id()
+
+    @property
+    def doc(self) -> Dict[str, Any]:
+        return self._model.doc
+

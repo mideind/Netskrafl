@@ -109,8 +109,9 @@ def rq_get(request: Request, key: str) -> str:
     """Get a value from the request by key, either from the form data or JSON"""
     if val := request.form.get(key):
         return val
-    if j := request.json:
-        return j.get(key, "")
+    # Note: silent=True avoids a 415 error for non-JSON requests
+    if j := request.get_json(silent=True):
+        return cast(Dict[str, Any], j).get(key, "")
     return ""
 
 
@@ -178,9 +179,11 @@ def oauth2callback(request: Request) -> ResponseType:
             # 400 - Bad Request
             logging.warning("Missing token")
             return jsonify({"status": "invalid", "msg": "Missing token"}), 400
-        client_type = rq_get(request, "clientType") or "web"
         locale = rq_get(request, "locale")
 
+    # The client type is also honored when testing, so that tests
+    # can exercise client-type-specific server behavior
+    client_type = rq_get(request, "clientType") or "web"
     client_type = client_type[:64]  # Defensive programming
     client_id = CLIENT.get(client_type, {}).get("id", "")
     if not client_id:

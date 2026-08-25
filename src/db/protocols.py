@@ -1289,6 +1289,54 @@ class CompletionRepositoryProtocol(Protocol):
         ...
 
 
+# Id of the app version / client configuration document (see ConfigModel)
+APP_VERSION_ID = "app_version"
+
+
+class AppVersionDict(TypedDict, total=False):
+    """Plain-dict form of the app version / client configuration singleton.
+    All fields are optional strings; None or a missing key means 'not set'."""
+
+    # Minimum version the mobile client must have to function (all platforms)
+    min_supported_version: str
+    # Latest available version of the mobile client (all platforms)
+    latest_version: str
+    # Optional custom message to display in the update prompt
+    update_message: Optional[str]
+    # Optional per-platform overrides of the two version fields
+    ios_min_supported_version: Optional[str]
+    android_min_supported_version: Optional[str]
+    ios_latest_version: Optional[str]
+    android_latest_version: Optional[str]
+    # Optional backend endpoint overrides, allowing clients to be
+    # redirected to a new backend host without a client release
+    api_url: Optional[str]
+    moves_url: Optional[str]
+
+
+class ConfigEntityProtocol(EntityProtocol, Protocol):
+    """Protocol for Config entities: singleton JSON documents keyed by id"""
+
+    @property
+    def doc(self) -> Dict[str, Any]: ...
+
+
+class ConfigRepositoryProtocol(Protocol):
+    """Protocol for configuration document repository operations."""
+
+    def get(self, id: str) -> Optional[ConfigEntityProtocol]:
+        """Retrieve the configuration document with the given id."""
+        ...
+
+    def set(self, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id."""
+        ...
+
+    def delete(self, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists."""
+        ...
+
+
 class RobotRepositoryProtocol(Protocol):
     """Protocol for Robot Elo repository operations."""
 
@@ -1421,6 +1469,11 @@ class DatabaseBackendProtocol(Protocol):
     @property
     def robots(self) -> RobotRepositoryProtocol:
         """Access the Robot repository."""
+        ...
+
+    @property
+    def configs(self) -> ConfigRepositoryProtocol:
+        """Access the Config (JSON document) repository."""
         ...
 
     def transaction(self) -> TransactionContextProtocol:

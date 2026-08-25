@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session, aliased
 from config import DEFAULT_LOCALE
 
 from .models import (
+    Config,
     User,
     Game,
     EloRating,
@@ -1673,6 +1674,33 @@ class RobotRepository:
             self._session.add(robot)
         self._session.flush()
         return True
+
+
+class ConfigRepository:
+    """PostgreSQL implementation of ConfigRepositoryProtocol."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get(self, id: str) -> Optional[Config]:
+        """Retrieve the configuration document with the given id."""
+        return self._session.get(Config, id)
+
+    def set(self, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id."""
+        c = self._session.get(Config, id)
+        if c is None:
+            c = Config(id=id)
+            self._session.add(c)
+        c.doc = dict(doc)
+        self._session.flush()
+
+    def delete(self, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists."""
+        c = self._session.get(Config, id)
+        if c is not None:
+            self._session.delete(c)
+            self._session.flush()
 
 
 # =============================================================================

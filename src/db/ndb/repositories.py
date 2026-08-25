@@ -933,3 +933,23 @@ class NDBQueryWrapper:
         """Iterate over query results."""
         for item in skrafldb.iter_q(self._query, limit=limit):
             yield self._entity_class(item)
+
+
+class ConfigRepository:
+    """NDB implementation of ConfigRepositoryProtocol."""
+
+    def get(self, id: str) -> Optional[Any]:
+        """Retrieve the configuration document with the given id."""
+        from .entities import ConfigEntity
+
+        model = skrafldb.ConfigModel.get_by_id(id)
+        return ConfigEntity(model) if model is not None else None
+
+    def set(self, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id."""
+        skrafldb.ConfigModel.set_doc(id, doc)
+
+    def delete(self, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists."""
+        skrafldb.ConfigModel.delete_doc(id)
+
