@@ -820,3 +820,22 @@ class Riddle(Base):
             return result
         except (json.JSONDecodeError, TypeError):
             return None
+
+
+class Config(Base):
+    """Configuration documents (JSON), keyed by id - mirrors NDB ConfigModel.
+    Used for singleton records such as the app version / client configuration
+    (id APP_VERSION_ID), which are validated in the application layer."""
+
+    __tablename__ = "configs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    doc: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+    @property
+    def key_id(self) -> str:
+        return self.id
+
+    def __repr__(self) -> str:
+        return f"<Config(id={self.id!r})>"
+

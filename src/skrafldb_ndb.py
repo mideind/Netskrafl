@@ -3078,3 +3078,33 @@ class RiddleModel(Model["RiddleModel"]):
         if not self.riddle_json:
             return None
         return json.loads(self.riddle_json)
+
+
+class ConfigModel(Model["ConfigModel"]):
+    """Models a configuration document (JSON), keyed by id. Used for
+    singleton records such as the app version / client configuration
+    (id APP_VERSION_ID). The document content is validated in the
+    application layer, so that new fields do not require schema changes."""
+
+    doc = cast(Dict[str, Any], ndb.JsonProperty(required=True))
+
+    @classmethod
+    def get_doc(cls, id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve the configuration document with the given id"""
+        c = cls.get_by_id(id)
+        return None if c is None else c.doc
+
+    @classmethod
+    def set_doc(cls, id: str, doc: Dict[str, Any]) -> None:
+        """Create or replace the configuration document with the given id"""
+        c = cls(id=id)
+        c.doc = dict(doc)
+        c.put()
+
+    @classmethod
+    def delete_doc(cls, id: str) -> None:
+        """Delete the configuration document with the given id, if it exists"""
+        c = cls.get_by_id(id)
+        if c is not None:
+            c.key.delete()
+
