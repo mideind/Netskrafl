@@ -1,7 +1,10 @@
 # Client/server switch-over plan
 
 **Status:** server side implemented and on master (PR #143, merged
-2026-08-25); client side partially implemented (force-update only).
+2026-08-25); client side implemented (2026-09-01) on the `explo_app`
+branch `feat/server-endpoints`, pending review/merge and release;
+vanity-hostname strategy defined (2026-09-01), concrete domain choice
+pending (recorded privately, not in this public repo).
 Companion to `migration-strategy.md`, which owns the hosting and database
 cutover; this document owns the *mobile client* side of the same migration:
 how the installed base of Explo app clients is moved from the current Google
@@ -103,33 +106,137 @@ native app version (`react-native-device-info` `getVersion()`) is below
 open on unparsable input — the app shows a blocking update screen with
 `update_message` if given. `latest_version` is currently informational.
 
-### Not yet implemented — `endpoints` handling
+### Implemented — `endpoints` handling (2026-09-01, branch `feat/server-endpoints`)
 
-The client should, on receiving a non-null `endpoints` object:
+Implemented in `src/api/endpoints.ts` (stateful manager; `API_URL` /
+`MOVES_API_URL` are live bindings) and `src/api/endpointConfig.ts` (pure
+validation logic, unit-tested); documented in the client repo's
+`doc/server-endpoints.md`. Behavior, refining the original sketch:
 
-1. **Validate** each URL: `https://` only, host on a compiled-in allow-list
-   of domains the team controls (never accept an arbitrary host from the
-   network, even over TLS — the server is trusted, but the allow-list keeps
-   a compromised or misconfigured record from hijacking clients).
-2. **Persist** the accepted URLs in AsyncStorage and use them for all
-   subsequent requests, *including the next cold start before `/inituser`
-   has answered*. Baked-in URLs remain the fallback when nothing is stored.
-3. **Retry through the fallback**: if the stored override fails at start-up
-   (connection refused, TLS error, non-2xx on `/inituser`), fall back to the
-   baked-in URLs for that session and re-fetch the configuration from there.
-   This makes a wrong record recoverable without a client release.
-4. Switch the moves calls to the main API host's `/moves` route, which is
-   session-authenticated (the `movesAccessKey` bearer key is then no longer
-   needed by the client). A `moves_url` override remains useful only while
-   some clients still call a bearer-keyed moves service directly; whatever
-   host it points at must accept the baked-in key.
+1. **Validation**: URLs must be plain `https://` origins (no path, query,
+   fragment or credentials; stricter than the server-side validator), and
+   the host must be one of the baked-in hosts or equal to / a subdomain of
+   a suffix in `ENDPOINT_ALLOWLIST`, an optional array in the (untracked)
+   `appsIds.json` — so the allow-list ships inside the build without the
+   domains appearing in either source tree. The server is trusted, but the
+   allow-list keeps a compromised or misconfigured record from hijacking
+   clients. Rejections are reported via analytics (see Monitoring below),
+   so a missing allow-list entry is visible, not silent.
+2. **Persistence**: accepted overrides are stored in AsyncStorage and
+   re-validated on every load; all requests await the load, so an override
+   applies from the first request of the next cold start.
+3. **Fallback**: after 3 consecutive *network-level* failures (no HTTP
+   response at all — any status code counts as reachable) while an
+   override is active, the client reverts to the baked-in URLs and clears
+   the stored override. If the override was actually fine (device merely
+   offline), the next successful `/inituser` re-applies it — a
+   self-healing loop that makes a wrong record recoverable without a
+   client release. A successful `/inituser` *without* `endpoints` also
+   clears any active override: that is the mechanism's built-in
+   retirement path once the vanity hostname points at the new backend.
+4. **Moves routing**: the moves-on-main-host decision (`moves_url` empty
+   or equal to the API URL ⇒ session-authenticated `/moves` on the main
+   host, no bearer key) is evaluated per request, so the two services can
+   be moved independently. A `moves_url` override pointing at a dedicated
+   moves host must accept the baked-in bearer key.
 
-A **second, independent channel** for the same override — a Firebase RTDB
-node the client already subscribes to — is worth adding as belt-and-braces:
-`/inituser` cannot deliver a redirect if the old API host is *already*
-unreachable. The RTDB project and credentials are baked into the client and
-are unaffected by the hosting move. Same allow-list and persistence rules
-apply.
+The **second, independent channel** — needed because `/inituser` cannot
+deliver a redirect if the old API host is *already* unreachable — is a
+Firebase RTDB node, `client_config/endpoints`, holding the same JSON shape
+as the `/inituser` `endpoints` field and subject to the same allow-list
+and persistence rules. The client reads it at most once per session, only
+after the baked-in host has also failed at the network level. The RTDB
+project and credentials are baked into the client and unaffected by the
+hosting move. **Server-side prerequisite, not yet done:** the node must be
+world-readable in the Firebase security rules — a client that cannot
+reach the backend cannot obtain a Firebase custom token — and an operator
+procedure for writing it is needed. Until then the read fails harmlessly.
+
+### Monitoring
+
+The client emits Mixpanel + Firebase Analytics events sized for migration
+dashboards (host names only, never full URLs): `endpoints_in_use` (once
+per sign-in: `api_host`, `moves_host`, `override`, version, OS — the
+primary fleet-population-by-backend metric), `endpoint_applied`,
+`endpoint_rejected` (misconfiguration alarm), `endpoint_fallback`
+(new-backend health), `endpoint_rescue` (should stay at zero), plus
+`force_update_shown` (drain-lever effect) and `update_available`
+(upgrade lag).
+
+## Vanity hostname strategy (2026-09-01)
+
+The vanity hostname is the name that eventually gets baked into clients as
+the *baseline* URL, so it must outlive every hosting (and branding)
+decision. Concrete domain and hostname choices are deliberately kept out
+of this public document (they are recorded privately and land in the
+untracked `appsIds.json`); the principles and mechanics are:
+
+### Naming
+
+- **Product domain over company domain.** Hostnames inside years-old
+  installed clients are the same kind of liability as `appspot.com` today
+  if the product is ever rebranded, spun out or sold. The team owns
+  several product domains; pick the one it would be happiest still owning
+  in ten years, and host it at the same DNS provider as the company
+  domain (moving a domain there is about an hour of work and free).
+- **Service-descriptive, implementation-free names**: `api.<domain>` for
+  the main backend, `moves.<domain>` for a dedicated moves host if ever
+  needed again, `api-dev.<domain>` for the dev-project backend. Nothing
+  that encodes the provider, generation or migration (`gae-`, `do-`,
+  `v2`, `new-`) — those are the names one migrates away from next time.
+- **Single-level subdomains only.** The DNS provider's free universal
+  wildcard certificate covers one label (`*.<domain>`), not two
+  (`a.b.<domain>`); deeper names require a paid certificate tier. If the
+  company domain were used instead, the equivalent single-level pattern
+  would be `<product>-api.<company-domain>`.
+- **The web game needs no vanity host.** Browsers follow DNS; its
+  user-facing domain *is* the vanity domain, and its cutover is a plain
+  DNS repoint of the apex (lower the TTL beforehand). The vanity-hostname
+  machinery exists for the mobile app because its URLs are baked into
+  binaries.
+- **Allow-list both domain families** in the client's
+  `ENDPOINT_ALLOWLIST` (product domain and company domain) — costs
+  nothing and preserves the option to redirect clients to either later
+  without a release.
+
+### Implementation phases
+
+1. **Now (GAE as origin):** create the hostname as a **DNS-only
+   (unproxied) CNAME** to the GAE app, with a GAE custom-domain mapping
+   so Google provisions and renews the certificate. Unproxied matters:
+   GAE-managed certificates fail issuance/renewal behind a CDN proxy
+   (Google must see its own IPs). Set the TTL to 60 s. Ship the next
+   client release with this hostname as the baked-in `API_URL` (and the
+   allow-list populated); from that release on, clients have no
+   dependency on `appspot.com`.
+2. **At cutover:** add the custom domain to the DO app (App Platform
+   issues its own certificate), then flip the CNAME. With a 60 s TTL the
+   flip lands in minutes, with two independent safety nets underneath:
+   the `/inituser` `endpoints` override (lever 2) and
+   `min_supported_version` (lever 3). Watch `endpoints_in_use` segmented
+   by `api_host` to see the flip propagate across the fleet.
+3. **Post-cutover (optional):** turn the record proxied ("orange-cloud")
+   for origin hiding, HTTP/3 and instant future flips. Two API-breaking
+   proxy defaults must be handled first: a cache rule that bypasses the
+   API hostname entirely (a cached `/inituser` would be poisonous), and
+   bot-challenge features disabled for it (a challenge page served to
+   the app's HTTP client bricks the app).
+
+**Rejected: proxy-level gradual traffic splitting** (worker/load-balancer
+percentage canary between GAE and DO). It would require both fleets to
+serve the *same* database — i.e. DO running `DATABASE_BACKEND=ndb` —
+and would create two incoherent NDB caches (GAE's Redis vs. DO's Valkey)
+over one Datastore, a genuine correctness hazard. The dev-project
+rehearsal (publish the DO URL via `/appversion` on explo-dev first,
+against dev builds) is the canary instead.
+
+**Session-cookie nuance.** Cookies are host-scoped. A pure DNS flip keeps
+the hostname, so sessions survive provided both backends share the Flask
+`SECRET_KEY`. An `endpoints` *override* changes the hostname, so the
+first request 401s and the app re-authenticates automatically (401s are
+the expected-and-handled case in the client's request layer) — expect a
+brief blip of 401s and sign-in events when publishing an override, and
+do not mistake it for breakage.
 
 ## The switch-over itself
 
@@ -137,9 +244,9 @@ Three levers, used in this order:
 
 1. **Vanity hostname (primary).** Release the ≥ 1.4.8 clients with the
    baked-in API and moves URLs pointing at a hostname on a domain the team
-   controls, initially resolving/proxying to the GAE services. The DO
-   cutover is then a DNS or proxy flip that no client notices. Prerequisites
-   on the server side: the same Flask `SECRET_KEY` and cookie domain on both
+   controls (see the strategy section above), initially resolving to the
+   GAE services. The DO cutover is then a DNS flip that no client notices.
+   Prerequisites on the server side: the same Flask `SECRET_KEY` on both
    backends so sessions survive the flip, the same moves bearer key on
    whichever host serves the legacy direct moves calls, and TLS on the new
    host before the flip.
@@ -209,12 +316,21 @@ netskrafl have no record.
 
 ## Open items
 
-- [ ] `endpoints` handling in `explo_app` (allow-list, AsyncStorage,
-      fallback-on-failure) — must ship in 1.4.8 or the next release for
-      lever 2 to exist at all.
-- [ ] RTDB override node (schema + client subscription).
-- [ ] Choose and provision the vanity hostname; point 1.4.8's baked-in URLs
-      at it before release; align `SECRET_KEY`/cookie domain across backends.
+- [x] `endpoints` handling in `explo_app` (allow-list, AsyncStorage,
+      fallback-on-failure) — implemented 2026-09-01 on branch
+      `feat/server-endpoints`; must ship in 1.4.8 or the next release for
+      lever 2 to exist at all. Remaining: review/merge, and put the
+      `ENDPOINT_ALLOWLIST` values into `appsIds.json`/`live-appsIds.json`.
+- [ ] RTDB override node `client_config/endpoints` — client read side is
+      implemented; remaining: Firebase security-rules change (the node
+      must be world-readable) and an operator write procedure.
+- [ ] Choose the concrete vanity domain/hostnames (strategy above;
+      decision recorded privately) and provision them: DNS-only CNAME +
+      GAE custom-domain mapping now, `api-dev` pointed at the DO staging
+      app for end-to-end rehearsal; point the next release's baked-in
+      URLs at the vanity hostname; align `SECRET_KEY` across backends.
 - [ ] Proxy configuration on the GAE default and moves services for the
       drain period.
-- [ ] Decide on a per-version request-log metric to declare the drain over.
+- [ ] Decide on a per-version request-log metric to declare the drain
+      over (the `endpoints_in_use` analytics event provides the
+      complementary fleet-side view).

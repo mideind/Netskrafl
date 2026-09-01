@@ -163,7 +163,10 @@ therefore stay up until that direct traffic drains — expected to take
 decommissioned only then (monitor its request logs to decide). How the
 clients themselves are redirected and drained (the `app_version` client
 configuration record, `/inituser` `endpoints`, `min_supported_version`, the
-vanity-hostname flip) is specified in `client-switchover-plan.md`.
+vanity-hostname flip) is specified in `client-switchover-plan.md` — as of
+2026-09-01 the client side is implemented (explo_app branch
+`feat/server-endpoints`) and the vanity-hostname naming/DNS strategy is
+defined there; the concrete domain choice is pending.
 
 ### Missing or not yet done
 
