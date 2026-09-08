@@ -131,7 +131,10 @@ multiple languages through separate DAWG files and tile sets.
   that communicates with a separate instance of the Netskrafl/Explo game server
 - Real-time gameplay uses WebSocket-like communication via Firebase
 - Elo rating system tracks player performance
-- Google App Engine deployment with multiple environments (Netskrafl/Explo, demo/live)
+- Google App Engine deployment across three projects: netskrafl, explo-live and
+  explo-dev (the explo-dev GAE default service is dormant; the Explo dev app runs on
+  the Digital Ocean container). The former netskrafl `demo` service was deleted on
+  2026-09-08 for lack of traffic; `app-demo.yaml` remains in case it is ever needed
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
   current status are tracked in `doc/migration-strategy.md`
