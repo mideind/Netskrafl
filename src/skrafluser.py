@@ -202,6 +202,12 @@ EXPLO_KID_2 = "2025-02-21:1"
 # Remember to change Málstaður:src/app/api/netskrafl/token/route.tsx if this changes!
 MALSTADUR_KID = "2025-02-27:1"
 
+# Grace window after expiry during which a Málstaður token is reported as
+# "expired" (meaning: refresh and retry) rather than "invalid". A client that
+# keeps presenting a token expired longer ago than this is stuck in a retry
+# loop; "invalid" terminates that loop on the client.
+MALSTADUR_TOKEN_EXPIRY_GRACE = timedelta(minutes=15)
+
 # The currently issued KID and the set of all accepted KIDs,
 # depending on whether we're running as Netskrafl or Explo
 if NETSKRAFL:
@@ -358,8 +364,30 @@ def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
             return False, None
         return False, claims
     except jwt.ExpiredSignatureError:
-        # Token is expired
-        return True, None
+        # Token is expired. Report it as "expired" only within the grace
+        # window, where a well-behaved client refreshes it and retries.
+        # Beyond the grace window the client is evidently stuck presenting
+        # the same stale token, so report "invalid" to break its retry loop.
+        try:
+            claims = jwt.decode(
+                token,
+                TOKEN_SECRET,
+                algorithms=[JWT_ALGORITHM],
+                issuer="malstadur",
+                audience="netskrafl",
+                options={"verify_exp": False},
+            )
+            exp_claim = claims.get("exp", 0.0)
+            if isinstance(exp_claim, datetime):
+                exp = exp_claim if exp_claim.tzinfo else exp_claim.replace(tzinfo=UTC)
+            else:
+                exp = datetime.fromtimestamp(float(exp_claim), UTC)
+            if datetime.now(UTC) - exp <= MALSTADUR_TOKEN_EXPIRY_GRACE:
+                return True, None
+            logging.info("Rejecting long-expired Málstaður token as invalid")
+        except (jwt.InvalidTokenError, ValueError, TypeError, OverflowError):
+            pass
+        return False, None
     except (jwt.InvalidTokenError, ValueError):
         return False, None
 

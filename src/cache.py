@@ -49,6 +49,7 @@ _OWNED_KEY_PATTERNS: Tuple[str, ...] = (
     "userlist|*",
     "rating|*",
     "rating-locale|*",
+    "appversion|*",
     # Online-presence sets, one per locale ("live:is_IS", ...)
     "live:*",
 )

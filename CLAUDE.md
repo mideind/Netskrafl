@@ -135,6 +135,8 @@ multiple languages through separate DAWG files and tile sets.
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
   current status are tracked in `doc/migration-strategy.md`
+- Vocabulary fixes must be propagated to four consumers (GAE, container/CDN,
+  GoSkrafl, Skrafl); the dependency map and runbook are in `doc/dictionary-update.md`
 
 ### PostgreSQL collation (detail to attend to later)
 
