@@ -58,9 +58,16 @@ logged-in account. GoSkrafl's gitignored `go-app/env.yaml` (`ACCESS_KEY`,
    (`nsf2023.aml/.mid`, `nynorsk2024.aml/.mid`), whose filters need the
    gitignored Leipzig corpora `nob-no_web_2020_300K-words.txt` and
    `nno-no_web_2020_300K-words.txt`. Without them, copy the CDN files.
-5. **Upload to the CDN:** `python3.11 utils/dawgbuilder.py --upload-only`,
-   needs `DO_SPACES_KEY` and `DO_SPACES_SECRET` (or
-   `credentials/netskrafl/cdn.key`). Only the container build reads the CDN.
+5. **Upload to the CDN:** needs the Spaces access key ID in `DO_SPACES_KEY`
+   and the secret in `DO_SPACES_SECRET` or `credentials/netskrafl/cdn.key`
+   (keys are generated in the DO control panel under API → Spaces Keys). The
+   uploader needs boto3, so without a venv run
+   `DO_SPACES_KEY=... uv run --no-project --python 3.11 --with boto3 python utils/dawgbuilder.py --upload-only`.
+   Verify by fetching every file back from
+   `https://netskrafl-cdn.ams3.digitaloceanspaces.com/dawg/` and `cmp`-ing it
+   against `resources/`. Only the container build reads the CDN, but it must
+   be refreshed **before** pushing `do-deploy`, or the container's Python
+   engine and its GoSkrafl sidecar will disagree.
 6. **GoSkrafl:** copy `ordalisti.bin.dawg` and `amlodi.bin.dawg` into
    `dicts/`, run `go test ./...`, commit, push. Then set `GOSKRAFL_COMMIT` in
    this repo's `Dockerfile` to the new hash.
