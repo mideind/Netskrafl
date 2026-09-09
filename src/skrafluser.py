@@ -303,13 +303,13 @@ def verify_token(token: str) -> Optional[JWTClaims]:
         claims: JWTClaims
         if kid == CURRENT_KID:
             # Current key identifier and token format, with a specified audience
-            claims = jwt.decode(
+            claims = cast(JWTClaims, jwt.decode(
                 token,
                 TOKEN_SECRET,
                 algorithms=[JWT_ALGORITHM],
                 issuer=PROJECT_ID,
                 audience=JWT_AUDIENCE,
-            )
+            ))
             # Check the token unique ID against a blacklist
             jti = claims.get("jti", "")
             if is_token_blacklisted(jti):
@@ -317,12 +317,12 @@ def verify_token(token: str) -> Optional[JWTClaims]:
         elif kid == EXPLO_KID_1:
             # The older KID_1 tokens are still accepted without an audience check,
             # but no longer issued for new logins (Explo only)
-            claims = jwt.decode(
+            claims = cast(JWTClaims, jwt.decode(
                 token,
                 TOKEN_SECRET,
                 algorithms=[JWT_ALGORITHM],
                 issuer=PROJECT_ID,
-            )
+            ))
         else:
             return None
         return claims
@@ -353,13 +353,13 @@ def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
         claims: JWTClaims
         if kid == MALSTADUR_KID:
             # Current key identifier and token format
-            claims = jwt.decode(
+            claims = cast(JWTClaims, jwt.decode(
                 token,
                 TOKEN_SECRET,
                 algorithms=[JWT_ALGORITHM],
                 issuer="malstadur",
                 audience="netskrafl",
-            )
+            ))
         else:
             return False, None
         return False, claims
@@ -369,14 +369,14 @@ def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
         # Beyond the grace window the client is evidently stuck presenting
         # the same stale token, so report "invalid" to break its retry loop.
         try:
-            claims = jwt.decode(
+            claims = cast(JWTClaims, jwt.decode(
                 token,
                 TOKEN_SECRET,
                 algorithms=[JWT_ALGORITHM],
                 issuer="malstadur",
                 audience="netskrafl",
                 options={"verify_exp": False},
-            )
+            ))
             exp_claim = claims.get("exp", 0.0)
             if isinstance(exp_claim, datetime):
                 exp = exp_claim if exp_claim.tzinfo else exp_claim.replace(tzinfo=UTC)

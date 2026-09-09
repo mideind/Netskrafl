@@ -1,0 +1,17 @@
+# Development and test requirements.
+# Layers on requirements-pg.txt (which in turn layers on requirements.txt),
+# so a dev environment can run the app and the tests against both backends.
+#
+#   uv venv --python 3.11 venv
+#   uv pip install --python venv/bin/python -r requirements-dev.txt
+#
+# App Engine deploys use requirements.txt only; the container image uses
+# requirements-pg.txt. Nothing here is shipped.
+-r requirements-pg.txt
+# Word/trigram statistics used by the local development server only
+icegrams
+# Test and type-check tooling
+pytest>=8
+pyright>=1.1.400
+# Type stubs no longer bundled with pyright (redis 4.x ships no inline types)
+types-redis

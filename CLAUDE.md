@@ -20,11 +20,14 @@ and (2) is the backend for Explo, a multilingual mobile app client
 
 ### Development Setup
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
-
-# For local development, also install
-pip install icegrams
+# Create the venv (CPython 3.11, the GAE runtime) and install everything:
+# runtime deps (requirements.txt, what GAE gets), PostgreSQL backend deps
+# (requirements-pg.txt, what the container gets) and dev tooling
+# (icegrams, pytest, pyright, type stubs). No pyproject.toml: GAE needs
+# requirements.txt and nothing consumes a pyproject, so the layered
+# requirements files are the single source of truth.
+uv venv --python 3.11 venv
+uv pip install --python venv/bin/python -r requirements-dev.txt
 
 # Install Node.js dependencies
 npm install
@@ -55,7 +58,6 @@ GOOGLE_CLOUD_PROJECT=explo-dev \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
 REDISPORT=6379 \
-FIREBASE_DB_URL="<explo-dev-firebase-url>" \
 SINGLE_PAGE=TRUE \
 venv/bin/pytest test/ -v
 
@@ -66,11 +68,17 @@ GOOGLE_CLOUD_PROJECT=netskrafl \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
 REDISPORT=6379 \
-FIREBASE_DB_URL="<netskrafl-firebase-url>" \
 venv/bin/pytest test/ -v
 
 # Run specific test file
 venv/bin/pytest test/test_elo.py
+
+# Repository tests on both backends, and the end-to-end API tests on the
+# PostgreSQL backend (same environment variables as above; both use the local
+# throwaway database postgresql://test:test@localhost:5432/netskrafl_test,
+# override with DATABASE_URL)
+venv/bin/pytest tests/db --backend=both --import-mode=importlib
+venv/bin/pytest tests/api_e2e
 
 # Type checking with pyright (preferred)
 venv/bin/pyright src/
@@ -79,9 +87,10 @@ venv/bin/pyright src/
 
 Note: The explo-dev configuration should be used for full test coverage as it supports
 multiple locales. The netskrafl configuration only supports Icelandic (`is_IS`) and
-some tests that require other locales will fail.
-
-The actual values for credentials paths and Firebase URLs can be found in `.vscode/launch.json`.
+some tests that require other locales will fail. `FIREBASE_DB_URL` does not need to
+be set: it is read from the project's client secret at startup.
+If port 8080 is taken on the machine, add `SERVER_PORT=<free port>`: with
+`RUNNING_LOCAL=true` the app checks that its port is free at import time.
 
 ## Architecture Overview
 
