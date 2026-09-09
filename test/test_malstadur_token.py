@@ -10,7 +10,7 @@
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import jwt
 import pytest
@@ -39,9 +39,11 @@ def make_token(
     expired_for: Optional[timedelta] = None,
     secret: str = TOKEN_SECRET,
     kid: str = MALSTADUR_KID,
+    overrides: Optional[Dict[str, Any]] = None,
+    drop: Iterable[str] = (),
 ) -> str:
     """Create a Málstaður-style login JWT, optionally one that
-    expired expired_for ago"""
+    expired expired_for ago, with claims overridden or dropped"""
     now = datetime.now(UTC)
     exp = now - expired_for if expired_for else now + timedelta(days=1)
     payload: Dict[str, Any] = {
@@ -52,6 +54,10 @@ def make_token(
         "aud": "netskrafl",
         "exp": exp,
     }
+    if overrides:
+        payload.update(overrides)
+    for key in drop:
+        del payload[key]
     return jwt.encode(
         payload, secret, algorithm=JWT_ALGORITHM, headers={"kid": kid}
     )
@@ -101,3 +107,27 @@ def test_unknown_kid_reports_invalid() -> None:
     expired, claims = verify_malstadur_token(token)
     assert not expired
     assert claims is None
+
+
+@pytest.mark.parametrize(
+    "claim,value",
+    [("email", None), ("email", 42), ("plan", {"tier": "friend"}), ("sub", 123)],
+)
+def test_wrongly_typed_claim_reports_invalid(claim: str, value: Any) -> None:
+    # A correctly signed token whose application-level claims have the
+    # wrong type is rejected outright, not passed on to the login logic
+    token = make_token(overrides={claim: value})
+    expired, claims = verify_malstadur_token(token)
+    assert not expired
+    assert claims is None
+
+
+def test_missing_optional_claims_still_valid() -> None:
+    # Type checks apply only to claims that are present; a token without
+    # the optional application-level claims still verifies
+    token = make_token(drop=("email", "plan"))
+    expired, claims = verify_malstadur_token(token)
+    assert not expired
+    assert claims is not None
+    assert claims.get("sub") == "1234567890"
+
