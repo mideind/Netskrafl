@@ -347,9 +347,12 @@ netskrafl have no record.
 - [x] RTDB override node `client_config/endpoints` — client read side
       implemented; security rules published on explo-live and explo-dev
       2026-09-09 (`.read: true` on that node only; verified: anonymous
-      read of the node returns `null`, the parent, other nodes and
-      writes are denied). Operator procedure (owner token bypasses the
-      rules; `$DB` is the project's RTDB URL):
+      read of the node returns the value, the parent, other nodes and
+      writes are denied). **Node values written 2026-09-09:** explo-dev
+      `{"api_url": "https://api-dev.explowordgame.com"}`, explo-live
+      `{"api_url": "https://api.explowordgame.com"}` (no `moves_url`, so
+      the baked-in moves routing stays in force). Operator procedure
+      (owner token bypasses the rules; `$DB` is the project's RTDB URL):
 
       ```bash
       TOKEN=$(gcloud auth print-access-token)
