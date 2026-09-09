@@ -80,8 +80,15 @@ logged-in account. GoSkrafl's gitignored `go-app/env.yaml` (`ACCESS_KEY`,
 9. **Deploy, lowest impact first:** Skrafl (`--no-promote`, check
    `/?rack=<word>` on the versioned URL, then migrate traffic), GoSkrafl
    `moves` to explo-dev then explo-live, then Netskrafl to `netskrafl` and
-   `explo-live` via `/deploy`. GAE versions are never deleted, so each step can
-   be reverted by moving traffic back.
+   `explo-live` via `/deploy`, then the Digital Ocean container (merge master
+   into `do-deploy`, push, watch `doctl apps list-deployments`). GAE versions
+   are never deleted, so each step can be reverted by moving traffic back.
+
+   Which explo-dev surfaces matter (as of 2026-09-08): the Explo dev app is
+   routed to the Digital Ocean container, so the GAE `default` service on
+   `explo-dev` is dormant and need not be deployed. The GAE `moves` service on
+   `explo-dev` is **not** dormant: Netskrafl production resolves its moves URL
+   there (see `MOVES_SERVICE_URL` in `src/config.py`), so it must be updated.
 
 ## Verification cheat-sheet
 
