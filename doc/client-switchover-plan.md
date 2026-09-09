@@ -5,8 +5,8 @@
 `feat/server-endpoints` (first written 2026-09-01, lost unpushed in the
 2026-09-05 disk failure, re-implemented from this document 2026-09-09;
 see the client repo's `doc/server-endpoints.md`), pending review/merge
-and release; vanity-hostname strategy defined (2026-09-01), concrete
-domain choice pending (recorded privately, not in this public repo).
+and release; vanity domain chosen and provisioned 2026-09-09 (see
+"Vanity hostnames: decision and state" below).
 Companion to `migration-strategy.md`, which owns the hosting and database
 cutover; this document owns the *mobile client* side of the same migration:
 how the installed base of Explo app clients is moved from the current Google
@@ -165,13 +165,32 @@ primary fleet-population-by-backend metric), `endpoint_applied`,
 `force_update_shown` (drain-lever effect) and `update_available`
 (upgrade lag).
 
+## Vanity hostnames: decision and state (2026-09-09)
+
+**Domain: `explowordgame.com`.** It is the product domain, and every Explo
+binary ever shipped already depends on it (website, help and policy
+pages, share links: ~50 references in the client source), so hosting the
+API there adds no new long-term liability. DNS moved from Namecheap's
+registrar DNS to Cloudflare (same account as `mideind.is`) on
+2026-09-09; the registration stays at Namecheap. All records are DNS-only
+(unproxied).
+
+| Host | Target | State |
+|---|---|---|
+| `api.explowordgame.com` | GAE explo-live (custom-domain mapping, managed cert; CNAME `ghs.googlehosted.com`) | mapping created 2026-09-09, certificate issuance pending at the time of writing |
+| `api-dev.explowordgame.com` | DO staging app (`PRIMARY` domain in the app spec; CNAME to the app's default ingress) | **live 2026-09-09**: `/health/ready` OK over HTTPS, certificate auto-renewed by App Platform |
+
+Client side: `ENDPOINT_ALLOWLIST = ["explowordgame.com", "mideind.is"]`
+in both ID files; the dev file's baked-in `API_URL` is now the `api-dev`
+host, the live file's `API_URL` switches to the `api` host once its
+certificate is issued. Leave `moves.explowordgame.com` unregistered until
+a dedicated moves host is ever needed again.
+
 ## Vanity hostname strategy (2026-09-01)
 
 The vanity hostname is the name that eventually gets baked into clients as
 the *baseline* URL, so it must outlive every hosting (and branding)
-decision. Concrete domain and hostname choices are deliberately kept out
-of this public document (they are recorded privately and land in the
-untracked `appsIds.json`); the principles and mechanics are:
+decision. The principles and mechanics are:
 
 ### Naming
 
@@ -339,11 +358,11 @@ netskrafl have no record.
       curl "$DB/client_config/endpoints.json"     # anonymous read-back
       curl -X DELETE "$DB/client_config/endpoints.json?access_token=$TOKEN"
       ```
-- [ ] Choose the concrete vanity domain/hostnames (strategy above;
-      decision recorded privately) and provision them: DNS-only CNAME +
-      GAE custom-domain mapping now, `api-dev` pointed at the DO staging
-      app for end-to-end rehearsal; point the next release's baked-in
-      URLs at the vanity hostname; align `SECRET_KEY` across backends.
+- [x] Choose and provision the vanity domain/hostnames — done
+      2026-09-09, see "Vanity hostnames: decision and state" above.
+      Remaining: bake the `api` host into `live-appsIds.json` once its
+      certificate is issued; align `SECRET_KEY` across backends before
+      the DNS flip.
 - [ ] Proxy configuration on the GAE default and moves services for the
       drain period.
 - [ ] Decide on a per-version request-log metric to declare the drain
