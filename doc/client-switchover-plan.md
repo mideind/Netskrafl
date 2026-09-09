@@ -177,13 +177,13 @@ registrar DNS to Cloudflare (same account as `mideind.is`) on
 
 | Host | Target | State |
 |---|---|---|
-| `api.explowordgame.com` | GAE explo-live (custom-domain mapping, managed cert; CNAME `ghs.googlehosted.com`) | mapping created 2026-09-09, certificate issuance pending at the time of writing |
+| `api.explowordgame.com` | GAE explo-live (custom-domain mapping, managed cert; CNAME `ghs.googlehosted.com`) | **live 2026-09-09**: certificate issued and served, `/health/ready` OK over HTTPS |
+| `api-dev2.explowordgame.com` | DO staging app (`ALIAS` domain) | live 2026-09-09; exists only as a redirect target for rehearsals of lever 2 |
 | `api-dev.explowordgame.com` | DO staging app (`PRIMARY` domain in the app spec; CNAME to the app's default ingress) | **live 2026-09-09**: `/health/ready` OK over HTTPS, certificate auto-renewed by App Platform |
 
 Client side: `ENDPOINT_ALLOWLIST = ["explowordgame.com", "mideind.is"]`
 in both ID files; the dev file's baked-in `API_URL` is now the `api-dev`
-host, the live file's `API_URL` switches to the `api` host once its
-certificate is issued. Leave `moves.explowordgame.com` unregistered until
+host and the live file's `API_URL` is the `api` host (both set 2026-09-09). Leave `moves.explowordgame.com` unregistered until
 a dedicated moves host is ever needed again.
 
 ## Vanity hostname strategy (2026-09-01)
@@ -258,6 +258,33 @@ first request 401s and the app re-authenticates automatically (401s are
 the expected-and-handled case in the client's request layer) — expect a
 brief blip of 401s and sign-in events when publishing an override, and
 do not mistake it for breakage.
+
+## Rehearsal on explo-dev (done 2026-09-09)
+
+Run with a `developmentRelease` build of the client (branch
+`feat/server-endpoints`, baked-in `api-dev.explowordgame.com`) on a
+headless emulator on the dev box, driving the record through
+`/appversion` on the DO staging backend:
+
+- **Baseline:** guest sign-in and `/inituser` succeed on the vanity host;
+  no override applied.
+- **Lever 2 (redirect):** `api_url = https://api-dev2.explowordgame.com`
+  (a second alias of the staging app, provisioned for this). `/inituser`
+  delivered it; the device persisted it (`@server-endpoints` in
+  AsyncStorage); a packet capture of the next cold start showed every TLS
+  connection going to `api-dev2` and none to `api-dev`.
+- **Retirement:** removing `api_url` from the record cleared the stored
+  override on the next cold start.
+- **Fallback:** `api_url = https://nowhere.explowordgame.com` (allow-listed,
+  unresolvable): the override was applied, the next three requests failed
+  at the network level, the override was dropped and removed from storage,
+  and the fourth request succeeded on the baked-in host.
+- Not exercised on a device: the Firebase rescue read (covered by unit
+  tests; the node's anonymous readability is verified separately).
+
+The staging `CRON_SECRET` was regenerated for this (the old value was
+lost with the dev box's disk); it lives in `~/.config/netskrafl-staging.env`
+on the dev box.
 
 ## The switch-over itself
 
@@ -363,9 +390,8 @@ netskrafl have no record.
       ```
 - [x] Choose and provision the vanity domain/hostnames — done
       2026-09-09, see "Vanity hostnames: decision and state" above.
-      Remaining: bake the `api` host into `live-appsIds.json` once its
-      certificate is issued; align `SECRET_KEY` across backends before
-      the DNS flip.
+      Both hosts live and baked into the ID files. Remaining: align
+      `SECRET_KEY` across backends before the DNS flip.
 - [ ] Proxy configuration on the GAE default and moves services for the
       drain period.
 - [ ] Decide on a per-version request-log metric to declare the drain

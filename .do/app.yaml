@@ -33,6 +33,9 @@ region: ams
 domains:
 - domain: api-dev.explowordgame.com
   type: PRIMARY
+# Second alias of the same app: the redirect target for lever-2 rehearsals
+- domain: api-dev2.explowordgame.com
+  type: ALIAS
 
 alerts:
   - rule: DEPLOYMENT_FAILED
