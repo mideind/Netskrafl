@@ -1,10 +1,12 @@
 # Client/server switch-over plan
 
 **Status:** server side implemented and on master (PR #143, merged
-2026-08-25); client side implemented (2026-09-01) on the `explo_app`
-branch `feat/server-endpoints`, pending review/merge and release;
-vanity-hostname strategy defined (2026-09-01), concrete domain choice
-pending (recorded privately, not in this public repo).
+2026-08-25); client side implemented on the `explo_app` branch
+`feat/server-endpoints` (first written 2026-09-01, lost unpushed in the
+2026-09-05 disk failure, re-implemented from this document 2026-09-09;
+see the client repo's `doc/server-endpoints.md`), pending review/merge
+and release; vanity-hostname strategy defined (2026-09-01), concrete
+domain choice pending (recorded privately, not in this public repo).
 Companion to `migration-strategy.md`, which owns the hosting and database
 cutover; this document owns the *mobile client* side of the same migration:
 how the installed base of Explo app clients is moved from the current Google
@@ -317,10 +319,12 @@ netskrafl have no record.
 ## Open items
 
 - [x] `endpoints` handling in `explo_app` (allow-list, AsyncStorage,
-      fallback-on-failure) — implemented 2026-09-01 on branch
-      `feat/server-endpoints`; must ship in 1.4.8 or the next release for
-      lever 2 to exist at all. Remaining: review/merge, and put the
-      `ENDPOINT_ALLOWLIST` values into `appsIds.json`/`live-appsIds.json`.
+      fallback-on-failure) — on branch `feat/server-endpoints`
+      (re-implemented 2026-09-09 after the original was lost); must ship
+      in 1.4.8 or the next release for lever 2 to exist at all. Remaining:
+      push the branch, review/merge, and put the `ENDPOINT_ALLOWLIST`
+      values into `appsIds.json`/`live-appsIds.json` (both files also
+      need recreating on the rebuilt dev box).
 - [ ] RTDB override node `client_config/endpoints` — client read side is
       implemented; remaining: Firebase security-rules change (the node
       must be world-readable) and an operator write procedure.
