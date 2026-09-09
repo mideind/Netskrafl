@@ -325,9 +325,20 @@ netskrafl have no record.
       push the branch, review/merge, and put the `ENDPOINT_ALLOWLIST`
       values into `appsIds.json`/`live-appsIds.json` (both files also
       need recreating on the rebuilt dev box).
-- [ ] RTDB override node `client_config/endpoints` — client read side is
-      implemented; remaining: Firebase security-rules change (the node
-      must be world-readable) and an operator write procedure.
+- [x] RTDB override node `client_config/endpoints` — client read side
+      implemented; security rules published on explo-live and explo-dev
+      2026-09-09 (`.read: true` on that node only; verified: anonymous
+      read of the node returns `null`, the parent, other nodes and
+      writes are denied). Operator procedure (owner token bypasses the
+      rules; `$DB` is the project's RTDB URL):
+
+      ```bash
+      TOKEN=$(gcloud auth print-access-token)
+      curl -X PUT "$DB/client_config/endpoints.json?access_token=$TOKEN" \
+        -d '{"api_url": "https://<new-api-host>"}'
+      curl "$DB/client_config/endpoints.json"     # anonymous read-back
+      curl -X DELETE "$DB/client_config/endpoints.json?access_token=$TOKEN"
+      ```
 - [ ] Choose the concrete vanity domain/hostnames (strategy above;
       decision recorded privately) and provision them: DNS-only CNAME +
       GAE custom-domain mapping now, `api-dev` pointed at the DO staging
