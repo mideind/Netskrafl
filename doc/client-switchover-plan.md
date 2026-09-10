@@ -365,12 +365,12 @@ netskrafl have no record.
 ## Open items
 
 - [x] `endpoints` handling in `explo_app` (allow-list, AsyncStorage,
-      fallback-on-failure) — on branch `feat/server-endpoints`
-      (re-implemented 2026-09-09 after the original was lost); must ship
-      in 1.4.8 or the next release for lever 2 to exist at all. Remaining:
-      push the branch, review/merge, and put the `ENDPOINT_ALLOWLIST`
-      values into `appsIds.json`/`live-appsIds.json` (both files also
-      need recreating on the rebuilt dev box).
+      fallback-on-failure) — re-implemented 2026-09-09 after the original
+      was lost, merged to `master` as PR #34 on 2026-09-10; ships in
+      1.4.8, the release now in progress. `ENDPOINT_ALLOWLIST` is
+      `["explowordgame.com", "mideind.is"]` in both `appsIds.json` and
+      `live-appsIds.json` (untracked; whoever builds the store release
+      needs the same values).
 - [x] RTDB override node `client_config/endpoints` — client read side
       implemented; security rules published on explo-live and explo-dev
       2026-09-09 (`.read: true` on that node only; verified: anonymous
