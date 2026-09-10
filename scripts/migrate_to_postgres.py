@@ -12,7 +12,10 @@
 
     * Reads Datastore over the REST API (the gRPC client library is
       pathologically slow on the development box - see the design doc),
-      with parallel key-range shards for the heavy kinds.
+      with parallel key-range shards for the heavy kinds. Shards run in
+      separate worker processes: decoding is CPU-bound (protobuf JSON
+      parsing plus the NDB model layer, ~5-8 ms per game), so threads
+      would serialize on the GIL.
     * Decodes entities through google-cloud-ndb's own deserialization
       (model._entity_from_protobuf) with the real skrafldb_ndb model
       classes, so legacy LocalStructuredProperty blobs, timestamps etc.
@@ -67,6 +70,7 @@ from typing import (
 
 import argparse
 import logging
+import multiprocessing
 import os
 import random
 import sys
@@ -861,7 +865,8 @@ class Migrator:
         single_txn: bool = False,
     ) -> int:
         """Read one key range of one kind and upsert it into PG.
-        Runs in its own thread with its own connections."""
+        Runs in its own process (or the main one for single-shard kinds)
+        with its own connections."""
         from psycopg2.extras import execute_values
 
         reader = DatastoreReader(self.project, self.creds_path)
@@ -979,24 +984,48 @@ class Migrator:
         results: List[int] = []
         errors: List[BaseException] = []
 
-        def work(item: Tuple[str, Optional[str | int], Optional[str | int], Optional[str], int]) -> None:
-            label, a, b, cur0, cnt0 = item
+        if len(todo) == 1:
+            label, a, b, cur0, cnt0 = todo[0]
             try:
-                results.append(
-                    self.run_shard(spec, label, a, b, since, cur0, cnt0)
-                )
+                results.append(self.run_shard(spec, label, a, b, since, cur0, cnt0))
             except BaseException as ex:  # noqa: BLE001 - reported below
                 log.error("%s[%s] failed: %r", spec.kind, label, ex)
                 errors.append(ex)
-
-        if len(todo) == 1:
-            work(todo[0])
         else:
-            threads = [threading.Thread(target=work, args=(t,)) for t in todo]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
+            # One worker process per shard: the decode path is CPU-bound,
+            # so threads would serialize on the GIL (measured: 8 threads
+            # ran at ~40 games/s, one core busy). Fresh interpreters
+            # ("spawn") avoid fork hazards with the gRPC/NDB client; each
+            # worker bootstraps its own Migrator (~2 s) and returns its
+            # count, counters and verification samples for merging here.
+            ctx = multiprocessing.get_context("spawn")
+            with ctx.Pool(processes=len(todo)) as pool:
+                pending = [
+                    (label, pool.apply_async(
+                        _shard_worker,
+                        (vars(self.args), spec.kind, label, a, b, cur0, cnt0),
+                    ))
+                    for label, a, b, cur0, cnt0 in todo
+                ]
+                for label, ar in pending:
+                    try:
+                        count, counters, samples, seen = ar.get()
+                    except BaseException as ex:  # noqa: BLE001 - reported below
+                        log.error("%s[%s] failed: %r", spec.kind, label, ex)
+                        errors.append(ex)
+                        continue
+                    results.append(count)
+                    for k, v in counters.items():
+                        self.bump(k, v)
+                    for kind, rows in samples.items():
+                        self.samples.setdefault(kind, []).extend(rows)
+                        self.sample_seen[kind] = self.sample_seen.get(kind, 0) + seen.get(kind, 0)
+            # Every worker kept up to verify_n samples; trim the union
+            # back to verify_n (uniform over the union, which is itself
+            # a per-shard uniform sample - good enough for a spot check)
+            for kind, rows in self.samples.items():
+                if self.verify_n and len(rows) > self.verify_n:
+                    self.samples[kind] = random.sample(rows, self.verify_n)
         if errors:
             raise errors[0]
         total = sum(results)
@@ -1099,6 +1128,25 @@ class Migrator:
                         (self.run_id,),
                     )
                 conn.commit()
+            # T0 of a bulk run is the start of its *first* attempt: a
+            # resumed run must not advance it, or the delta pass would
+            # miss writes made between the first start and the resume.
+            # Persisted as a pseudo-shard row of the checkpoint table
+            # (load_state() is per kind, so it never collides).
+            if self.mode == "bulk":
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT cursor FROM _migration_state "
+                        "WHERE run_id = %s AND kind = %s AND shard = %s",
+                        (self.run_id, "_run", "t0"),
+                    )
+                    row = cur.fetchone()
+                    if row and row[0] and self.args.resume:
+                        self.t0 = datetime.fromisoformat(row[0])
+                        log.info("Resuming bulk run started at T0 %s", self.t0.isoformat())
+                    else:
+                        self.save_state(cur, "_run", "t0", self.t0.isoformat(), 0, True)
+                conn.commit()
             conn.close()
         if self.mode == "delta" and self.since is None:
             sys.exit("--mode delta requires --since")
@@ -1140,6 +1188,41 @@ class Migrator:
             return 1
         log.info("T0 for a subsequent delta pass: --since %s", self.t0.isoformat())
         return 0
+
+
+def _shard_worker(
+    args_dict: Dict[str, Any],
+    kind: str,
+    label: str,
+    key_start: Optional[str | int],
+    key_end: Optional[str | int],
+    start_cursor: Optional[str],
+    start_count: int,
+) -> Tuple[int, Dict[str, int], Dict[str, List[Row]], Dict[str, int]]:
+    """Entry point of a shard worker process (bulk mode, multi-shard
+    kinds only, so no delta filter): rebuild the migrator in this
+    interpreter, run the shard, and hand back what the parent merges."""
+    args = argparse.Namespace(**args_dict)
+    m = Migrator(args)
+    if not m.dry_run:
+        # FK repair needs the user id set; users are always migrated
+        # before any dependent kind, so the target table is authoritative
+        conn = m.connect()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users")
+            m.user_ids = {r[0] for r in cur.fetchall()}
+        conn.close()
+    spec = SPEC_BY_KIND[kind]
+    count = m.run_shard(spec, label, key_start, key_end, None, start_cursor, start_count)
+    # The sampled rows must cross the process boundary: psycopg2's Json
+    # wrappers hold a reference to the connection they were executed on
+    # (set by their prepare() hook), which cannot be pickled. normalize()
+    # unwraps them and is idempotent, so verify() compares like with like.
+    samples = {
+        k: [tuple(Migrator.normalize(v) for v in row) for row in rows]
+        for k, rows in m.samples.items()
+    }
+    return count, m.counters, samples, m.sample_seen
 
 
 def main() -> int:
