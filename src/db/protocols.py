@@ -1518,7 +1518,7 @@ class DatabaseBackendProtocol(Protocol):
         """
         ...
 
-    def on_commit(self, callback: Callable[[], None]) -> None:
+    def on_commit(self, callback: Callable[[], object]) -> None:
         """Register a callback to run once the current transaction has
         committed, i.e. once the data written so far is visible to
         other requests.

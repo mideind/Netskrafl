@@ -92,6 +92,7 @@ from skrafldb import (
     ZombieModel,
     PrefsDict,
     UserModel,
+    on_commit,
 )
 import firebase
 from billing import cancel_plan
@@ -769,21 +770,20 @@ def challenge_api() -> ResponseType:
                 "locale": user.locale,
             },
         )
-        # Notify the challenged user via a push notification
-        firebase.push_to_user(
-            destuser,
-            {
-                "title": lambda locale: localize_push_message("chall_title", locale),
-                "body": lambda locale: localize_push_message(
-                    "chall_body", locale
-                ).format(player=user.nickname()),
-                "image": lambda locale: EXPLO_LOGO_URL,
-            },
-            {
-                "type": "notify-challenge",
-                "uid": uid,
-            },
-        )
+        # Notify the challenged user via a push notification,
+        # once the challenge has been committed (see skrafldb.on_commit())
+        push_message: firebase.PushMessageDict = {
+            "title": lambda locale: localize_push_message("chall_title", locale),
+            "body": lambda locale: localize_push_message(
+                "chall_body", locale
+            ).format(player=user.nickname()),
+            "image": lambda locale: EXPLO_LOGO_URL,
+        }
+        push_data: firebase.PushDataDict = {
+            "type": "notify-challenge",
+            "uid": uid,
+        }
+        on_commit(lambda: firebase.push_to_user(destuser, push_message, push_data))
     elif action == "retract":
         user.retract_challenge(destuser, key=key)
     elif action == "decline":
@@ -796,11 +796,15 @@ def challenge_api() -> ResponseType:
     # Firebase notification to /user/[user_id]/challenge
     msg: Dict[str, str] = dict()
 
-    # Notify both players' clients of an update to the challenge lists
+    # Notify both players' clients of an update to the challenge lists.
+    # The clients react by reloading the challenge list, so the
+    # notification is deferred until the change above is committed
+    # (immediate on NDB outside a transaction; at request end on
+    # PostgreSQL); see skrafldb.on_commit()
     now = datetime.now(UTC).isoformat()
     msg[f"user/{destuser}/challenge"] = now
     msg[f"user/{uid}/challenge"] = now
-    firebase.send_message(msg)
+    on_commit(lambda: firebase.send_message(msg))
 
     return jsonify(result=Error.LEGAL)
 
@@ -1000,7 +1004,9 @@ def chatmsg_api() -> ResponseType:
                 if pid := game.player_id(p):
                     send_msg[f"game/{uuid}/{pid}/chat"] = md
             if send_msg:
-                firebase.send_message(send_msg)
+                # Deferred until the message is committed, since clients
+                # may reload the chat history on notification
+                on_commit(lambda: firebase.send_message(send_msg))
 
     elif channel.startswith("user:"):
 
@@ -1024,7 +1030,8 @@ def chatmsg_api() -> ResponseType:
             )
             send_msg[f"user/{user_id}/chat"] = md
             send_msg[f"user/{opp_id}/chat"] = md
-            firebase.send_message(send_msg)
+            # Deferred until the message is committed, as above
+            on_commit(lambda: firebase.send_message(send_msg))
 
     else:
         # Invalid channel prefix
@@ -1610,7 +1617,10 @@ def initgame_api() -> ResponseType:
     if prefs and prefs.get("duration", 0) > 0:
         msg[f"user/{opp}/wait/{uid}"] = {"game": game_id, "key": key}
 
-    firebase.send_message(msg)
+    # The clients react by reloading their game lists, so the
+    # notification waits for the new game to be committed;
+    # see skrafldb.on_commit()
+    on_commit(lambda: firebase.send_message(msg))
 
     # Return the uuid of the new game, and the id of the
     # player whose turn it is

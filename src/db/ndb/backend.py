@@ -276,7 +276,7 @@ class NDBBackend:
         """
         pass
 
-    def on_commit(self, callback: Callable[[], None]) -> None:
+    def on_commit(self, callback: Callable[[], object]) -> None:
         """Run callback after the enclosing NDB transaction commits.
 
         Inside an ndb.transactional() function the callback is queued
