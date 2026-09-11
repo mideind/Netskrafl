@@ -49,6 +49,26 @@ a poor serverless fit). DO is the target of record.
 
 ## Where We Stand
 
+### Next steps (as of 2026-09-11)
+
+The Explo client 1.4.8 with the endpoints mechanism and the vanity hosts is
+in its release cycle; the explo-live database rehearsal has passed. In
+order:
+
+1. **Production DO app for explo-live** (`PROJECT_ID=explo-live`, prod
+   Valkey logical db 2, ≥2 GB instance, `SECRETS_PROVIDER=env` with
+   `SECRET_KEY_BIN_BASE64` and `MOVES_AUTH_KEY` equal to the GAE Secret
+   Manager values so sessions and legacy moves calls survive the DNS flip;
+   custom domain `api.explowordgame.com` added, DNS left on GAE).
+2. **GAE drain proxies** on the explo-live default and moves services for
+   the pre-1.4.8 cohort (develop on explo-dev's dormant default service),
+   plus the request-log metric that declares the drain over.
+3. **Phase E for explo-live**: freeze, delta pass (≈6 min), flip
+   `DATABASE_BACKEND`, flip the Cloudflare CNAME, promote the proxies;
+   later raise `min_supported_version`.
+4. **netskrafl**: resize the staging cluster (~3× the explo-live footprint,
+   4.4 GB), rehearse with the same tooling, decide the riddle endpoint.
+
 ### Complete and verified
 
 - **Containerization is done and field-proven.** The 5-stage `Dockerfile`
