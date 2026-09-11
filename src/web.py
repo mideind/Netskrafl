@@ -75,7 +75,7 @@ from basics import (
     max_age,
 )
 from logic import UserForm, promo_to_show_to_user
-from skrafldb import PrefsDict, ZombieModel
+from skrafldb import PrefsDict, ZombieModel, on_commit
 from skraflgame import Game, BingoList
 from autoplayers import COMMON, autoplayer_create
 from skrafluser import User, UserLoginDict, verify_malstadur_token
@@ -493,7 +493,8 @@ def newgame() -> ResponseType:
     if prefs and prefs.get("duration", 0) > 0:
         msg["user/" + opp + "/wait/" + uid] = {"game": game.id()}
 
-    firebase.send_message(msg)
+    # Deferred until the new game is committed; see skrafldb.on_commit()
+    on_commit(lambda: firebase.send_message(msg))
 
     # Go to the game page
     return redirect(url_for("web.board", game=game.id()))
@@ -565,7 +566,8 @@ def initgame() -> ResponseType:
     if prefs and prefs.get("duration", 0) > 0:
         msg["user/" + opp + "/wait/" + uid] = {"game": game.id()}
 
-    firebase.send_message(msg)
+    # Deferred until the new game is committed; see skrafldb.on_commit()
+    on_commit(lambda: firebase.send_message(msg))
 
     # Return the uuid of the new game
     return jsonify(ok=True, uuid=game.id())
