@@ -87,6 +87,7 @@ from skrafldb import (
     FavoriteModel,
     GameModel,
     RatingModel,
+    on_commit,
     transactional,
 )
 from cache import memcache
@@ -676,19 +677,22 @@ def process_move(
         # Fire-and-forget: the per-session FCM round trips should not
         # delay the reply to the player who submitted the move.
         opp_nick = game.player_nickname(1 - opponent_index)
-        firebase.push_to_user_in_background(
-            opponent,
-            {
-                "title": lambda locale: localize_push_message("title", locale),
-                "body": lambda locale: localize_push_message("body", locale).format(
-                    player=opp_nick
-                ),
-                "image": lambda locale: EXPLO_LOGO_URL,
-            },
-            {
-                "type": "notify-move",
-                "game": game_id,
-            },
+        push_message: firebase.PushMessageDict = {
+            "title": lambda locale: localize_push_message("title", locale),
+            "body": lambda locale: localize_push_message("body", locale).format(
+                player=opp_nick
+            ),
+            "image": lambda locale: EXPLO_LOGO_URL,
+        }
+        push_data: firebase.PushDataDict = {
+            "type": "notify-move",
+            "game": game_id,
+        }
+        # Deferred until the move has been committed (see below)
+        on_commit(
+            lambda: firebase.push_to_user_in_background(
+                opponent, push_message, push_data
+            )
         )
 
     if player := game.player_id(1 - opponent_index):
@@ -700,8 +704,17 @@ def process_move(
         # Fire-and-forget: the Firebase PATCH (~40-100 ms round trip)
         # notifies the other party and other client sessions; the player
         # who submitted the move gets the new state in the HTTP response
-        # below and should not wait for it
-        firebase.send_message_in_background(msg_dict)
+        # below and should not wait for it.
+        # The notification must not go out before the move is committed:
+        # the clients react to it by re-reading the game list and the
+        # game state, and under ndb.transactional() (submit_move(),
+        # force_resign()) the game.store() above is only committed when
+        # the decorated function returns. A client that fetched /gamelist
+        # in the ~100 ms window between the Firebase write and the commit
+        # got the pre-move state (wrong player to move, old scores) and
+        # stayed stale until the next notification. Hence on_commit(),
+        # which also skips the notification if the transaction fails.
+        on_commit(lambda: firebase.send_message_in_background(msg_dict))
 
     # Return a state update to the client (board, rack, score, movelist, etc.)
     return jsonify(game.client_state(1 - opponent_index))
