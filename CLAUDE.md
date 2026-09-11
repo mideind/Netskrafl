@@ -139,6 +139,12 @@ multiple languages through separate DAWG files and tile sets.
 - Explo has a mobile app client (React Native app, implemented in the explo-front repository)
   that communicates with a separate instance of the Netskrafl/Explo game server
 - Real-time gameplay uses WebSocket-like communication via Firebase
+- Firebase notifications (and any other side effect that makes a client re-read
+  the database) must be registered with `skrafldb.on_commit()` rather than sent
+  directly: inside an `@transactional()` function on NDB, and anywhere in a
+  request on PostgreSQL, the writes are not committed until the function or
+  request returns, and a client reacting to an early notification reads the old
+  state (the 2026-09-11 stale-game-list bug in the Explo app)
 - Elo rating system tracks player performance
 - Google App Engine deployment across three projects: netskrafl, explo-live and
   explo-dev (the explo-dev GAE default service is dormant; the Explo dev app runs on

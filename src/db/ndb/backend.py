@@ -7,8 +7,10 @@ DatabaseBackendProtocol by wrapping the existing skrafldb.py models.
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 from contextlib import contextmanager
+
+from google.cloud import ndb
 
 import skrafldb_ndb as skrafldb
 
@@ -273,6 +275,16 @@ class NDBBackend:
         puts will remain in the datastore.
         """
         pass
+
+    def on_commit(self, callback: Callable[[], None]) -> None:
+        """Run callback after the enclosing NDB transaction commits.
+
+        Inside an ndb.transactional() function the callback is queued
+        and run by NDB once the transaction has committed (and not at
+        all if it fails). Outside a transaction it runs immediately,
+        as every put() has already been persisted by then.
+        """
+        ndb.get_context().call_on_commit(callback)
 
     def close(self) -> None:
         """Close database connections and clean up resources.

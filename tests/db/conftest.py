@@ -74,6 +74,17 @@ def _ensure_ndb_context():
     return _ndb_context
 
 
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Leave the session-wide NDB context cleanly. If it is left to be
+    garbage-collected at interpreter exit, its cleanup runs after NDB's
+    module state is gone and prints an "Exception ignored" traceback
+    (seen after tests that ran an ndb.transaction())."""
+    global _ndb_context
+    if _ndb_context is not None:
+        _ndb_context.__exit__(None, None, None)
+        _ndb_context = None
+
+
 def _create_postgresql_backend(
     database_url: str | None = None,
 ) -> "DatabaseBackendProtocol":

@@ -96,6 +96,16 @@ from google.cloud import ndb
 # from skrafldb instead of depending directly on google.cloud.ndb
 transactional = ndb.transactional
 
+
+def on_commit(callback: Callable[[], None]) -> None:
+    """Run callback after the enclosing ndb.transactional() function
+    commits, or immediately if no transaction is active. Side effects
+    that make clients re-read the database (Firebase notifications)
+    must be registered here rather than run directly inside a
+    transaction, where the data is not yet visible to other requests.
+    See also DatabaseBackendProtocol.on_commit()."""
+    ndb.get_context().call_on_commit(callback)
+
 from config import (
     DEFAULT_ELO,
     DEFAULT_LOCALE,
