@@ -285,47 +285,82 @@ def is_token_blacklisted(jti: str) -> bool:
     return False
 
 
+# Application-level claims that must be plain strings when present. PyJWT
+# already enforces that iss, sub and jti are strings and that exp, iat and
+# nbf are numeric; email and plan are our own and are checked here so that
+# a malformed token is rejected with a clear reason instead of failing an
+# email comparison or a plan check further down the line.
+_STRING_CLAIMS: FrozenSet[str] = frozenset({"iss", "sub", "email", "plan", "jti"})
+
+
+def _check_token_header(token: str) -> str:
+    """Validate the unverified JWT header (type, algorithm and key id)
+    and return the key id. Raises ValueError on any mismatch."""
+    headers: Mapping[str, str] = cast(Any, jwt).get_unverified_header(token)
+    if (typ := headers.get("typ")) != "JWT":
+        raise ValueError(f"Unexpected token type: {typ}")
+    if (alg := headers.get("alg")) != JWT_ALGORITHM:
+        raise ValueError(f"Unexpected algorithm: {alg}")
+    kid = headers.get("kid", "")
+    if kid not in ACCEPTED_KIDS:
+        raise ValueError(f"Unexpected key id: {kid}")
+    return kid
+
+
+def _decode_claims(
+    token: str,
+    *,
+    issuer: str,
+    audience: Optional[str] = None,
+    verify_exp: bool = True,
+) -> JWTClaims:
+    """Verify a token's signature and standard claims via PyJWT, then
+    check the types of the application-level claims that PyJWT does not
+    look at, and return the claims as a typed dictionary. No claim is
+    required beyond what PyJWT itself requires; only the types of claims
+    that are present are checked. Raises jwt.InvalidTokenError (or a
+    subclass, such as jwt.ExpiredSignatureError) if anything is amiss."""
+    payload: Dict[str, Any] = jwt.decode(
+        token,
+        TOKEN_SECRET,
+        algorithms=[JWT_ALGORITHM],
+        issuer=issuer,
+        audience=audience,
+        options={"verify_exp": verify_exp},
+    )
+    for key in _STRING_CLAIMS:
+        if key in payload and not isinstance(payload[key], str):
+            raise jwt.InvalidTokenError(f"Claim '{key}' must be a string")
+    aud = payload.get("aud")
+    if aud is not None and not isinstance(aud, str):
+        # PyJWT accepts a list of audiences; we only ever issue a single one
+        raise jwt.InvalidTokenError("Claim 'aud' must be a string")
+    # Every declared key has now been validated, by PyJWT or above,
+    # so the narrowing is justified
+    return cast(JWTClaims, payload)
+
+
 def verify_token(token: str) -> Optional[JWTClaims]:
     """Verify a JWT-encoded session token and return its claims,
     or None if verification fails. This verifies tokens that we
     ourselves have issued via make_login_dict()."""
     try:
-        headers: Mapping[str, str] = cast(Any, jwt).get_unverified_header(token)
-        if (typ := headers.get("typ")) != "JWT":
-            raise ValueError(f"Unexpected token type: {typ}")
-        if (alg := headers.get("alg")) != JWT_ALGORITHM:
-            raise ValueError(f"Unexpected algorithm: {alg}")
-        kid = headers.get("kid", "")
-        if kid not in ACCEPTED_KIDS:
-            raise ValueError(f"Unexpected key id: {kid}")
+        kid = _check_token_header(token)
         # So far, so good. Now verify the JWT and its claims.
         # This will raise an exception if the token is invalid.
-        claims: JWTClaims
         if kid == CURRENT_KID:
             # Current key identifier and token format, with a specified audience
-            claims = jwt.decode(
-                token,
-                TOKEN_SECRET,
-                algorithms=[JWT_ALGORITHM],
-                issuer=PROJECT_ID,
-                audience=JWT_AUDIENCE,
-            )
+            claims = _decode_claims(token, issuer=PROJECT_ID, audience=JWT_AUDIENCE)
             # Check the token unique ID against a blacklist
             jti = claims.get("jti", "")
             if is_token_blacklisted(jti):
                 return None
-        elif kid == EXPLO_KID_1:
+            return claims
+        if kid == EXPLO_KID_1:
             # The older KID_1 tokens are still accepted without an audience check,
             # but no longer issued for new logins (Explo only)
-            claims = jwt.decode(
-                token,
-                TOKEN_SECRET,
-                algorithms=[JWT_ALGORITHM],
-                issuer=PROJECT_ID,
-            )
-        else:
-            return None
-        return claims
+            return _decode_claims(token, issuer=PROJECT_ID)
+        return None
     except (jwt.InvalidTokenError, ValueError) as e:
         logging.warning(f"Failed to verify token: {e}")
         return None
@@ -340,42 +375,20 @@ def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
     or None if verification fails. The first return value is True if
     the JWT has expired but False otherwise."""
     try:
-        headers: Mapping[str, str] = cast(Any, jwt).get_unverified_header(token)
-        if (typ := headers.get("typ")) != "JWT":
-            raise ValueError(f"Unexpected token type: {typ}")
-        if (alg := headers.get("alg")) != JWT_ALGORITHM:
-            raise ValueError(f"Unexpected algorithm: {alg}")
-        kid = headers.get("kid", "")
-        if kid not in ACCEPTED_KIDS:
-            raise ValueError(f"Unexpected key id: {kid}")
+        kid = _check_token_header(token)
+        if kid != MALSTADUR_KID:
+            return False, None
         # So far, so good. Now verify the JWT and its claims.
         # This will raise an exception if the token is invalid.
-        claims: JWTClaims
-        if kid == MALSTADUR_KID:
-            # Current key identifier and token format
-            claims = jwt.decode(
-                token,
-                TOKEN_SECRET,
-                algorithms=[JWT_ALGORITHM],
-                issuer="malstadur",
-                audience="netskrafl",
-            )
-        else:
-            return False, None
-        return False, claims
+        return False, _decode_claims(token, issuer="malstadur", audience="netskrafl")
     except jwt.ExpiredSignatureError:
         # Token is expired. Report it as "expired" only within the grace
         # window, where a well-behaved client refreshes it and retries.
         # Beyond the grace window the client is evidently stuck presenting
         # the same stale token, so report "invalid" to break its retry loop.
         try:
-            claims = jwt.decode(
-                token,
-                TOKEN_SECRET,
-                algorithms=[JWT_ALGORITHM],
-                issuer="malstadur",
-                audience="netskrafl",
-                options={"verify_exp": False},
+            claims = _decode_claims(
+                token, issuer="malstadur", audience="netskrafl", verify_exp=False
             )
             exp_claim = claims.get("exp", 0.0)
             if isinstance(exp_claim, datetime):

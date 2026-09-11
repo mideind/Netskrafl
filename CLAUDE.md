@@ -20,11 +20,14 @@ and (2) is the backend for Explo, a multilingual mobile app client
 
 ### Development Setup
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
-
-# For local development, also install
-pip install icegrams
+# Create the venv (CPython 3.11, the GAE runtime) and install everything:
+# runtime deps (requirements.txt, what GAE gets), PostgreSQL backend deps
+# (requirements-pg.txt, what the container gets) and dev tooling
+# (icegrams, pytest, pyright, type stubs). No pyproject.toml: GAE needs
+# requirements.txt and nothing consumes a pyproject, so the layered
+# requirements files are the single source of truth.
+uv venv --python 3.11 venv
+uv pip install --python venv/bin/python -r requirements-dev.txt
 
 # Install Node.js dependencies
 npm install
@@ -55,7 +58,6 @@ GOOGLE_CLOUD_PROJECT=explo-dev \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
 REDISPORT=6379 \
-FIREBASE_DB_URL="<explo-dev-firebase-url>" \
 SINGLE_PAGE=TRUE \
 venv/bin/pytest test/ -v
 
@@ -66,11 +68,17 @@ GOOGLE_CLOUD_PROJECT=netskrafl \
 RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
 REDISPORT=6379 \
-FIREBASE_DB_URL="<netskrafl-firebase-url>" \
 venv/bin/pytest test/ -v
 
 # Run specific test file
 venv/bin/pytest test/test_elo.py
+
+# Repository tests on both backends, and the end-to-end API tests on the
+# PostgreSQL backend (same environment variables as above; both use the local
+# throwaway database postgresql://test:test@localhost:5432/netskrafl_test,
+# override with DATABASE_URL)
+venv/bin/pytest tests/db --backend=both --import-mode=importlib
+venv/bin/pytest tests/api_e2e
 
 # Type checking with pyright (preferred)
 venv/bin/pyright src/
@@ -79,9 +87,10 @@ venv/bin/pyright src/
 
 Note: The explo-dev configuration should be used for full test coverage as it supports
 multiple locales. The netskrafl configuration only supports Icelandic (`is_IS`) and
-some tests that require other locales will fail.
-
-The actual values for credentials paths and Firebase URLs can be found in `.vscode/launch.json`.
+some tests that require other locales will fail. `FIREBASE_DB_URL` does not need to
+be set: it is read from the project's client secret at startup.
+If port 8080 is taken on the machine, add `SERVER_PORT=<free port>`: with
+`RUNNING_LOCAL=true` the app checks that its port is free at import time.
 
 ## Architecture Overview
 
@@ -130,8 +139,17 @@ multiple languages through separate DAWG files and tile sets.
 - Explo has a mobile app client (React Native app, implemented in the explo-front repository)
   that communicates with a separate instance of the Netskrafl/Explo game server
 - Real-time gameplay uses WebSocket-like communication via Firebase
+- Firebase notifications (and any other side effect that makes a client re-read
+  the database) must be registered with `skrafldb.on_commit()` rather than sent
+  directly: inside an `@transactional()` function on NDB, and anywhere in a
+  request on PostgreSQL, the writes are not committed until the function or
+  request returns, and a client reacting to an early notification reads the old
+  state (the 2026-09-11 stale-game-list bug in the Explo app)
 - Elo rating system tracks player performance
-- Google App Engine deployment with multiple environments (Netskrafl/Explo, demo/live)
+- Google App Engine deployment across three projects: netskrafl, explo-live and
+  explo-dev (the explo-dev GAE default service is dormant; the Explo dev app runs on
+  the Digital Ocean container). The former netskrafl `demo` service was deleted on
+  2026-09-08 for lack of traffic; `app-demo.yaml` remains in case it is ever needed
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
   current status are tracked in `doc/migration-strategy.md`
@@ -202,7 +220,7 @@ improvement; parts of the app also sort client-side via `Alphabet` in
 - `netskrafl_lint.py` is **not** a linter - it is a separate utility program.
   Do not invoke it for code quality checks. Only run it when specifically asked.
 
-## Digital Ocean deployment experiment (status as of 2026-08-12)
+## Digital Ocean deployment experiment (status as of 2026-09-11)
 
 A container deployment test runs on DO App Platform as the app
 `netskrafl-staging` (region ams,
@@ -215,10 +233,20 @@ remains the source of truth, so edit it by round-tripping
 checked-in file (which would overwrite encrypted secrets with placeholders).
 
 **Current configuration:** `PROJECT_ID=explo-dev` with the explo-dev service
-account, `DATABASE_BACKEND=ndb`, one `apps-s-1vcpu-1gb` instance, auto-deploying
-on push to the dedicated `do-deploy` branch. Firebase and other client-secret
-values are *not* set as env vars - they are fetched from Secret Manager keyed by
-`PROJECT_ID` (`src/config.py:166,186`), so they follow the project automatically.
+account, **`DATABASE_BACKEND=postgresql`** against the migrated `explo_dev`
+database on the managed cluster `db-postgresql-ams3-netskrafl-staging` (since
+2026-08-18; this is the live Explo dev backend), one `apps-s-1vcpu-1gb`
+instance, auto-deploying on push to the dedicated `do-deploy` branch (a
+merge-commit branch: merge master into it, it is not fast-forwardable).
+Secrets come from encrypted env vars (`SECRETS_PROVIDER=env`); the Google
+service-account credential stays for the Firebase Admin SDK. Custom domains
+`api-dev.explowordgame.com` (primary) and `api-dev2.explowordgame.com`
+(alias, rehearsal-only redirect target) point at the app; DNS is on
+Cloudflare, DNS-only. The same cluster also holds the **`explo_live`**
+database produced by the 2026-09-10 migration rehearsal (kept as the
+cutover-shaped target; refresh it with a delta pass) and an empty
+`netskrafl` database. See `doc/migration-strategy.md` for the plan and
+`doc/client-switchover-plan.md` for the client/DNS side.
 
 **Redis/Valkey (since 2026-08-12):** the app uses Miðeind's shared Valkey
 cluster `db-redis-gsapi-staging`, **logical database 1** (`REDIS_URL` set to
@@ -227,11 +255,12 @@ notes in `.do/app.yaml` for the full tenant assignment, and note that
 `cache.py`'s `flush()` deliberately avoids `FLUSHDB` for this reason).
 `/health/ready` passes and a `health_check` on it gates deployments.
 
-**Not yet exercised:** `CRON_SECRET` is deliberately unset (which keeps
-supercronic, and therefore all scheduled jobs, switched off - see
-`docker-entrypoint.sh`). The PostgreSQL backend has never been deployed here.
-Note the instance has 1 GB against GAE production's 2 GB (`B4_1G`) with the same
-three gunicorn workers, so it is not a valid load-testing baseline as sized.
+**Scheduled jobs:** `CRON_SECRET` is set (regenerated 2026-09-09, kept only
+in `~/.config/netskrafl-staging.env` on the dev box) and supercronic runs the
+crontab in the container; it also authenticates `/appversion` and
+`/cacheflush`. Note the instance has 1 GB against GAE production's 2 GB
+(`B4_1G`) with the same three gunicorn workers, so it is not a valid
+load-testing baseline as sized; the production app needs ≥2 GB.
 
 **Build gotcha - App Platform builds with kaniko, not BuildKit.** kaniko does
 not support heredocs in `RUN`: it passes only the first line and silently

@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import (
     Protocol,
     Optional,
+    Callable,
     List,
     Dict,
     Any,
@@ -1514,6 +1515,26 @@ class DatabaseBackendProtocol(Protocol):
 
         For NDB: No-op since puts cannot be rolled back.
         Provided for API compatibility.
+        """
+        ...
+
+    def on_commit(self, callback: Callable[[], None]) -> None:
+        """Register a callback to run once the current transaction has
+        committed, i.e. once the data written so far is visible to
+        other requests.
+
+        For PostgreSQL: The callback is deferred until the request-scoped
+        transaction commits successfully (see db.session) and is discarded
+        if the transaction is rolled back.
+
+        For NDB: Delegates to the NDB context's call_on_commit(): inside an
+        ndb.transactional() function the callback runs after that
+        transaction commits; outside a transaction it runs immediately,
+        since each put() is then already persisted.
+
+        Use this for side effects that make clients re-read the database,
+        such as Firebase notifications; sent before the commit, they can
+        make a client fetch the old state.
         """
         ...
 

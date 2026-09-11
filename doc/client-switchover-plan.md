@@ -1,10 +1,12 @@
 # Client/server switch-over plan
 
 **Status:** server side implemented and on master (PR #143, merged
-2026-08-25); client side implemented (2026-09-01) on the `explo_app`
-branch `feat/server-endpoints`, pending review/merge and release;
-vanity-hostname strategy defined (2026-09-01), concrete domain choice
-pending (recorded privately, not in this public repo).
+2026-08-25); client side implemented on the `explo_app` branch
+`feat/server-endpoints` (first written 2026-09-01, lost unpushed in the
+2026-09-05 disk failure, re-implemented from this document 2026-09-09;
+see the client repo's `doc/server-endpoints.md`), pending review/merge
+and release; vanity domain chosen and provisioned 2026-09-09 (see
+"Vanity hostnames: decision and state" below).
 Companion to `migration-strategy.md`, which owns the hosting and database
 cutover; this document owns the *mobile client* side of the same migration:
 how the installed base of Explo app clients is moved from the current Google
@@ -163,13 +165,32 @@ primary fleet-population-by-backend metric), `endpoint_applied`,
 `force_update_shown` (drain-lever effect) and `update_available`
 (upgrade lag).
 
+## Vanity hostnames: decision and state (2026-09-09)
+
+**Domain: `explowordgame.com`.** It is the product domain, and every Explo
+binary ever shipped already depends on it (website, help and policy
+pages, share links: ~50 references in the client source), so hosting the
+API there adds no new long-term liability. DNS moved from Namecheap's
+registrar DNS to Cloudflare (same account as `mideind.is`) on
+2026-09-09; the registration stays at Namecheap. All records are DNS-only
+(unproxied).
+
+| Host | Target | State |
+|---|---|---|
+| `api.explowordgame.com` | GAE explo-live (custom-domain mapping, managed cert; CNAME `ghs.googlehosted.com`) | **live 2026-09-09**: certificate issued and served, `/health/ready` OK over HTTPS |
+| `api-dev2.explowordgame.com` | DO staging app (`ALIAS` domain) | live 2026-09-09; exists only as a redirect target for rehearsals of lever 2 |
+| `api-dev.explowordgame.com` | DO staging app (`PRIMARY` domain in the app spec; CNAME to the app's default ingress) | **live 2026-09-09**: `/health/ready` OK over HTTPS, certificate auto-renewed by App Platform |
+
+Client side: `ENDPOINT_ALLOWLIST = ["explowordgame.com", "mideind.is"]`
+in both ID files; the dev file's baked-in `API_URL` is now the `api-dev`
+host and the live file's `API_URL` is the `api` host (both set 2026-09-09). Leave `moves.explowordgame.com` unregistered until
+a dedicated moves host is ever needed again.
+
 ## Vanity hostname strategy (2026-09-01)
 
 The vanity hostname is the name that eventually gets baked into clients as
 the *baseline* URL, so it must outlive every hosting (and branding)
-decision. Concrete domain and hostname choices are deliberately kept out
-of this public document (they are recorded privately and land in the
-untracked `appsIds.json`); the principles and mechanics are:
+decision. The principles and mechanics are:
 
 ### Naming
 
@@ -237,6 +258,33 @@ first request 401s and the app re-authenticates automatically (401s are
 the expected-and-handled case in the client's request layer) — expect a
 brief blip of 401s and sign-in events when publishing an override, and
 do not mistake it for breakage.
+
+## Rehearsal on explo-dev (done 2026-09-09)
+
+Run with a `developmentRelease` build of the client (branch
+`feat/server-endpoints`, baked-in `api-dev.explowordgame.com`) on a
+headless emulator on the dev box, driving the record through
+`/appversion` on the DO staging backend:
+
+- **Baseline:** guest sign-in and `/inituser` succeed on the vanity host;
+  no override applied.
+- **Lever 2 (redirect):** `api_url = https://api-dev2.explowordgame.com`
+  (a second alias of the staging app, provisioned for this). `/inituser`
+  delivered it; the device persisted it (`@server-endpoints` in
+  AsyncStorage); a packet capture of the next cold start showed every TLS
+  connection going to `api-dev2` and none to `api-dev`.
+- **Retirement:** removing `api_url` from the record cleared the stored
+  override on the next cold start.
+- **Fallback:** `api_url = https://nowhere.explowordgame.com` (allow-listed,
+  unresolvable): the override was applied, the next three requests failed
+  at the network level, the override was dropped and removed from storage,
+  and the fourth request succeeded on the baked-in host.
+- Not exercised on a device: the Firebase rescue read (covered by unit
+  tests; the node's anonymous readability is verified separately).
+
+The staging `CRON_SECRET` was regenerated for this (the old value was
+lost with the dev box's disk); it lives in `~/.config/netskrafl-staging.env`
+on the dev box.
 
 ## The switch-over itself
 
@@ -317,18 +365,33 @@ netskrafl have no record.
 ## Open items
 
 - [x] `endpoints` handling in `explo_app` (allow-list, AsyncStorage,
-      fallback-on-failure) — implemented 2026-09-01 on branch
-      `feat/server-endpoints`; must ship in 1.4.8 or the next release for
-      lever 2 to exist at all. Remaining: review/merge, and put the
-      `ENDPOINT_ALLOWLIST` values into `appsIds.json`/`live-appsIds.json`.
-- [ ] RTDB override node `client_config/endpoints` — client read side is
-      implemented; remaining: Firebase security-rules change (the node
-      must be world-readable) and an operator write procedure.
-- [ ] Choose the concrete vanity domain/hostnames (strategy above;
-      decision recorded privately) and provision them: DNS-only CNAME +
-      GAE custom-domain mapping now, `api-dev` pointed at the DO staging
-      app for end-to-end rehearsal; point the next release's baked-in
-      URLs at the vanity hostname; align `SECRET_KEY` across backends.
+      fallback-on-failure) — re-implemented 2026-09-09 after the original
+      was lost, merged to `master` as PR #34 on 2026-09-10; ships in
+      1.4.8, the release now in progress. `ENDPOINT_ALLOWLIST` is
+      `["explowordgame.com", "mideind.is"]` in both `appsIds.json` and
+      `live-appsIds.json` (untracked; whoever builds the store release
+      needs the same values).
+- [x] RTDB override node `client_config/endpoints` — client read side
+      implemented; security rules published on explo-live and explo-dev
+      2026-09-09 (`.read: true` on that node only; verified: anonymous
+      read of the node returns the value, the parent, other nodes and
+      writes are denied). **Node values written 2026-09-09:** explo-dev
+      `{"api_url": "https://api-dev.explowordgame.com"}`, explo-live
+      `{"api_url": "https://api.explowordgame.com"}` (no `moves_url`, so
+      the baked-in moves routing stays in force). Operator procedure
+      (owner token bypasses the rules; `$DB` is the project's RTDB URL):
+
+      ```bash
+      TOKEN=$(gcloud auth print-access-token)
+      curl -X PUT "$DB/client_config/endpoints.json?access_token=$TOKEN" \
+        -d '{"api_url": "https://<new-api-host>"}'
+      curl "$DB/client_config/endpoints.json"     # anonymous read-back
+      curl -X DELETE "$DB/client_config/endpoints.json?access_token=$TOKEN"
+      ```
+- [x] Choose and provision the vanity domain/hostnames — done
+      2026-09-09, see "Vanity hostnames: decision and state" above.
+      Both hosts live and baked into the ID files. Remaining: align
+      `SECRET_KEY` across backends before the DNS flip.
 - [ ] Proxy configuration on the GAE default and moves services for the
       drain period.
 - [ ] Decide on a per-version request-log metric to declare the drain

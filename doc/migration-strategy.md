@@ -49,6 +49,26 @@ a poor serverless fit). DO is the target of record.
 
 ## Where We Stand
 
+### Next steps (as of 2026-09-11)
+
+The Explo client 1.4.8 with the endpoints mechanism and the vanity hosts is
+in its release cycle; the explo-live database rehearsal has passed. In
+order:
+
+1. **Production DO app for explo-live** (`PROJECT_ID=explo-live`, prod
+   Valkey logical db 2, ≥2 GB instance, `SECRETS_PROVIDER=env` with
+   `SECRET_KEY_BIN_BASE64` and `MOVES_AUTH_KEY` equal to the GAE Secret
+   Manager values so sessions and legacy moves calls survive the DNS flip;
+   custom domain `api.explowordgame.com` added, DNS left on GAE).
+2. **GAE drain proxies** on the explo-live default and moves services for
+   the pre-1.4.8 cohort (develop on explo-dev's dormant default service),
+   plus the request-log metric that declares the drain over.
+3. **Phase E for explo-live**: freeze, delta pass (≈6 min), flip
+   `DATABASE_BACKEND`, flip the Cloudflare CNAME, promote the proxies;
+   later raise `min_supported_version`.
+4. **netskrafl**: resize the staging cluster (~3× the explo-live footprint,
+   4.4 GB), rehearse with the same tooling, decide the riddle endpoint.
+
 ### Complete and verified
 
 - **Containerization is done and field-proven.** The 5-stage `Dockerfile`
@@ -172,7 +192,7 @@ defined there; the concrete domain choice is pending.
 
 | Area | State |
 |------|-------|
-| Data migration (Datastore→PG) | ✅ **Implemented (2026-08-14)** — `scripts/migrate_to_postgres.py`, per `doc/data-migration-design.md` (see its implementation notes). First rehearsal done: explo-dev bulk (19k entities, 0.7 min, verify clean) + delta passes into the `explo_dev` ICU-`und` database on the staging cluster. **Staging serves it live since 2026-08-18** (`DATABASE_BACKEND=postgresql`), and the migrated data passed full verification the same day (api_e2e + replay harness + decode sweep — see Phase D step 3). Remaining: the explo-live and netskrafl rehearsals (resize cluster first). |
+| Data migration (Datastore→PG) | ✅ **Implemented (2026-08-14)** — `scripts/migrate_to_postgres.py`, per `doc/data-migration-design.md` (see its implementation notes). First rehearsal done: explo-dev bulk (19k entities, 0.7 min, verify clean) + delta passes into the `explo_dev` ICU-`und` database on the staging cluster. **Staging serves it live since 2026-08-18** (`DATABASE_BACKEND=postgresql`), and the migrated data passed full verification the same day (api_e2e + replay harness + decode sweep — see Phase D step 3). **explo-live rehearsed 2026-09-10**: 2.41M entities, bulk ≈50 min, delta pass 5.4 min, full verification clean (details in `data-migration-design.md`, "Rehearsal sequence"). Remaining: the netskrafl rehearsal (resize cluster first; budget ~8 ms CPU per game). |
 | Managed PostgreSQL cluster | ✅ **Provisioned (2026-08-14)**: `db-postgresql-ams3-netskrafl-staging` (PG 18, ams3, `db-s-1vcpu-2gb`, 1 node). App database `netskrafl` created from `template0` with `LOCALE_PROVIDER icu ICU_LOCALE 'und'`, owner `netskrafl_app`; per-locale ICU collations (`is-x-icu` et al.) verified. Trusted sources: the dev box and the DO staging app. **Resize before the full netskrafl rehearsal** (~40 GB of entity data vs. this plan's disk). |
 | Managed Valkey | ✅ **Done (2026-08-12): reusing Miðeind's existing shared clusters** `db-redis-gsapi-staging` and `db-redis-gsapi-prod` (Valkey 8, ams3). Tenant separation via *logical databases* selected with a `/N` URL suffix (verified: URL-based selection, `SELECT`, and `FLUSHDB` scoping all work). Assignment: db 0 = gsapi; staging db 1 = explo-dev; prod db 1 = netskrafl, prod db 2 = explo-live. `cache.py`'s `flush()` deletes only the app's own key patterns (no `FLUSHDB`), so `/cacheflush` is shared-tenant-safe even within one logical database. The staging app is attached and smoke-tested (entity cache + presence sets live in db 1; gsapi's db 0 untouched). |
 | Scheduled jobs on DO | ✅ **Running (2026-08-12)**: `CRON_SECRET` set, supercronic runs `/connect/update` every 2 min (verified end-to-end into Valkey db 1). The daily `/stats/run`/`/stats/ratings` lines are deliberately **commented out in `crontab`** while GAE cron still runs them for the same project; re-enable when the container is the sole scheduler. (Fixed along the way: the Dockerfile only installed supercronic when a `CRON_SECRET` build ARG was set, which DO never supplies — now installed unconditionally, runtime-gated.) |
@@ -318,9 +338,13 @@ hosting problems surface with zero data-migration risk. Rollback is DNS.
      explo-dev NDB, and two experimental `es_ES` games (Feb 2026) that
      `Game.load` declines identically on the NDB backend
      (parity-verified) because the locale is unsupported.
-4. **Rehearse** against a production Datastore export into a staging PG
+4. **Rehearse** against production Datastore into a staging PG
    database. Measure wall-clock time — this bounds the cutover window.
-   (Remaining: explo-live, then netskrafl — resize the cluster first.)
+   ✅ **explo-live done 2026-09-10** (`explo_live` on the staging
+   cluster, 4.4 GB): bulk ≈50 min, delta 5.4 min (users dominate),
+   api_e2e 125 passed, replay 105/105, decode sweep clean. Along the
+   way the migrator moved from shard threads to worker processes (15×
+   faster on games). Remaining: netskrafl — resize the cluster first.
 5. ✅ **Deploy the PG backend to staging** (2026-08-18): the app runs
    `DATABASE_BACKEND=postgresql` with a `${pg.DATABASE_URL}` binding to
    the migrated `explo_dev` database — the first App-Platform deployment

@@ -118,8 +118,15 @@ preferably in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
 
 2. ```git clone https://github.com/mideind/Netskrafl``` to your GAE application directory.
 
-3. Run ```pip install -r requirements.txt``` in your virtualenv to install
-required Python packages so that they are accessible to GAE. To run locally you will also need to install the icegrams package ```pip install icegrams```
+3. Install the Python packages. For development, create a virtualenv with
+[uv](https://docs.astral.sh/uv/) and install the dev requirements, which
+include the runtime packages (`requirements.txt`, the ones deployed to GAE),
+the PostgreSQL backend packages (`requirements-pg.txt`, used by the container
+image) and the local tooling (icegrams, pytest, pyright):
+   ```
+   uv venv --python 3.11 venv
+   uv pip install --python venv/bin/python -r requirements-dev.txt
+   ```
 
 4. Run ```python utils/dawgbuilder.py all``` to generate the DAWG ```*.bin.dawg``` files. This may
 take a couple of minutes.

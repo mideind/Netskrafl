@@ -33,7 +33,7 @@ steps 2–3 of `migration-strategy.md`). Supersedes the sketch in
 |---|---|---|---|---|
 | netskrafl | us-central | 17.6M | ~40 GB | GameModel 10.28M (~3.7 KB avg), StatsModel 3.5M, ChatModel 3.6M |
 | explo-dev | europe-west | 19k | 59 MB | — |
-| explo-live | europe-west (assumed) | TBD | TBD | check when credentials available |
+| explo-live | europe-west | 2.41M | ~13.3 GB | GameModel 1.46M (~7.2 KB avg), StatsModel 625k, ChatModel 230k, UserModel 36k (~22 KB avg, image blobs); stats as of 2026-09-09 |
 
 Moves are embedded in GameModel (`LocalStructuredProperty(MoveModel,
 repeated=True)`); there is **no separate move kind**. google-cloud-ndb
@@ -50,8 +50,9 @@ reasons decoding must go through the NDB model layer (below).
 ```
 
 1. **Reader** — REST `projects/{id}:runQuery` with `requests.Session`,
-   continuous `endCursor` paging, N parallel shards (thread pool; work is
-   I/O-bound). Per-kind shard strategy:
+   continuous `endCursor` paging, N parallel shards, **one worker process
+   per shard** (the work is CPU-bound, not I/O-bound as first assumed —
+   see the 2026-09-10 implementation notes). Per-kind shard strategy:
    - `GameModel` (UUID string keys): shard by key hex prefix
      (`__key__ >= 'a' AND __key__ < 'b'`), verified working.
    - `StatsModel`, `ChatModel` (numeric auto-IDs, scattered): sample
@@ -190,15 +191,53 @@ plan, all in the writer/bookkeeping layer:
   keys are still swept up by the first/last shard.
 - **Delta-replace kinds** (all the small ones) are wiped and fully
   reloaded inside the delta pass, so rows deleted at the source since
-  T0 also disappear from PG. Known limitation, accepted: users deleted
-  at the source are not deleted in PG by a delta pass (upsert-only),
-  and games/chats/stats deletions are likewise not propagated — both
-  vanishingly rare inside a freeze window.
+  T0 also disappear from PG. Users are the one small kind that is
+  re-copied by upsert instead (the dependent tables reference them);
+  UserModel entities are never deleted in normal backend operation, so
+  nothing is lost. Games/chats/stats deletions are likewise not
+  propagated by a delta pass — vanishingly rare inside a freeze window.
+  Note that UserModel has no last-modified property (`timestamp` is the
+  creation time and `last_login` does not move when a finished game
+  updates the user's Elo/stats fields), so the users delta is a full
+  re-read: ~4 min for explo-live's 36k users, the dominant part of its
+  delta pass.
 - **Environment**: importing the NDB model layer pulls in
   `src/config.py`, so the tool needs project credentials and a local
   Redis; it sets the standard local-dev env vars itself from
   `--project`/`--credentials`. (The design's "no config machinery"
   aspiration didn't survive contact with the import graph.)
+
+## Implementation notes (2026-09-10, from the explo-live rehearsal)
+
+- **Shards run in worker processes, not threads.** The first explo-live
+  bulk run decoded games at ~40/s with 8 threads and exactly one core
+  busy: the decode path (`json_format.ParseDict`, pure Python, ~5 ms per
+  game, plus the NDB model layer, ~3 ms) is CPU-bound, and the threads
+  additionally convoyed on the process-wide lock inside `strptime`,
+  which protobuf's timestamp parser calls 30–40 times per game (once
+  per move timestamp). With one `multiprocessing` ("spawn") worker per
+  shard the same copy ran at ~600 games/s. Each worker bootstraps its
+  own `Migrator` and returns its count, counters and verification
+  samples for the parent to merge; single-shard kinds still run in the
+  main process. The "≈2,140 entities/s" read-side estimate above was
+  measured without decoding and does not bound a real run; budget
+  ~8 ms of CPU per game (≈1 core-hour per 450k games) and ~1 GB/hour
+  of gzip-compressed JSON.
+- **Verification samples cross the process boundary normalized**:
+  psycopg2's `Json` wrappers keep a reference to the connection they
+  were executed on and cannot be pickled; the worker unwraps them
+  (`Migrator.normalize`, idempotent) before returning.
+- **T0 is persisted** in `_migration_state` (pseudo-shard `_run/t0`) on
+  the first bulk attempt and reused by `--resume`, so the "T0 for a
+  subsequent delta pass" line printed at the end is the start of the
+  first attempt, not of the resume. (Before this, a resumed run printed
+  its own start time — an operator trap at cutover.)
+- **Newer CPython does not help** the decode cost: measured 3.1–3.6 ms
+  per game on 3.11–3.13 and 11 ms on 3.14 (all with the upb protobuf
+  core; the JSON layer is pure Python). The migrator stays on the GAE
+  runtime version (3.11) with the pinned google-cloud-ndb anyway.
+- `scripts/decode_sweep.py` implements verification step 4b below and
+  replaces the ad-hoc sweep used for explo-dev.
 
 ## Rehearsal sequence (Phase D steps 4–5)
 
@@ -209,7 +248,35 @@ plan, all in the writer/bookkeeping layer:
    all explained by explo-dev test-data leftovers. Remaining from this
    step: point the DO staging app at the result
    (`DATABASE_BACKEND=postgresql`) and click around.
-2. explo-live (size TBD) — first realistic dress rehearsal.
+2. ✅ **explo-live — DONE 2026-09-10** into a new `explo_live` database
+   (ICU `und`, owner `netskrafl_app`, Alembic head) on the staging
+   cluster, from the dev box:
+   - **Bulk:** 2.41M entities. Users 35,870 in 3.5 min (single stream,
+     ~22 KB each); games 1,461,702 in ~41 min once the worker-process
+     fix was in (~600/s over 8 shards; the thread version managed ~40/s);
+     stats 625,673 in 2.5 min; chats 230,594 in 1.7 min; all small
+     kinds under a minute. **≈50 min wall-clock for a clean run.**
+     `--verify 200`: 0 mismatches (games' samples were lost to the
+     pickling bug, fixed since, and are covered by the sweep instead).
+     Repairs reported: 67 chats with an unknown recipient nulled, 1
+     duplicate image, 2 duplicate favorites and 32 duplicate blocks
+     collapsed (`ON CONFLICT DO NOTHING` kinds). Target size 4.4 GB.
+   - **Delta** (`--since` T0 − 1 h, i.e. a 3-hour window): **5.4 min**,
+     of which the full users re-read was 4.1 min; games 526 rows in
+     6 s, chats 50, stats 0 (written only by the nightly cron), every
+     replace kind in seconds. `--verify 100`: clean. So the freeze
+     window for explo-live is bounded by the users pass, ~5–6 min.
+   - **Verification** on a local `pg_dump`/`pg_restore` copy (2.2 GB
+     dump in 3 min, restore in 3.5 min): `tests/api_e2e` 125 passed
+     (`E2E_KEEP_TABLES=1`), replay harness 105/105 fixtures exact,
+     decode sweep (`scripts/decode_sweep.py`): 36,025/36,025 users and
+     1,461,796/1,461,796 games load through the real app loaders (~640
+     games/s, 38 min); the single "bad" row reported was a transient
+     game created and deleted by the concurrently running API tests,
+     present in neither database afterwards. Run the sweep alone next
+     time.
+   - Kinds present in explo-live but not migrated on purpose:
+     `AdminUser` (2 entities, unused by the app).
 3. netskrafl (17.6M) — **resize the staging PG cluster first** (the
    initial `db-s-1vcpu-2gb`/30 GB is too small for ~40 GB of entity
    data); measure wall-clock for the bulk pass and, separately, a delta
@@ -252,7 +319,6 @@ The spike scripts become the seed of the migrator's decoder unit test.
 1. **Numeric-ID shard sampling**: confirm StatsModel/ChatModel auto-IDs
    are scattered enough for uniform range splits (else fall back to more
    shards or `__scatter__`-style splitting).
-2. **explo-live stats**: pull `__Stat_Kind__` when a service-account
-   credential is available; expected modest.
+2. ~~explo-live stats~~ — done, see the data shape table.
 3. **Memory:** streaming end-to-end (batch in, batch out); no kind is
    ever held fully in memory.

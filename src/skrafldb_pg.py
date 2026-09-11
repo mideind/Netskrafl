@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from typing import (
     Any,
+    Callable,
     Dict,
     Generic,
     Iterable,
@@ -110,6 +111,14 @@ def transactional(**_kw: Any) -> Any:
         return wrapper
 
     return decorator
+
+
+def on_commit(callback: Callable[[], None]) -> None:
+    """Run callback after the request-scoped transaction commits, i.e.
+    once the request's writes are visible to other requests; discarded
+    if the request rolls back. Counterpart of skrafldb_ndb.on_commit();
+    see DatabaseBackendProtocol.on_commit()."""
+    _get_db().on_commit(callback)
 
 
 # ---------------------------------------------------------------------------

@@ -27,6 +27,15 @@
 
 name: netskrafl-staging
 region: ams
+# Vanity hostname for the dev-project backend (added 2026-09-09; see
+# doc/client-switchover-plan.md). DNS: a DNS-only CNAME at Cloudflare to the
+# app's default ingress hostname; App Platform issues the certificate.
+domains:
+- domain: api-dev.explowordgame.com
+  type: PRIMARY
+# Second alias of the same app: the redirect target for lever-2 rehearsals
+- domain: api-dev2.explowordgame.com
+  type: ALIAS
 
 alerts:
   - rule: DEPLOYMENT_FAILED

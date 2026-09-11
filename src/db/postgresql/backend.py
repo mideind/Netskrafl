@@ -7,7 +7,8 @@ DatabaseBackendProtocol using SQLAlchemy ORM.
 
 from __future__ import annotations
 
-from typing import Optional, Any, TYPE_CHECKING, cast
+import logging
+from typing import Callable, List, Optional, Any, TYPE_CHECKING, cast
 import uuid
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -60,6 +61,8 @@ if TYPE_CHECKING:
         RobotRepositoryProtocol,
         ConfigRepositoryProtocol,
     )
+
+_log = logging.getLogger(__name__)
 
 
 class PostgreSQLTransactionContext:
@@ -152,6 +155,9 @@ class PostgreSQLBackend:
 
         # Track nested transaction context (for explicit transactions)
         self._in_transaction: bool = False
+
+        # Callbacks to run after the request-scoped transaction commits
+        self._on_commit_callbacks: List[Callable[[], None]] = []
 
         # Initialize repositories with the session
         self._init_repositories()
@@ -323,12 +329,34 @@ class PostgreSQLBackend:
         self._session.flush()
 
     def commit(self) -> None:
-        """Commit the current transaction, making all changes permanent."""
+        """Commit the current transaction, making all changes permanent,
+        then run the callbacks registered via on_commit()."""
         self._session.commit()
+        self._run_on_commit_callbacks()
 
     def rollback(self) -> None:
-        """Roll back the current transaction, discarding all changes."""
+        """Roll back the current transaction, discarding all changes
+        and any callbacks registered via on_commit()."""
         self._session.rollback()
+        self._on_commit_callbacks.clear()
+
+    def on_commit(self, callback: Callable[[], None]) -> None:
+        """Register a callback to run once the request-scoped transaction
+        has committed (see db.session.SessionManager.request_context()).
+        Discarded if the transaction is rolled back instead."""
+        self._on_commit_callbacks.append(callback)
+
+    def _run_on_commit_callbacks(self) -> None:
+        """Run and clear the queued on_commit() callbacks, in registration
+        order. The data is already committed at this point, so a failing
+        callback is logged and does not affect the request."""
+        callbacks = self._on_commit_callbacks
+        self._on_commit_callbacks = []
+        for callback in callbacks:
+            try:
+                callback()
+            except Exception:
+                _log.exception("Exception in on_commit() callback")
 
     def close(self) -> None:
         """Close the session, returning the connection to the pool.
