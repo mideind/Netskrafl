@@ -157,7 +157,7 @@ class PostgreSQLBackend:
         self._in_transaction: bool = False
 
         # Callbacks to run after the request-scoped transaction commits
-        self._on_commit_callbacks: List[Callable[[], object]] = []
+        self._on_commit_callbacks: List[Callable[[], Optional[bool]]] = []
 
         # Initialize repositories with the session
         self._init_repositories()
@@ -340,7 +340,7 @@ class PostgreSQLBackend:
         self._session.rollback()
         self._on_commit_callbacks.clear()
 
-    def on_commit(self, callback: Callable[[], object]) -> None:
+    def on_commit(self, callback: Callable[[], Optional[bool]]) -> None:
         """Register a callback to run once the request-scoped transaction
         has committed (see db.session.SessionManager.request_context()).
         Discarded if the transaction is rolled back instead."""
