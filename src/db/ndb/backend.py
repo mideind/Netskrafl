@@ -7,7 +7,7 @@ DatabaseBackendProtocol by wrapping the existing skrafldb.py models.
 
 from __future__ import annotations
 
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, Callable, Optional, TYPE_CHECKING
 from contextlib import contextmanager
 
 from google.cloud import ndb
@@ -276,7 +276,7 @@ class NDBBackend:
         """
         pass
 
-    def on_commit(self, callback: Callable[[], None]) -> None:
+    def on_commit(self, callback: Callable[[], Optional[bool]]) -> None:
         """Run callback after the enclosing NDB transaction commits.
 
         Inside an ndb.transactional() function the callback is queued

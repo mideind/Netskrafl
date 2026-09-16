@@ -113,7 +113,7 @@ def transactional(**_kw: Any) -> Any:
     return decorator
 
 
-def on_commit(callback: Callable[[], None]) -> None:
+def on_commit(callback: Callable[[], Optional[bool]]) -> None:
     """Run callback after the request-scoped transaction commits, i.e.
     once the request's writes are visible to other requests; discarded
     if the request rolls back. Counterpart of skrafldb_ndb.on_commit();
