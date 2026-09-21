@@ -481,6 +481,22 @@ class TestLiveGames:
             assert game_002.opp is None
             assert game_002.robot_level == 10
 
+    def test_count_live_games(self, backend: "DatabaseBackendProtocol") -> None:
+        """The live game count agrees with the live game list, whether the
+        user is the first or the second player, and respects max_count."""
+        # User1 is player0 in both games; user2 is player1 in one of them
+        for user_id, at_least in (("live-user-1", 2), ("live-user-2", 1)):
+            count = backend.games.count_live_games(user_id)
+            assert count >= at_least
+            assert count == len(list(backend.games.iter_live_games(user_id)))
+        # Counting stops at max_count (the free-game limit check in /initgame)
+        assert backend.games.count_live_games("live-user-1", max_count=1) == 1
+        assert backend.games.count_live_games("live-user-1", max_count=2) == 2
+        # max_count spanning both queries: one game as player0 is not enough
+        assert backend.games.count_live_games("live-user-2", max_count=1) == 1
+        assert backend.games.count_live_games("no-such-user") == 0
+        assert backend.games.count_live_games("") == 0
+
 
 class TestDeleteForUser:
     """Test deleting all games for a user."""
