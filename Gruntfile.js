@@ -15,10 +15,13 @@ module.exports = function (grunt) {
       },
 
       exec: {
-         // This, however, works well with tsc 5.7.2
+         // This, however, works well with tsc 5.7.2.
+         // Run via npx so that the project's own TypeScript (a devDependency)
+         // is used and no global install is needed; --no-install makes a
+         // missing 'npm install' fail here, not fetch the unrelated 'tsc' package.
          tsc: {
             cwd: "static",
-            command: "tsc",
+            command: "npx --no-install tsc",
             stdout: true,
             stderr: true
          }
