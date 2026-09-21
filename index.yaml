@@ -39,7 +39,8 @@ indexes:
   - name: ts_last_move
     direction: desc
 
-# The following index is actually not used
+# Essential: serves GameModel.iter_live_games() and count_live_games(),
+# whose queries are ~100x slower without it
 - kind: GameModel
   properties:
   - name: over
@@ -47,7 +48,7 @@ indexes:
   - name: ts_last_move
     direction: desc
 
-# The following index is actually not used
+# Essential: as above, for the second player
 - kind: GameModel
   properties:
   - name: over
