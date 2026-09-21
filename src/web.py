@@ -78,7 +78,7 @@ from logic import UserForm, promo_to_show_to_user
 from skrafldb import PrefsDict, ZombieModel, on_commit
 from skraflgame import Game, BingoList
 from autoplayers import COMMON, autoplayer_create
-from skrafluser import User, UserLoginDict, verify_malstadur_token
+from skrafluser import User, UserLoginDict, log_fields, verify_malstadur_token
 import firebase
 import billing
 from cache import memcache
@@ -853,18 +853,43 @@ def login_malstadur() -> ResponseType:
         if not jwt:
             return jsonify(status="invalid", message="No token provided"), 401
         # Decode the claims in the JWT, using the Málstaður secret
+        # The outcome of every login attempt is logged with the identity
+        # it was made for, so that an individual user's login problems
+        # can be traced. (The e-mail is unverified when the token is bad.)
         expired, claims = verify_malstadur_token(jwt)
         if expired:
+            logging.info(
+                f"Málstaður login: token expired for {email}",
+                extra=log_fields("malstadur_login", outcome="expired", email=email),
+            )
             return jsonify(status="expired", message="Token expired")
         if claims is None:
+            logging.warning(
+                f"Málstaður login: invalid token for {email}",
+                extra=log_fields("malstadur_login", outcome="invalid", email=email),
+            )
             return jsonify(status="invalid", message="Invalid token"), 401
         # Claims successfully extracted, which means that the token
         # is valid and not expired
         email_claim = claims.get("email", "")
         if not email_claim or email_claim != email:
+            logging.warning(
+                f"Málstaður login: e-mail {email} does not match "
+                f"token e-mail {email_claim or '[none]'}",
+                extra=log_fields(
+                    "malstadur_login",
+                    outcome="email_mismatch",
+                    email=email,
+                    token_email=email_claim,
+                ),
+            )
             return jsonify(status="invalid", message="Mismatched email"), 401
         sub = claims.get("sub", "")
         if not sub:
+            logging.warning(
+                f"Málstaður login: no sub claim in token for {email}",
+                extra=log_fields("malstadur_login", outcome="no_sub", email=email),
+            )
             return jsonify(status="invalid", message="No sub identifier provided"), 401
         # Extract information about the user's subscription plan
         # and set the user's friendship status accordingly
@@ -874,10 +899,40 @@ def login_malstadur() -> ResponseType:
         # We're careful to sanitize the user id so that it is Firebase-compatible.
         account = f"malstadur:{firebase_key(sub)}"
     # Find the user entity by email, or create a new user if it doesn't exist
-    uld = User.login_by_email(email, account, nickname, fullname, is_friend)
+    try:
+        uld = User.login_by_email(email, account, nickname, fullname, is_friend)
+    except Exception:
+        logging.exception(
+            f"Málstaður login: failed for {email}",
+            extra=log_fields("malstadur_login", outcome="error", email=email),
+        )
+        raise
     userid = uld["user_id"]
-    # Create a Firebase custom token for the user
-    token = firebase.create_custom_token(userid)
+    # Create a Firebase custom token for the user. The API works without
+    # Firebase (the client only loses real-time updates, and asks for a new
+    # token via /firebase_token later), so a failure here, which has been
+    # seen as transient connection resets, does not fail the login.
+    try:
+        token = firebase.create_custom_token(userid)
+    except Exception:
+        logging.exception(
+            f"Málstaður login: no Firebase token for user {userid}",
+            extra=log_fields(
+                "malstadur_login", outcome="no_firebase_token", user_id=userid
+            ),
+        )
+        token = ""
+    logging.info(
+        f"Málstaður login: user {userid} logged in"
+        f"{' (new user)' if uld['new'] else ''}",
+        extra=log_fields(
+            "malstadur_login",
+            outcome="success",
+            user_id=userid,
+            new_user=uld["new"],
+            firebase_token=bool(token),
+        ),
+    )
     if not bearer_auth:
         # Legacy client: set a session cookie for backwards compatibility.
         # Note that this may not work for cross-origin requests due to

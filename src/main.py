@@ -73,7 +73,9 @@ from basics import (
     ndb_wsgi_middleware,
     init_oauth,
     check_port_available,
+    current_user_id,
 )
+from skrafluser import log_fields
 from authmanager import auth_manager
 from cors import init_cors
 from firebase import init_firebase_app, connect_blueprint
@@ -396,7 +398,13 @@ def root_static_files(filename: str) -> ResponseType:
 @app.errorhandler(500)
 def server_error(e: Union[int, Exception]) -> ResponseType:
     """Return a custom 500 error"""
-    logging.error(f"Server error: {e}")
+    # Identify the request and the user (known if the route is decorated
+    # with @auth_required), so that an individual user's problems can be traced
+    user_id = current_user_id()
+    logging.error(
+        f"Server error on {request.path} for user {user_id or '[unknown]'}: {e}",
+        extra=log_fields("server_error", path=request.path, user_id=user_id),
+    )
     if NETSKRAFL:
         return f"<html><body><p>Villa kom upp í netþjóni: {e}</p></body></html>", 500
     return f"<html><body><p>An error occurred in the server: {e}</p></body></html>", 500
