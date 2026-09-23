@@ -191,25 +191,50 @@ After deployment, promote the new version to receive traffic in the
 
 ### Generating a new vocabulary file
 
-A new vocabulary file can be fetched from the [Icelandic BÍN database](https://bin.arnastofnun.is/gogn/mimisbrunnur/) (read the licensing information!) by executing the following steps:
+The Icelandic vocabularies are generated from the *Kristínarsnið* (augmented
+format) of the [Icelandic BÍN database](https://bin.arnastofnun.is/gogn/mimisbrunnur/)
+(read the licensing information!), which can be fetched as follows:
 
 ```bash
-$ wget -O SHsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=SHsnid.csv.zip
-$ unzip SHsnid.csv.zip
-$ rm SHsnid.csv.sha256sum
+$ wget -O KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
+$ unzip KRISTINsnid.csv.zip
+$ rm KRISTINsnid.csv.sha256sum
 ```
 
-The following instructions assume a PostgreSQL database. Our vocabulary
-database table is named ```sigrunarsnid```, has the
-```is_IS``` collation locale and contains the columns
-```stofn```, ```utg```, ```ordfl```, ```fl```, ```ordmynd```, and ```beyging```
-(all ```CHARACTER VARYING``` except ```utg``` which can be INTEGER).
-
-The following ```psql``` command copies the downloaded vocabulary data into it:
+The following instructions assume a PostgreSQL database with the
+```is-IS``` ICU collation, for example created with
+```createdb --locale-provider=icu --icu-locale=is-IS --template=template0 bin```.
+The fields of *Kristínarsnið* are documented
+[here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/).
+The following ```psql``` commands create a table for the data and copy the
+downloaded file into it:
 
 ```sql
 begin transaction read write;
-\copy sigrunarsnid(stofn, utg, ordfl, fl, ordmynd, beyging) from 'SHsnid.csv' with (format csv, delimiter ';');
+create table kristinarsnid (
+   stofn varchar, utg integer, ordfl varchar, fl varchar, einkunn integer,
+   malsnid varchar, malfraedi varchar, millivisun integer, birting varchar,
+   ordmynd varchar, beyging varchar, beinkunn integer, bmalsnid varchar,
+   bgildi varchar, aukafletta varchar
+);
+\copy kristinarsnid from 'KRISTINsnid.csv' with (format csv, delimiter ';')
+commit;
+```
+
+BÍN grades each headword (```einkunn```) and each inflectional form
+(```beinkunn```). Grade 1 is the norm, while grades 4 and above mark
+spellings that BÍN considers incorrect, such as *svasi* (correctly *Svasi*)
+or *allskonar* (correctly *alls konar*). These are excluded, except for
+widely used variant spellings (such as *pítsa* and *kortér*) whose headwords
+are listed in ```resources/ordalisti.variants.txt```. That file was compiled
+by hand in September 2026 from the grade 4 headwords that had word forms in
+the frequency-filtered Amlóði vocabulary, keeping only those common enough
+that most players will expect them to be accepted. Load it as follows:
+
+```sql
+begin transaction read write;
+create table ordalisti_variants (stofn varchar, ordfl varchar);
+\copy ordalisti_variants from '~/github/Netskrafl/resources/ordalisti.variants.txt' with (format csv, delimiter ';')
 commit;
 ```
 
@@ -219,36 +244,44 @@ first use the following ```psql``` command to create a view:
 ```sql
 begin transaction read write;
 create or replace view skrafl as
-   select stofn, utg, ordfl, fl, ordmynd, beyging from sigrunarsnid
+   select stofn, utg, ordfl, fl, ordmynd, beyging from kristinarsnid
    where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,15}$'
    and fl <> 'bibl'
    and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
-   order by ordmynd;
+   and (coalesce(einkunn, 0) < 4
+      or (stofn, ordfl) in (select stofn, ordfl from ordalisti_variants))
+   and coalesce(beinkunn, 0) < 4;
 commit;
 ```
 
 To explain, this extracts all 3-15 letter word forms containing only Icelandic lowercase
 alphabetic characters, omitting the *bibl* (Biblical) category (which contains mostly
-obscure proper names and derivations thereof), and also omitting plural question
-forms (*spurnarmyndir í fleirtölu*).
+obscure proper names and derivations thereof), plural question
+forms (*spurnarmyndir í fleirtölu*) and incorrect spellings.
 
 Then, to generate the vocabulary file from the ```psql``` command line:
 
 ```sql
-\copy (select distinct ordmynd from skrafl) to '~/github/Netskrafl/resources/ordalisti.full.sorted.txt';
+\copy (select distinct ordmynd from skrafl order by ordmynd) to '~/github/Netskrafl/resources/ordalisti.full.sorted.txt';
 ```
 
-To extract only the subset of BÍN used by the robot *Miðlungur*, use the following
-view, assuming you have the *Kristínarsnið* form of BÍN in the table ```kristinarsnid```
-containing the ```malsnid``` and ```einkunn``` columns:
+The robot *Miðlungur* uses a stricter subset of BÍN: only headwords and
+inflectional forms of grade 1 (except singular question forms, which BÍN
+grades 2), no archaic, poetic, dialectal, rare, erroneous or offensive
+headwords or forms (by ```malsnid``` and ```bmalsnid```), no subordinate
+variant forms (```bgildi = 'VIK'```), and no words longer than 10 letters.
+Define it with the following view:
 
 ```sql
 begin transaction read write;
 create or replace view ksnid_midlungur as
 	select stofn, utg, ordfl, fl, ordmynd, beyging
 	from kristinarsnid
-	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID'])))
-		and einkunn = 1;
+	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID','OVID'])))
+		and (bmalsnid is null or (bmalsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID','OVID'])))
+		and (bgildi is null or bgildi <> 'VIK')
+		and einkunn = 1
+		and (beinkunn = 1 or (beyging like 'SP-%' and beinkunn = 2));
 commit;
 ```
 
@@ -261,8 +294,7 @@ create or replace view skrafl_midlungur as
    select stofn, utg, ordfl, fl, ordmynd, beyging from ksnid_midlungur
    where ordmynd ~ '^[aábdðeéfghiíjklmnoóprstuúvxyýþæö]{3,10}$'
    and fl <> 'bibl'
-   and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'))
-   order by ordmynd;
+   and not ((beyging like 'SP-%-FT') or (beyging like 'SP-%-FT2'));
 commit;
 ```
 
@@ -270,8 +302,15 @@ And, finally, to generate the Miðlungur vocabulary file
 from the ```psql``` command line:
 
 ```sql
-\copy (select distinct ordmynd from skrafl_midlungur) to '~/github/Netskrafl/resources/ordalisti.mid.sorted.txt';
+\copy (select distinct ordmynd from skrafl_midlungur order by ordmynd) to '~/github/Netskrafl/resources/ordalisti.mid.sorted.txt';
 ```
+
+The vocabulary of the weakest robot, *Amlóði*, is derived from
+```ordalisti.aml.sorted.txt``` by ```python utils/dawgbuilder.py icelandic_filter```,
+which keeps only words that are frequent in the Icelandic Gigaword Corpus
+and also belong to the Miðlungur vocabulary (and thus have at most 10 letters).
+Run it after regenerating ```ordalisti.mid.sorted.txt```, and then
+```python utils/dawgbuilder.py skrafl``` to build the DAWG files.
 
 ### Original Author
 Vilhjálmur Þorsteinsson, Reykjavík, Iceland.
