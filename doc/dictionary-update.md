@@ -28,7 +28,9 @@ Icelandic source lists in `resources/`:
   incorrect (grade 4) but that are kept in the full list as widely used
   variant spellings (*pítsa*, *partý*, *prótein*), curated by hand. Read only by the SQL
   recipe in `README.md`, which bakes them into `ordalisti.full.sorted.txt`;
-  the DAWG builders and Skrafl never see this file.
+  the DAWG builders and Skrafl never see this file. After editing it, reload
+  the `ordalisti_variants` table (the README block truncates it first) and
+  regenerate the full list; editing the file alone changes nothing.
 
 The full and Miðlungur lists are generated from BÍN's *Kristínarsnið* by the
 SQL recipe in `README.md` (section "Generating a new vocabulary file"). The

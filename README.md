@@ -225,18 +225,27 @@ BÍN grades each headword (```einkunn```) and each inflectional form
 (```beinkunn```). Grade 1 is the norm, while grades 4 and above mark
 spellings that BÍN considers incorrect, such as *svasi* (correctly *Svasi*)
 or *allskonar* (correctly *alls konar*). These are excluded, except for
-widely used variant spellings (such as *pítsa* and *kortér*) whose headwords
-are listed in ```resources/ordalisti.variants.txt```. That file was compiled
-by hand in September 2026 from the grade 4 headwords that had word forms in
-the frequency-filtered Amlóði vocabulary, keeping only those common enough
-that most players will expect them to be accepted. Load it as follows:
+widely used variant spellings (such as *pítsa* and *prótein*) whose headwords
+are listed in ```resources/ordalisti.variants.txt```, one ```stofn;ordfl```
+pair per line. That file was compiled by hand in September 2026 from the
+grade 4 headwords that had word forms in the frequency-filtered Amlóði
+vocabulary, keeping only those common enough that most players will expect
+them to be accepted. Load it into the database as follows:
 
 ```sql
 begin transaction read write;
-create table ordalisti_variants (stofn varchar, ordfl varchar);
+create table if not exists ordalisti_variants (stofn varchar, ordfl varchar);
+truncate ordalisti_variants;
 \copy ordalisti_variants from '~/github/Netskrafl/resources/ordalisti.variants.txt' with (format csv, delimiter ';')
 commit;
 ```
+
+The table is a copy of the file, and the file is the source of truth: to
+allow or disallow a variant, edit ```ordalisti.variants.txt```, re-run the
+block above (the ```truncate``` makes it safe to repeat, and it leaves the
+```skrafl``` view below intact), then regenerate ```ordalisti.full.sorted.txt```
+with the ```\copy``` command below and rebuild the DAWG files. Commit the
+text file and the regenerated list together.
 
 To generate a new vocabulary file (```ordalisti.full.sorted.txt```),
 first use the following ```psql``` command to create a view:
