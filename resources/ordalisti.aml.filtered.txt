@@ -228,8 +228,6 @@ aðildina
 aðildinni
 aðili
 aðilinn
-aðilja
-aðiljar
 aðilum
 aðilunum
 aðjunkt
@@ -919,14 +917,10 @@ afskurði
 afslappað
 afslappaða
 afslátt
-afslátta
 afsláttar
 afsláttinn
-afsláttum
 afsláttur
 afslætti
-afslættina
-afslættir
 afslöppuð
 afslöppun
 afsprengi
@@ -5497,7 +5491,6 @@ bifreiða
 bifreiðar
 bifreiðin
 bifreiðina
-bifreiðir
 bifreiðum
 bifur
 bikar
@@ -8328,7 +8321,6 @@ búnaðarlög
 búnaði
 búnaðinn
 búnaðinum
-búnaðnum
 búnaður
 búnaðurinn
 búnar
@@ -8877,7 +8869,6 @@ böll
 böllin
 böllum
 bölmóð
-bölmóði
 bölsótast
 bölsýni
 bölva
@@ -9313,7 +9304,6 @@ dálka
 dálkar
 dálki
 dálkinn
-dálkinum
 dálknum
 dálks
 dálkum
@@ -12132,7 +12122,6 @@ eldlínu
 eldlínuna
 eldlínunni
 eldmóð
-eldmóði
 eldmóðs
 eldmóður
 eldra
@@ -12533,7 +12522,6 @@ engan
 engar
 engi
 engifer
-engiferi
 engiferrót
 engil
 engill
@@ -14972,7 +14960,6 @@ fjöðrum
 fjöðrun
 fjöðrunin
 fjöður
-fjögra
 fjögur
 fjögurra
 fjöl
@@ -18650,7 +18637,6 @@ fög
 föggum
 föggur
 fögnuð
-fögnuðar
 fögnuði
 fögnuðinn
 fögnuðinum
@@ -19275,7 +19261,6 @@ gámar
 gámarnir
 gámi
 gáminn
-gáminum
 gámnum
 gáms
 gámsins
@@ -21669,7 +21654,6 @@ grunurinn
 grúði
 grúfa
 grúfði
-grúft
 grúfu
 grúi
 grúir
@@ -23559,7 +23543,6 @@ hátíðahöld
 hátíðanna
 hátíðar
 hátíðarmat
-hátíðarnar
 hátíðarsal
 hátíðasal
 hátíðin
@@ -24953,7 +24936,6 @@ héruð
 héruðin
 héruðum
 héruðunum
-héröðum
 hét
 héti
 hétu
@@ -26149,7 +26131,6 @@ hnífapör
 hnífapörum
 hnífar
 hnífasett
-hnífi
 hnífinn
 hnífjafn
 hnífjafna
@@ -28879,7 +28860,6 @@ hömum
 hönd
 höndin
 höndina
-höndinni
 höndla
 höndlað
 höndlaði
@@ -30376,8 +30356,6 @@ játningin
 játningu
 játningum
 játninguna
-játt
-játti
 játuð
 játuðu
 játum
@@ -30580,7 +30558,6 @@ jöðrunum
 jöfn
 jöfnu
 jöfnuð
-jöfnuðar
 jöfnuði
 jöfnuðinum
 jöfnuðu
@@ -30635,10 +30612,8 @@ jörð
 jörðin
 jörðina
 jörðinni
-jörðu
 jörðuð
 jörðum
-jörðunni
 jörðunum
 jörp
 jötni
@@ -31493,8 +31468,6 @@ keri
 kerið
 kerin
 kerinu
-kerjum
-kerjunum
 kerling
 kerlinga
 kerlingar
@@ -40402,8 +40375,6 @@ meðvitandi
 meðvituð
 meðvituðu
 meðvitund
-meðöl
-meðölum
 mega
 megabita
 megabitar
@@ -43880,9 +43851,7 @@ nótt
 nóttin
 nóttina
 nóttinni
-nóttu
 nóttum
-nóttunni
 nóttunum
 nótu
 nótulaus
@@ -45077,7 +45046,6 @@ orðróma
 orðrómar
 orðrómi
 orðróminn
-orðróminum
 orðrómnum
 orðróms
 orðrómum
@@ -46062,7 +46030,6 @@ oxunar
 ójöfn
 ójöfnu
 ójöfnuð
-ójöfnuðar
 ójöfnuði
 ójöfnuðinn
 ójöfnuður
@@ -51182,7 +51149,6 @@ ruslagámi
 ruslagámum
 ruslahaug
 ruslahauga
-ruslahaugi
 ruslakarla
 ruslakista
 ruslatunnu
@@ -53804,7 +53770,6 @@ siðleysis
 siðrof
 siðrofs
 siðrænna
-siðs
 siðuðu
 siðuðum
 siðum
@@ -57402,7 +57367,6 @@ slokknar
 slokkni
 slokknuðu
 slopp
-sloppi
 sloppið
 sloppin
 sloppinn
@@ -63187,7 +63151,6 @@ sökótt
 sökudólg
 sökudólga
 sökudólgar
-sökudólgi
 sökudólgum
 sökudólgur
 sökuð
@@ -63196,7 +63159,6 @@ sökuðum
 sökum
 sökunaut
 sökunautar
-sökunauts
 sökunautur
 sölin
 sölsa
@@ -63475,7 +63437,6 @@ taktar
 takteinum
 taktfasta
 taktfastri
-takti
 taktinn
 taktinum
 taktík
@@ -63604,7 +63565,6 @@ tankbílum
 tanki
 tankinn
 tankinum
-tanknum
 tanksins
 tankskip
 tankur
@@ -65105,7 +65065,6 @@ toppgíginn
 toppgígnum
 toppi
 toppinn
-toppinum
 topplið
 toppliða
 toppliði
@@ -65535,7 +65494,6 @@ tróna
 trónað
 trónaði
 trónar
-tróndi
 tróni
 trónir
 trufla
@@ -67347,7 +67305,6 @@ uppgjörinu
 uppgjörs
 uppgjörum
 uppgraftar
-uppgreftri
 uppgrip
 uppgræðslu
 uppgröft
@@ -69862,12 +69819,10 @@ vefriti
 vefritið
 vefritinu
 vefritsins
-vefs
 vefsetri
 vefsetrið
 vefsetrinu
 vefsetur
-vefsins
 vefsíða
 vefsíðan
 vefsíðna
@@ -70049,7 +70004,6 @@ vegriði
 vegriðið
 vegriðinu
 vegriðs
-vegs
 vegsauka
 vegsemd
 vegslóða
@@ -70799,7 +70753,6 @@ verknaða
 verknaðar
 verknaði
 verknaðinn
-verknaðnum
 verknaður
 verknám
 verknámi

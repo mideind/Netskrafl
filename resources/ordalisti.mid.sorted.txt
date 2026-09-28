@@ -64,7 +64,6 @@ aðalaðferð
 aðalaðila
 aðalaðilar
 aðalaðili
-aðalaðilja
 aðalaðilum
 aðalafl
 aðalafli
@@ -431,7 +430,6 @@ aðalfjörið
 aðalfjörs
 aðalflík
 aðalflíka
-aðalflíkar
 aðalflíkin
 aðalflíkum
 aðalflíkur
@@ -557,10 +555,7 @@ aðalgíg
 aðalgíga
 aðalgígana
 aðalgígar
-aðalgígi
-aðalgígina
 aðalgíginn
-aðalgígir
 aðalgígnum
 aðalgígs
 aðalgígum
@@ -693,7 +688,6 @@ aðalhéraða
 aðalhéraði
 aðalhéraðs
 aðalhéruð
-aðalhéröð
 aðalhitan
 aðalhjól
 aðalhjóla
@@ -718,7 +712,6 @@ aðalhlíð
 aðalhlíða
 aðalhlíðar
 aðalhlíðin
-aðalhlíðir
 aðalhlíðum
 aðalhljóm
 aðalhljóma
@@ -1475,7 +1468,6 @@ aðalskóli
 aðalskólum
 aðalskrá
 aðalskráa
-aðalskráar
 aðalskráin
 aðalskrám
 aðalskrána
@@ -1533,7 +1525,6 @@ aðalsmálum
 aðalsmenn
 aðalsmerki
 aðalsmey
-aðalsmeyin
 aðalsmeyja
 aðalsmeyju
 aðalsmeyna
@@ -1822,7 +1813,6 @@ aðaltungna
 aðaltungu
 aðaltungum
 aðaltungur
-aðaltættur
 aðaltöl
 aðaltölin
 aðaltölu
@@ -2148,7 +2138,6 @@ aðbúnað
 aðbúnaðar
 aðbúnaði
 aðbúnaðinn
-aðbúnaðnum
 aðbúnaður
 aðbætur
 aðbæturnar
@@ -2897,16 +2886,6 @@ aðildum
 aðildunum
 aðili
 aðilinn
-aðilja
-aðiljana
-aðiljann
-aðiljanna
-aðiljans
-aðiljanum
-aðiljar
-aðiljarnir
-aðiljum
-aðiljunum
 aðilum
 aðilunum
 aðjunkt
@@ -6917,8 +6896,6 @@ afkróna
 afkrónna
 afkrónni
 afkrónum
-afkrór
-afkrórnar
 afkróuð
 afkróuðu
 afkróuðuð
@@ -6955,8 +6932,6 @@ afkrær
 afkrærnar
 afkvist
 afkvista
-afkvistana
-afkvistar
 afkvisti
 afkvistið
 afkvistin
@@ -9903,7 +9878,6 @@ afrakist
 afraks
 afrakshaug
 afraksins
-afrakstrar
 afrakstri
 afrakstur
 afraksturs
@@ -11238,10 +11212,8 @@ afslapps
 afslappt
 afslappur
 afslátt
-afslátta
 afsláttar
 afsláttinn
-afsláttum
 afsláttur
 afslepp
 afsleppa
@@ -11269,8 +11241,6 @@ afslitinu
 afslits
 afslitsins
 afslætti
-afslættina
-afslættir
 afslöpp
 afslöppu
 afslöppuð
@@ -11527,10 +11497,7 @@ afstíga
 afstígana
 afstíganna
 afstígar
-afstígi
-afstígina
 afstíginn
-afstígir
 afstígnum
 afstígs
 afstígsins
@@ -12294,7 +12261,6 @@ afturás
 afturása
 afturásana
 afturásar
-afturási
 afturásinn
 afturásnum
 afturáss
@@ -12828,7 +12794,6 @@ aftökurnar
 aftökustað
 aftökuvél
 aftökuvéla
-aftökuöxar
 aftökuöxi
 aftökuöxin
 aftökuöxum
@@ -13786,7 +13751,6 @@ agagrein
 agagreina
 agagreinar
 agagreinin
-agagreinir
 agagreinum
 agahús
 agahúsa
@@ -16118,7 +16082,6 @@ aldaskipti
 aldaskipun
 aldaskrá
 aldaskráa
-aldaskráar
 aldaskráin
 aldaskrám
 aldaskrána
@@ -17145,7 +17108,6 @@ alföðurinn
 alföðurins
 alföðurnum
 alfögnuð
-alfögnuðar
 alfögnuði
 alfögnuður
 alfögru
@@ -18359,7 +18321,6 @@ alkunnra
 alkunnrar
 alkunnri
 alkunns
-alkunnt
 alkunnu
 alkunnug
 alkunnuga
@@ -25411,7 +25372,6 @@ andbert
 andblástur
 andblæ
 andblæinn
-andblæjar
 andblænum
 andblær
 andblærinn
@@ -27810,11 +27770,9 @@ ansvítis
 ansvítum
 ansvítunum
 antabus
-antabusi
 antabusinn
 antabusins
 antabusnum
-antabuss
 antarktísk
 antigúsk
 antigúska
@@ -28848,7 +28806,6 @@ arðsjúgir
 arðsjúgum
 arðskrá
 arðskráa
-arðskráar
 arðskráin
 arðskrám
 arðskrána
@@ -30513,7 +30470,6 @@ armlöng
 armlöngu
 armlöngum
 armóð
-armóði
 armóðinn
 armóðnum
 armóðs
@@ -31363,7 +31319,6 @@ askbotninn
 askbotns
 askbotnum
 askbörmum
-askfyllar
 askfylli
 askfyllin
 askfyllina
@@ -34191,7 +34146,6 @@ auðshlíð
 auðshlíða
 auðshlíðar
 auðshlíðin
-auðshlíðir
 auðshlíðum
 auðshyggja
 auðshyggju
@@ -35036,7 +34990,6 @@ augnagamni
 augnagjóta
 augnagleði
 augnagler
-augnaglera
 augnagleri
 augnaglers
 augnagot
@@ -35422,13 +35375,11 @@ augngats
 augnglenna
 augnglennu
 augngler
-augnglera
 augngleri
 augnglerið
 augnglerin
 augnglerja
 augnglers
-augnglerum
 augnglóð
 augnglóðar
 augnglóðin
@@ -35896,7 +35847,6 @@ aukaaðila
 aukaaðilar
 aukaaðild
 aukaaðili
-aukaaðilja
 aukaaðilum
 aukaafl
 aukaafli
@@ -36273,10 +36223,7 @@ aukagíg
 aukagíga
 aukagígana
 aukagígar
-aukagígi
-aukagígina
 aukagíginn
-aukagígir
 aukagígnum
 aukagígs
 aukagígum
@@ -36380,7 +36327,6 @@ aukahopps
 aukahoppum
 aukahreim
 aukahreima
-aukahreimi
 aukahreims
 aukahring
 aukahringa
@@ -36919,7 +36865,6 @@ aukaskór
 aukaskós
 aukaskrá
 aukaskráa
-aukaskráar
 aukaskráin
 aukaskrám
 aukaskrána
@@ -37532,7 +37477,6 @@ aulirðu
 aulist
 aulistu
 aulsnjó
-aulsnjóar
 aulsnjóinn
 aulsnjónum
 aulsnjór
@@ -37724,7 +37668,6 @@ aura
 aurabauk
 aurabauka
 aurabaukar
-aurabauki
 aurabauks
 aurabaukum
 aurabaukur
@@ -38196,7 +38139,6 @@ aurhaug
 aurhauga
 aurhaugana
 aurhaugar
-aurhaugi
 aurhauginn
 aurhaugnum
 aurhaugs
@@ -38227,7 +38169,6 @@ aurhlíða
 aurhlíðar
 aurhlíðin
 aurhlíðina
-aurhlíðir
 aurhlíðum
 aurhlíf
 aurhlífa
@@ -38298,7 +38239,6 @@ aurkambana
 aurkambar
 aurkambi
 aurkambinn
-aurkambnum
 aurkambs
 aurkambur
 aurkast
@@ -39406,7 +39346,6 @@ axlarliða
 axlarliðar
 axlarliði
 axlarliðir
-axlarliðs
 axlarliðum
 axlarliður
 axlarmerki
@@ -40504,7 +40443,6 @@ aþenskustu
 áfagraut
 áfagrauta
 áfagrautar
-áfagrauti
 áfagrautum
 áfagrautur
 áfall
@@ -42167,7 +42105,6 @@ aþenskustu
 áin
 áinn
 áinu
-áir
 áirðu
 ákafa
 ákafablik
@@ -43689,7 +43626,6 @@ aþenskustu
 álfahlíða
 álfahlíðar
 álfahlíðin
-álfahlíðir
 álfahlíðum
 álfahól
 álfahóla
@@ -43891,13 +43827,11 @@ aþenskustu
 álfamálum
 álfamenn
 álfamey
-álfameyin
 álfameyja
 álfameyjar
 álfameyju
 álfameyjum
 álfameyna
-álfameynni
 álfamunn
 álfamunna
 álfamunnar
@@ -44441,7 +44375,6 @@ aþenskustu
 áliðnaðar
 áliðnaði
 áliðnaðinn
-áliðnaðnum
 áliðnaður
 áliðnar
 áliðnara
@@ -45723,7 +45656,6 @@ aþenskustu
 ámumaðkar
 ámumaðki
 ámumaðkinn
-ámumaðknum
 ámumaðks
 ámumaðkur
 ámumöðkum
@@ -45842,7 +45774,6 @@ aþenskustu
 ánamaðkar
 ánamaðki
 ánamaðkinn
-ánamaðknum
 ánamaðks
 ánamaðkur
 ánamöðkum
@@ -45940,7 +45871,6 @@ aþenskustu
 ánumaðkar
 ánumaðki
 ánumaðkinn
-ánumaðknum
 ánumaðks
 ánumaðkur
 ánumöðkum
@@ -46786,7 +46716,6 @@ aþenskustu
 árblómunum
 árblæ
 árblæinn
-árblæjar
 árblænum
 árblær
 árblærinn
@@ -47421,7 +47350,6 @@ aþenskustu
 árgreinar
 árgreinin
 árgreinina
-árgreinir
 árgreinum
 árgrjót
 árgrjóti
@@ -47675,7 +47603,6 @@ aþenskustu
 árísanna
 árísar
 árísarnir
-árísi
 árísinn
 árísnum
 áríss
@@ -47730,7 +47657,6 @@ aþenskustu
 árkvíslar
 árkvíslin
 árkvíslina
-árkvíslir
 árkvíslum
 árla
 árlanga
@@ -47861,7 +47787,6 @@ aþenskustu
 ármosi
 ármosinn
 ármóð
-ármóði
 ármóðinn
 ármóðnum
 ármóðs
@@ -49608,7 +49533,6 @@ aþenskustu
 áshlíðin
 áshlíðina
 áshlíðinni
-áshlíðir
 áshlíðum
 áshlíðunum
 ásholt
@@ -49945,7 +49869,6 @@ aþenskustu
 ásmalinn
 ásmegin
 ásmóð
-ásmóði
 ásmóðinn
 ásmóðnum
 ásmóðs
@@ -51198,13 +51121,11 @@ aþenskustu
 ástmennis
 ástmennum
 ástmey
-ástmeyin
 ástmeyja
 ástmeyjar
 ástmeyju
 ástmeyjum
 ástmeyna
-ástmeynni
 ástmild
 ástmilda
 ástmildan
@@ -52209,7 +52130,6 @@ aþenskustu
 átrúnaðar
 átrúnaði
 átrúnaðinn
-átrúnaðnum
 átrúnaður
 átrúnni
 átröskun
@@ -52804,7 +52724,6 @@ aþenskustu
 átvargi
 átvarginn
 átvarginum
-átvargnum
 átvargs
 átvargsins
 átvargur
@@ -53421,7 +53340,6 @@ aþenskustu
 ávísuninni
 ávísunum
 ávísununum
-ávít
 ávíta
 ávítað
 ávítaða
@@ -53458,18 +53376,14 @@ aþenskustu
 ávítti
 ávíttir
 ávíttirðu
-ávíttist
 ávíttistu
 ávíttra
 ávíttrar
 ávíttri
 ávítts
 ávíttu
-ávíttuð
 ávíttum
-ávíttumst
 ávíttur
-ávíttust
 ávítuð
 ávítuðu
 ávítuðuð
@@ -53977,8 +53891,6 @@ baðkeri
 baðkerið
 baðkerin
 baðkerinu
-baðkerja
-baðkerjum
 baðkers
 baðkersins
 baðkerum
@@ -54006,7 +53918,6 @@ baðkúfanna
 baðkúfar
 baðkúfi
 baðkúfinn
-baðkúfinum
 baðkúfnum
 baðkúfs
 baðkúfsins
@@ -54087,9 +53998,6 @@ baðmeðals
 baðmeðul
 baðmeðulin
 baðmeðulum
-baðmeðöl
-baðmeðölin
-baðmeðölum
 baðmenn
 baðmennina
 baðmenning
@@ -54181,7 +54089,6 @@ baðskápur
 baðslopp
 baðsloppa
 baðsloppar
-baðsloppi
 baðslopps
 baðsloppum
 baðsloppur
@@ -54319,9 +54226,6 @@ baðþróna
 baðþrónna
 baðþrónni
 baðþrónum
-baðþrór
-baðþrórnar
-baðþróum
 baðþrær
 baðþrærnar
 baðönd
@@ -55916,7 +55820,6 @@ bakraddið
 bakraddir
 bakranda
 bakrandar
-bakrandir
 bakrauf
 bakraufa
 bakraufar
@@ -56979,7 +56882,6 @@ ballett
 balletta
 ballettana
 ballettar
-balletti
 ballettinn
 ballettmey
 ballettmær
@@ -57566,7 +57468,6 @@ banaskál
 banaskála
 banaskálar
 banaskálin
-banaskálir
 banaskálum
 banaskeyta
 banaskeyti
@@ -57879,8 +57780,6 @@ bandkeri
 bandkerið
 bandkerin
 bandkerinu
-bandkerja
-bandkerjum
 bandkers
 bandkerum
 bandlaga
@@ -58271,7 +58170,6 @@ bankaáfall
 bankaáföll
 bankabauk
 bankabauka
-bankabauki
 bankabauks
 bankablek
 bankableki
@@ -58654,7 +58552,6 @@ bannhéraða
 bannhéraði
 bannhéraðs
 bannhéruð
-bannhéröð
 banni
 bannið
 banninu
@@ -58784,7 +58681,6 @@ bannskjals
 bannskjöl
 bannskrá
 bannskráa
-bannskráar
 bannskráin
 bannskrám
 bannskrána
@@ -61944,7 +61840,6 @@ baugfingri
 baugfingur
 baugi
 bauginn
-bauginum
 baugnum
 baugótt
 baugótta
@@ -62819,7 +62714,6 @@ bálkfærsla
 bálkfærslu
 bálki
 bálkinn
-bálkinum
 bálklengd
 bálknum
 bálks
@@ -65306,7 +65200,6 @@ beinprjónn
 beinprjóns
 beinranda
 beinrandar
-beinrandir
 beinreikna
 beinreikni
 beinrendur
@@ -65865,7 +65758,6 @@ beitiás
 beitiása
 beitiásana
 beitiásar
-beitiási
 beitiásinn
 beitiásnum
 beitiáss
@@ -66045,7 +65937,6 @@ beitukróar
 beitukróin
 beitukróm
 beitukróna
-beitukrór
 beitukrær
 beituköst
 beitulaus
@@ -66345,7 +66236,6 @@ bekkpressa
 bekkpressu
 bekkranda
 bekkrandar
-bekkrandir
 bekkrendur
 bekkræfil
 bekkræfill
@@ -67696,7 +67586,6 @@ bergása
 bergásana
 bergásanna
 bergásar
-bergási
 bergásinn
 bergásnum
 bergáss
@@ -68022,7 +67911,6 @@ berghlöðin
 berghlöðum
 berghnaus
 berghnausa
-berghnausi
 berghnauss
 berghnjót
 berghnjóta
@@ -69473,7 +69361,6 @@ berserkina
 berserkinn
 berserkir
 berserkja
-berserkjar
 berserkjum
 berserknum
 berserks
@@ -70272,13 +70159,11 @@ beykiskóg
 beykiskóga
 beykiskógi
 beykispón
-beykispóni
 beykispónn
 beykispóns
 beykispæni
 beykisvepp
 beykisverk
-beykisöxar
 beykisöxi
 beykisöxin
 beykisöxum
@@ -70550,7 +70435,6 @@ biðdómanna
 biðdómar
 biðdómi
 biðdóminn
-biðdóminum
 biðdómnum
 biðdóms
 biðdómsins
@@ -71152,7 +71036,6 @@ bifreiða
 bifreiðar
 bifreiðin
 bifreiðina
-bifreiðir
 bifreiðum
 bifri
 bifrinum
@@ -72349,7 +72232,6 @@ birkirafti
 birkirafts
 birkirá
 birkiráa
-birkiráar
 birkiráin
 birkirám
 birkirána
@@ -72379,7 +72261,6 @@ birkiryði
 birkiryðið
 birkiryðs
 birkirækt
-birkirær
 birkirætur
 birkis
 birkisafa
@@ -72734,7 +72615,6 @@ biskupatrú
 biskupatöl
 biskupi
 biskupinn
-biskupinum
 biskupleg
 biskuplega
 biskuplegi
@@ -73722,7 +73602,6 @@ bitvargana
 bitvargar
 bitvargi
 bitvarginn
-bitvargnum
 bitvargs
 bitvargur
 bitvari
@@ -76042,7 +75921,6 @@ bjargstakk
 bjargstall
 bjargstíg
 bjargstíga
-bjargstígi
 bjargstígs
 bjargstokk
 bjargstrý
@@ -76880,13 +76758,11 @@ bjúgfættu
 bjúgfættum
 bjúgfættur
 bjúggler
-bjúgglera
 bjúggleri
 bjúgglerið
 bjúgglerin
 bjúgglerja
 bjúgglers
-bjúgglerum
 bjúghefil
 bjúghefill
 bjúghefils
@@ -76981,23 +76857,14 @@ bjúgvatns
 bjúgverpil
 bjúgverpla
 bjúgverpli
-bjúgöxar
 bjúgöxi
 bjúgöxin
 bjúgöxina
 bjúgöxinni
 bjúgöxum
 bjúgöxunum
-bjyggi
-bjyggir
 bjyggirðu
-bjyggist
 bjyggistu
-bjyggju
-bjyggjuð
-bjyggjum
-bjyggjumst
-bjyggjust
 bjöguð
 bjöguðu
 bjöguðuð
@@ -78019,7 +77886,6 @@ blaðstaða
 blaðstaðan
 blaðstilk
 blaðstilka
-blaðstilki
 blaðstilks
 blaðstjóra
 blaðstjóri
@@ -78180,7 +78046,6 @@ blakkeygum
 blakkeygur
 blakki
 blakkinn
-blakkinum
 blakkir
 blakkirnar
 blakkleit
@@ -78344,8 +78209,6 @@ blandefnum
 blandgíg
 blandgíga
 blandgígar
-blandgígi
-blandgígir
 blandgígs
 blandgígum
 blandgígur
@@ -79261,7 +79124,6 @@ blágómanna
 blágómar
 blágómi
 blágóminn
-blágóminum
 blágómnum
 blágóms
 blágómsins
@@ -79593,7 +79455,6 @@ bláísana
 bláísanna
 bláísar
 bláísarnir
-bláísi
 bláísinn
 bláísnum
 bláíss
@@ -82283,7 +82144,6 @@ blikkbalar
 blikkbali
 blikkbauk
 blikkbauka
-blikkbauki
 blikkbauks
 blikkbelja
 blikkbelju
@@ -82368,7 +82228,6 @@ blikkkönnu
 blikklás
 blikklása
 blikklásar
-blikklási
 blikkláss
 blikklásum
 blikkljós
@@ -82586,7 +82445,6 @@ blikum
 blikumakka
 blikumekki
 blikumökk
-blikumökks
 blikuna
 blikunnar
 blikunni
@@ -83964,7 +83822,6 @@ blóðfullt
 blóðfullu
 blóðfullum
 blóðfullur
-blóðfyllar
 blóðfylli
 blóðfyllin
 blóðfyllra
@@ -84026,7 +83883,6 @@ blóðgjöfin
 blóðgjöfum
 blóðgraut
 blóðgrauta
-blóðgrauti
 blóðgresi
 blóðgresið
 blóðgresis
@@ -84241,8 +84097,6 @@ blóðkeri
 blóðkerið
 blóðkerin
 blóðkerinu
-blóðkerja
-blóðkerjum
 blóðkers
 blóðkerum
 blóðkirtil
@@ -85571,7 +85425,6 @@ blómakerfi
 blómakeri
 blómakerið
 blómakerin
-blómakerja
 blómakers
 blómakerum
 blómakinn
@@ -86084,8 +85937,6 @@ blómkeri
 blómkerið
 blómkerin
 blómkerinu
-blómkerja
-blómkerjum
 blómkers
 blómkerum
 blómklasa
@@ -87039,8 +86890,6 @@ blúshljóms
 blúsi
 blúsið
 blúsinn
-blúsins
-blúsinum
 blúsir
 blúsirðu
 blúsista
@@ -87403,7 +87252,6 @@ blýgildinu
 blýgildis
 blýglans
 blýgler
-blýglera
 blýgleri
 blýglerið
 blýglerin
@@ -87411,7 +87259,6 @@ blýglerinu
 blýglerja
 blýglerjum
 blýglers
-blýglerum
 blýgrá
 blýgráa
 blýgráan
@@ -88068,8 +87915,6 @@ blæjalogni
 blæjalogns
 blæjan
 blæjanna
-blæjar
-blæjarins
 blæju
 blæjuber
 blæjuberi
@@ -89133,7 +88978,6 @@ boðreiða
 boðreiðar
 boðreiðin
 boðreiðina
-boðreiðir
 boðreiðum
 boðrit
 boðrita
@@ -89254,7 +89098,6 @@ boðskorts
 boðskortum
 boðskrá
 boðskráa
-boðskráar
 boðskráin
 boðskrám
 boðskrána
@@ -90235,10 +90078,7 @@ bolabít
 bolabíta
 bolabítana
 bolabítar
-bolabíti
-bolabítina
 bolabítinn
-bolabítir
 bolabítnum
 bolabíts
 bolabítum
@@ -90456,7 +90296,6 @@ bolflakinu
 bolflaks
 bolflík
 bolflíka
-bolflíkar
 bolflíkin
 bolflíkina
 bolflíkum
@@ -90660,7 +90499,6 @@ bolliðina
 bolliðinn
 bolliðir
 bolliðnum
-bolliðs
 bolliðsins
 bolliðum
 bolliðunum
@@ -91111,7 +90949,6 @@ bolþykku
 bolþykkum
 bolþykkur
 bolþykkust
-bolöxar
 bolöxi
 bolöxin
 bolöxina
@@ -91664,8 +91501,6 @@ borðkeri
 borðkerið
 borðkerin
 borðkerinu
-borðkerja
-borðkerjum
 borðkers
 borðkerum
 borðkista
@@ -91802,7 +91637,6 @@ borðnaut
 borðnauta
 borðnautar
 borðnauti
-borðnauts
 borðnautum
 borðnautur
 borðnúmer
@@ -93022,7 +92856,6 @@ botnfrýst
 botnfrýstu
 botnfyll
 botnfylla
-botnfyllar
 botnfylli
 botnfyllið
 botnfyllin
@@ -93218,7 +93051,6 @@ botnlás
 botnlása
 botnlásana
 botnlásar
-botnlási
 botnlásinn
 botnlásnum
 botnláss
@@ -93374,7 +93206,6 @@ botnnóta
 botnnótar
 botnnótin
 botnnótina
-botnnótir
 botnnótum
 botnnýta
 botnnýti
@@ -93425,13 +93256,11 @@ botnrammar
 botnrammi
 botnranda
 botnrandar
-botnrandir
 botnranga
 botnrangar
 botnrangir
 botnrá
 botnráa
-botnráar
 botnráin
 botnrám
 botnrána
@@ -93460,8 +93289,6 @@ botnristil
 botnristla
 botnristli
 botnrisum
-botnrær
-botnrærnar
 botnrömmum
 botnrönd
 botnröndin
@@ -93495,7 +93322,6 @@ botnskál
 botnskála
 botnskálar
 botnskálin
-botnskálir
 botnskálum
 botnskef
 botnskefur
@@ -94087,7 +93913,6 @@ bógliðina
 bógliðinn
 bógliðir
 bógliðnum
-bógliðs
 bógliðsins
 bógliðum
 bógliðunum
@@ -94825,7 +94650,6 @@ bókaskotum
 bókaskraut
 bókaskrá
 bókaskráa
-bókaskráar
 bókaskráin
 bókaskrám
 bókaskrána
@@ -96002,13 +95826,11 @@ bóluglasi
 bóluglasið
 bóluglass
 bólugler
-bóluglera
 bólugleri
 bóluglerið
 bóluglerin
 bóluglerja
 bóluglers
-bóluglerum
 bóluglös
 bóluglösin
 bóluglösum
@@ -96830,7 +96652,6 @@ bónusferða
 bónusfólk
 bónusfólki
 bónusfólks
-bónusi
 bónusinn
 bónuskerfi
 bónuskort
@@ -98623,7 +98444,6 @@ brattri
 bratts
 brattstíg
 brattstíga
-brattstígi
 brattstígs
 brattsækni
 brattur
@@ -100496,7 +100316,6 @@ breiðþotna
 breiðþotu
 breiðþotum
 breiðþotur
-breiðöxar
 breiðöxi
 breiðöxin
 breiðöxina
@@ -101100,7 +100919,6 @@ brennivína
 brennivíni
 brennivíns
 brenniöld
-brenniöxar
 brenniöxi
 brenniöxin
 brenniöxum
@@ -102897,7 +102715,6 @@ brimóttur
 brimóttust
 brimranda
 brimrandar
-brimrandir
 brimrass
 brimrassa
 brimrassar
@@ -102930,7 +102747,6 @@ brimróðrar
 brimróðri
 brimróðrum
 brimróður
-brimróðurs
 brimrót
 brimróti
 brimrótið
@@ -103686,7 +103502,6 @@ brjótendur
 brjóti
 brjótið
 brjótinn
-brjótinum
 brjótir
 brjótirðu
 brjótist
@@ -104553,7 +104368,6 @@ brotafærin
 brotafæris
 brotafærum
 brotagler
-brotaglera
 brotagleri
 brotaglers
 brotagull
@@ -104986,7 +104800,6 @@ brotslíki
 brotslíkið
 brotslíkis
 brotsnjó
-brotsnjóar
 brotsnjór
 brotsnjós
 brotspenna
@@ -106322,8 +106135,6 @@ brunnþróar
 brunnþróin
 brunnþróm
 brunnþróna
-brunnþrór
-brunnþróum
 brunnþrær
 bruns
 brunsins
@@ -107036,7 +106847,6 @@ brúnaður
 brúnafjall
 brúnafjöll
 brúnagler
-brúnaglera
 brúnagleri
 brúnaglers
 brúnagola
@@ -108156,7 +107966,6 @@ brynreið
 brynreiða
 brynreiðar
 brynreiðin
-brynreiðir
 brynreiðum
 brynserk
 brynserki
@@ -108352,7 +108161,6 @@ brytum
 brytumst
 brytunum
 brytust
-brytöxar
 brytöxi
 brytöxin
 brytöxina
@@ -110532,7 +110340,6 @@ burgeisleg
 burgeisnum
 burgeiss
 burgeisum
-buri
 burina
 burinn
 burir
@@ -110864,7 +110671,6 @@ burtreið
 burtreiða
 burtreiðar
 burtreiðin
-burtreiðir
 burtreiðum
 burtreisa
 burtreisan
@@ -111762,7 +111568,6 @@ búðarmenn
 búðarmerki
 búðarnaut
 búðarnauta
-búðarnauts
 búðarpilt
 búðarpilta
 búðarpilti
@@ -113184,7 +112989,6 @@ búnaði
 búnaðinn
 búnaðinum
 búnaðist
-búnaðnum
 búnaður
 búnaðurinn
 búnar
@@ -114925,7 +114729,6 @@ byggekruna
 byggekrur
 bygggraut
 bygggrauta
-bygggrauti
 bygggrjón
 bygggrjóna
 bygggrjóni
@@ -115255,8 +115058,6 @@ byljakasts
 byljaköst
 byljandi
 byljanna
-byljar
-byljarins
 byljarok
 byljaroka
 byljaroki
@@ -115344,8 +115145,6 @@ bylmuggu
 bylmugguna
 bylmökk
 bylmökkinn
-bylmökknum
-bylmökks
 bylmökkum
 bylmökkur
 bylnum
@@ -115510,7 +115309,6 @@ byrðingu
 byrðingum
 byrðinguna
 byrðingur
-byrðinnar
 byrðinni
 byrðinu
 byrðir
@@ -116687,7 +116485,6 @@ bæjargötum
 bæjargötur
 bæjarhaug
 bæjarhauga
-bæjarhaugi
 bæjarhaugs
 bæjarhátíð
 bæjarhátta
@@ -117620,7 +117417,6 @@ bænaskotts
 bænaskotum
 bænaskrá
 bænaskráa
-bænaskráar
 bænaskráin
 bænaskrám
 bænaskrána
@@ -118449,7 +118245,6 @@ böðulslegi
 böðulslegs
 böðulslegt
 böðulslegu
-böðulsöxar
 böðulsöxi
 böðulsöxin
 böðulsöxum
@@ -118850,7 +118645,6 @@ böllur
 böllurinn
 böllurnar
 bölmóð
-bölmóði
 bölmóðinn
 bölmóðnum
 bölmóðs
@@ -118867,7 +118661,6 @@ bölnautana
 bölnautar
 bölnautinn
 bölnautnum
-bölnauts
 bölnautum
 bölnautur
 bölnorn
@@ -119904,7 +119697,6 @@ dagdómanna
 dagdómar
 dagdómi
 dagdóminn
-dagdóminum
 dagdómnum
 dagdóms
 dagdómsins
@@ -120585,7 +120377,6 @@ dagróðrar
 dagróðri
 dagróðrum
 dagróður
-dagróðurs
 dags
 dagsafköst
 dagsafla
@@ -120779,7 +120570,6 @@ dagskólinn
 dagskólum
 dagskrá
 dagskráa
-dagskráar
 dagskráin
 dagskrám
 dagskrána
@@ -120896,7 +120686,6 @@ dagspámenn
 dagspössum
 dagsranda
 dagsrandar
-dagsrandir
 dagsrendur
 dagsrönd
 dagsröndin
@@ -121278,7 +121067,6 @@ dalahlíð
 dalahlíða
 dalahlíðar
 dalahlíðin
-dalahlíðir
 dalahlíðum
 dalahvanna
 dalahvönn
@@ -121411,13 +121199,11 @@ dalamáni
 dalamáninn
 dalamánum
 dalamey
-dalameyin
 dalameyja
 dalameyjar
 dalameyju
 dalameyjum
 dalameyna
-dalameynni
 dalamolla
 dalamollan
 dalamollu
@@ -121659,7 +121445,6 @@ dalhlíða
 dalhlíðar
 dalhlíðin
 dalhlíðina
-dalhlíðir
 dalhlíðum
 dalhvarf
 dalhvarfa
@@ -121872,7 +121657,6 @@ dalshlíð
 dalshlíða
 dalshlíðar
 dalshlíðin
-dalshlíðir
 dalshlíðum
 dalsig
 dalsiga
@@ -121891,7 +121675,6 @@ dalskála
 dalskálar
 dalskálin
 dalskálina
-dalskálir
 dalskálum
 dalskora
 dalskoran
@@ -122555,13 +122338,11 @@ dansmanns
 dansmenn
 dansmennt
 dansmey
-dansmeyin
 dansmeyja
 dansmeyjar
 dansmeyju
 dansmeyjum
 dansmeyna
-dansmeynni
 dansmót
 dansmóta
 dansmóti
@@ -124903,7 +124684,6 @@ dálkhökin
 dálkhökum
 dálki
 dálkinn
-dálkinum
 dálklína
 dálklínan
 dálklínu
@@ -126081,8 +125861,6 @@ deiliþróar
 deiliþróin
 deiliþróm
 deiliþróna
-deiliþrór
-deiliþróum
 deiliþrær
 deiliæxlun
 deiliögn
@@ -127081,7 +126859,6 @@ desbauk
 desbauka
 desbaukana
 desbaukar
-desbauki
 desbaukinn
 desbauknum
 desbauks
@@ -127107,7 +126884,6 @@ deserta
 desertana
 desertanna
 desertar
-deserti
 desertinn
 desertinum
 deserts
@@ -127428,7 +127204,6 @@ deyfilyfja
 deyfilyfs
 deyfimeðal
 deyfimeðul
-deyfimeðöl
 deyfing
 deyfinga
 deyfingar
@@ -127908,7 +127683,6 @@ dilkhrúti
 dilkhrúts
 dilkhrútum
 dilkhrútur
-dilki
 dilkinn
 dilklamb
 dilklamba
@@ -129245,7 +129019,6 @@ dísins
 dísinu
 dísir
 dísirnar
-dísli
 dísna
 dísnanna
 díss
@@ -130860,7 +130633,6 @@ djöfulli
 djöfullinn
 djöfulmagn
 djöfulmóð
-djöfulmóði
 djöfulmóðs
 djöfulofsa
 djöfulofsi
@@ -131814,7 +131586,6 @@ dólgar
 dólgarnir
 dólgi
 dólginn
-dólginum
 dólgleg
 dólglega
 dólglegan
@@ -132194,9 +131965,6 @@ dómhéraðs
 dómhéruð
 dómhéruðin
 dómhéruðum
-dómhéröð
-dómhéröðin
-dómhéröðum
 dómhring
 dómhringa
 dómhringar
@@ -132624,7 +132392,6 @@ dómskópíum
 dómskópíur
 dómskrá
 dómskráa
-dómskráar
 dómskráin
 dómskrám
 dómskrána
@@ -132781,7 +132548,6 @@ dómsætið
 dómsætin
 dómsætinu
 dómsætis
-dómsættir
 dómsætum
 dómsætunum
 dómsöfl
@@ -133671,10 +133437,7 @@ dragbít
 dragbíta
 dragbítana
 dragbítar
-dragbíti
-dragbítina
 dragbítinn
-dragbítir
 dragbítnum
 dragbíts
 dragbítum
@@ -133899,7 +133662,6 @@ dragnóta
 dragnótar
 dragnótin
 dragnótina
-dragnótir
 dragnótum
 dragnætur
 dragpípa
@@ -134345,18 +134107,7 @@ draugabæli
 draugabær
 draugadans
 draugadys
-draugað
-draugaða
-draugaðan
-draugaðar
-draugaði
-draugaðir
 draugaðist
-draugaðra
-draugaðrar
-draugaðri
-draugaðs
-draugaður
 draugaflá
 draugafláa
 draugaflám
@@ -134471,11 +134222,7 @@ draugheimi
 draugheims
 draughrædd
 draughrætt
-draugi
-draugið
 drauginn
-drauginum
-draugir
 draugist
 draugmælt
 draugmælta
@@ -134520,10 +134267,6 @@ draugsævin
 draugtetra
 draugtetri
 draugtetur
-drauguð
-drauguðu
-drauguðuð
-drauguðum
 drauguðust
 draugum
 draugumst
@@ -134748,7 +134491,6 @@ draumhöfin
 draumhöfum
 draumi
 drauminn
-drauminum
 draumkennd
 draumkennt
 draumkona
@@ -137436,8 +137178,6 @@ drógarnar
 drógin
 drógina
 dróginni
-drógir
-drógirnar
 drógl
 drógli
 dróglið
@@ -139107,8 +138847,6 @@ duftkeri
 duftkerið
 duftkerin
 duftkerinu
-duftkerja
-duftkerjum
 duftkers
 duftkerum
 duftkláða
@@ -139177,9 +138915,7 @@ dug
 duga
 dugað
 dugaði
-dugaðir
 dugaðirðu
-dugaðu
 dugandi
 dugar
 dugarðu
@@ -139346,15 +139082,11 @@ dugnaðar
 dugnaði
 dugnaðinn
 dugnaðinum
-dugnaðnum
 dugnaður
 dugnum
 dugs
 dugsins
 dugtugheit
-duguðu
-duguðuð
-duguðum
 dugum
 dugur
 dugurinn
@@ -141127,7 +140859,6 @@ dúettana
 dúettanna
 dúettar
 dúettarnir
-dúetti
 dúettinn
 dúettinum
 dúetts
@@ -143610,7 +143341,6 @@ dyngju
 dyngjugerð
 dyngjugíg
 dyngjugíga
-dyngjugígi
 dyngjugígs
 dyngjugos
 dyngjugosa
@@ -143888,7 +143618,6 @@ dyragátt
 dyragátta
 dyragáttar
 dyragáttin
-dyragáttir
 dyragáttum
 dyraglugga
 dyragluggi
@@ -145221,10 +144950,7 @@ dýrbíta
 dýrbítana
 dýrbítanna
 dýrbítar
-dýrbíti
-dýrbítina
 dýrbítinn
-dýrbítir
 dýrbítnum
 dýrbíts
 dýrbítsins
@@ -146013,8 +145739,6 @@ dælikeri
 dælikerið
 dælikerin
 dælikerinu
-dælikerja
-dælikerjum
 dælikers
 dælikerum
 dælin
@@ -146610,7 +146334,6 @@ döggskál
 döggskála
 döggskálar
 döggskálin
-döggskálir
 döggskálum
 döggskær
 döggskæra
@@ -147346,7 +147069,6 @@ dönskustu
 dönskustum
 dönskutíma
 dönskutími
-dönskættuð
 dönsuð
 dönsuðu
 dönsuðuð
@@ -148860,7 +148582,6 @@ efnaskorti
 efnaskorts
 efnaskrá
 efnaskráa
-efnaskráar
 efnaskráin
 efnaskrám
 efnaskrána
@@ -151804,7 +151525,6 @@ eikarslár
 eikarsleða
 eikarsleði
 eikarspón
-eikarspóni
 eikarspónn
 eikarspóns
 eikarspýta
@@ -151919,7 +151639,6 @@ eiknum
 eikum
 eikunum
 eikur
-eikurinnar
 eikurnar
 eilitla
 eilitlar
@@ -152198,7 +151917,6 @@ eimreiða
 eimreiðar
 eimreiðin
 eimreiðina
-eimreiðir
 eimreiðum
 eimríki
 eimríkið
@@ -155501,9 +155219,6 @@ einætis
 einætisins
 einætum
 einætunum
-einöngruð
-einöngruðu
-einöngrum
 einörð
 einörðu
 einörðum
@@ -155789,8 +155504,6 @@ eirkeri
 eirkerið
 eirkerin
 eirkerinu
-eirkerja
-eirkerjum
 eirkers
 eirkersins
 eirkerum
@@ -156281,7 +155994,6 @@ eiröndina
 eiröndinni
 eiröndum
 eiröndunum
-eiröxar
 eiröxi
 eiröxin
 eiröxina
@@ -157328,7 +157040,6 @@ eldblyss
 eldblysum
 eldblæ
 eldblæinn
-eldblæjar
 eldblænum
 eldblær
 eldblærinn
@@ -157724,10 +157435,7 @@ eldgígana
 eldgíganna
 eldgígar
 eldgígaröð
-eldgígi
-eldgígina
 eldgíginn
-eldgígir
 eldgígnum
 eldgígs
 eldgígsins
@@ -158298,7 +158006,6 @@ eldiskera
 eldiskeri
 eldiskerið
 eldiskerin
-eldiskerja
 eldiskers
 eldiskerum
 eldiskíð
@@ -158374,8 +158081,6 @@ eldisþróar
 eldisþróin
 eldisþróm
 eldisþróna
-eldisþrór
-eldisþróum
 eldisþrær
 eldivið
 eldiviða
@@ -158434,8 +158139,6 @@ eldkeri
 eldkerið
 eldkerin
 eldkerinu
-eldkerja
-eldkerjum
 eldkers
 eldkersins
 eldkerum
@@ -158658,7 +158361,6 @@ eldmóð
 eldmóða
 eldmóðan
 eldmóðanna
-eldmóði
 eldmóðinn
 eldmóðna
 eldmóðnum
@@ -158701,8 +158403,6 @@ eldmyndum
 eldmyndun
 eldmökk
 eldmökkinn
-eldmökknum
-eldmökks
 eldmökkum
 eldmökkur
 eldneista
@@ -159061,7 +158761,6 @@ eldskála
 eldskálar
 eldskálin
 eldskálina
-eldskálir
 eldskálum
 eldskeyta
 eldskeyti
@@ -160321,7 +160020,6 @@ ellibleikt
 ellibleiku
 elliblæ
 elliblæinn
-elliblæjar
 elliblænum
 elliblær
 elliblæs
@@ -161324,7 +161022,6 @@ embættunum
 emeritus
 emeritusa
 emeritusar
-emeritusi
 emeritusum
 emerítus
 emerítusa
@@ -162819,7 +162516,6 @@ engdust
 engi
 engið
 engifer
-engiferi
 engiferið
 engiferinn
 engiferinu
@@ -163855,7 +163551,6 @@ eplagarðs
 eplagarður
 eplagraut
 eplagrauta
-eplagrauti
 eplagörðum
 eplahníf
 eplahnífa
@@ -164211,7 +163906,6 @@ erfðaóðala
 erfðaóðali
 erfðaóðals
 erfðaóðul
-erfðaóðöl
 erfðaóvin
 erfðaóvina
 erfðaóvini
@@ -166264,7 +165958,6 @@ eyðibils
 eyðibilum
 eyðiblæ
 eyðiblæinn
-eyðiblæjar
 eyðiblænum
 eyðiblær
 eyðiblæs
@@ -166373,7 +166066,6 @@ eyðihéraða
 eyðihéraði
 eyðihéraðs
 eyðihéruð
-eyðihéröð
 eyðihjarn
 eyðihjarni
 eyðihjarns
@@ -166494,7 +166186,6 @@ eyðilönd
 eyðilöndin
 eyðilöndum
 eyðimarka
-eyðimarkar
 eyðimel
 eyðimela
 eyðimelana
@@ -168558,7 +168249,6 @@ fagnaðinum
 fagnaðir
 fagnaðirðu
 fagnaðistu
-fagnaðnum
 fagnaðu
 fagnaður
 fagnafeng
@@ -169702,10 +169392,7 @@ fallgíg
 fallgíga
 fallgígana
 fallgígar
-fallgígi
-fallgígina
 fallgíginn
-fallgígir
 fallgígnum
 fallgígs
 fallgígum
@@ -170047,7 +169734,6 @@ fallþungur
 fallþyngra
 fallþyngri
 fallþyngst
-fallöxar
 fallöxi
 fallöxin
 fallöxina
@@ -170903,7 +170589,6 @@ fannburður
 fannbyl
 fannbylinn
 fannbylja
-fannbyljar
 fannbylji
 fannbyljir
 fannbyljum
@@ -171713,7 +171398,6 @@ farkennsla
 farkennslu
 farkost
 farkosta
-farkostar
 farkosti
 farkostina
 farkostinn
@@ -171905,7 +171589,6 @@ farmskjals
 farmskjöl
 farmskrá
 farmskráa
-farmskráar
 farmskráin
 farmskrám
 farmskrána
@@ -172092,7 +171775,6 @@ farskólinn
 farskólum
 farskrá
 farskráa
-farskráar
 farskráin
 farskrám
 farskrána
@@ -173309,7 +172991,6 @@ fatagörmum
 fatahaug
 fatahauga
 fatahaugar
-fatahaugi
 fatahaugs
 fatahaugum
 fatahaugur
@@ -173725,7 +173406,6 @@ fatnaðar
 fatnaði
 fatnaðinn
 fatnaðinum
-fatnaðnum
 fatnaður
 fatnanna
 fatprúð
@@ -174596,7 +174276,6 @@ fáki
 fákið
 fákinn
 fákinu
-fákinum
 fáklædd
 fáklædda
 fáklæddan
@@ -176402,7 +176081,6 @@ feðraóðala
 feðraóðali
 feðraóðals
 feðraóðul
-feðraóðöl
 feðrar
 feðrarðu
 feðraslóð
@@ -180892,9 +180570,6 @@ féglögg
 féglögga
 féglöggan
 féglöggar
-féglöggara
-féglöggari
-féglöggast
 féglöggi
 féglöggir
 féglöggra
@@ -180905,7 +180580,6 @@ féglöggt
 féglöggu
 féglöggum
 féglöggur
-féglöggust
 fégrand
 fégranda
 fégrandi
@@ -181597,7 +181271,6 @@ fésjóðanna
 fésjóði
 fésjóðina
 fésjóðinn
-fésjóðinum
 fésjóðir
 fésjóðnum
 fésjóðs
@@ -181769,7 +181442,6 @@ fétoppanna
 fétoppar
 fétoppi
 fétoppinn
-fétoppinum
 fétoppnum
 fétopps
 fétoppsins
@@ -182925,7 +182597,6 @@ fingurlaga
 fingurlið
 fingurliða
 fingurliði
-fingurliðs
 fingurmein
 fingurna
 fingurnir
@@ -183608,7 +183279,6 @@ fiskakera
 fiskakeri
 fiskakerið
 fiskakerin
-fiskakerja
 fiskakers
 fiskakerum
 fiskakippa
@@ -184424,7 +184094,6 @@ fiskikera
 fiskikeri
 fiskikerið
 fiskikerin
-fiskikerja
 fiskikers
 fiskikerum
 fiskiklak
@@ -184457,7 +184126,6 @@ fiskikróki
 fiskikróks
 fiskikróm
 fiskikróna
-fiskikrór
 fiskikrær
 fiskikvóta
 fiskikvóti
@@ -184619,7 +184287,6 @@ fiskinót
 fiskinóta
 fiskinótar
 fiskinótin
-fiskinótir
 fiskinótum
 fiskins
 fiskinu
@@ -185211,7 +184878,6 @@ fiskpönnum
 fiskpönnur
 fiskranda
 fiskrandar
-fiskrandir
 fiskrá
 fiskráa
 fiskráð
@@ -185354,9 +185020,7 @@ fiskseil
 fiskseila
 fiskseilar
 fiskseilin
-fiskseilir
 fiskseilum
-fiskseilur
 fiskseyða
 fiskseyði
 fiskseyðið
@@ -185771,7 +185435,6 @@ fitaðu
 fitaður
 fitan
 fitandi
-fitanna
 fitar
 fitarðu
 fitast
@@ -185997,7 +185660,6 @@ fitudróg
 fitudróga
 fitudrógar
 fitudrógin
-fitudrógir
 fitudrógum
 fituð
 fituðu
@@ -186226,7 +185888,6 @@ fitumeðala
 fitumeðali
 fitumeðals
 fitumeðul
-fitumeðöl
 fitumeira
 fitumeiri
 fitumerki
@@ -186297,16 +185958,13 @@ fitunina
 fituninni
 fitunnar
 fitunni
-fitunum
 fitupjara
 fitupjaran
 fitupjöru
 fitupjörum
 fitupjörur
-fitur
 fituranda
 fiturandar
-fiturandir
 fiturendur
 fiturík
 fituríka
@@ -186326,7 +185984,6 @@ fituríku
 fituríkum
 fituríkur
 fituríkust
-fiturnar
 fiturýr
 fiturýra
 fiturýran
@@ -190261,7 +189918,6 @@ fjárdeilur
 fjárdilk
 fjárdilka
 fjárdilkar
-fjárdilki
 fjárdilks
 fjárdilkum
 fjárdilkur
@@ -191056,8 +190712,6 @@ fjársterku
 fjárstíg
 fjárstíga
 fjárstígar
-fjárstígi
-fjárstígir
 fjárstígs
 fjárstígum
 fjárstígur
@@ -191880,7 +191534,6 @@ fjósgötur
 fjóshaug
 fjóshauga
 fjóshaugar
-fjóshaugi
 fjóshaugs
 fjóshaugum
 fjóshaugur
@@ -192072,7 +191725,6 @@ fjúkburður
 fjúkbyl
 fjúkbylinn
 fjúkbylja
-fjúkbyljar
 fjúkbylji
 fjúkbyljir
 fjúkbyljum
@@ -192234,7 +191886,6 @@ fjöður
 fjöðurmosa
 fjöðurmosi
 fjöðurstaf
-fjögra
 fjögramaka
 fjögramaki
 fjögur
@@ -192758,7 +192409,6 @@ fjölmiðli
 fjölmiðlum
 fjölmiðlun
 fjölmóð
-fjölmóði
 fjölmóðinn
 fjölmóðnum
 fjölmóðs
@@ -194025,7 +193675,6 @@ fjörumóa
 fjörumóana
 fjörumóar
 fjörumóð
-fjörumóði
 fjörumóðs
 fjörumóður
 fjörumóinn
@@ -195419,7 +195068,6 @@ flatskjás
 flatskjáum
 flatskrá
 flatskráa
-flatskráar
 flatskráin
 flatskrám
 flatskrána
@@ -195600,7 +195248,6 @@ flaumiðum
 flaumiðuna
 flaumiður
 flauminn
-flauminum
 flaumkast
 flaumkasta
 flaumkasti
@@ -197122,7 +196769,6 @@ fleygnót
 fleygnóta
 fleygnótar
 fleygnótin
-fleygnótir
 fleygnótum
 fleygnum
 fleygnætur
@@ -197171,7 +196817,6 @@ fleygurinn
 fleygust
 fleygustu
 fleygustum
-fleygöxar
 fleygöxi
 fleygöxin
 fleygöxina
@@ -197262,7 +196907,6 @@ fleytunni
 fleytunum
 fleytur
 fleyturnar
-flétt
 flétta
 fléttað
 fléttaða
@@ -197345,7 +196989,6 @@ flétturós
 flétturósa
 flétturum
 fléttusaum
-fléttust
 fléttustef
 fléttutaug
 fléttuverk
@@ -197770,7 +197413,6 @@ flíkandi
 flíkanna
 flíkar
 flíkarðu
-flíkarnar
 flíki
 flíkið
 flíkin
@@ -199030,8 +198672,6 @@ flotkeri
 flotkerið
 flotkerin
 flotkerinu
-flotkerja
-flotkerjum
 flotkers
 flotkerum
 flotkraft
@@ -199160,7 +198800,6 @@ flotskál
 flotskála
 flotskálar
 flotskálin
-flotskálir
 flotskálum
 flotskildi
 flotskjöld
@@ -200529,7 +200168,6 @@ flugdiskur
 flugdólg
 flugdólga
 flugdólgar
-flugdólgi
 flugdólgs
 flugdólgum
 flugdólgur
@@ -203664,7 +203302,6 @@ fokaskan
 fokbyl
 fokbylinn
 fokbylja
-fokbyljar
 fokbylji
 fokbyljina
 fokbyljir
@@ -203928,8 +203565,6 @@ fokmylsnan
 fokmylsnu
 fokmökk
 fokmökkinn
-fokmökknum
-fokmökks
 fokmökkum
 fokmökkur
 fokna
@@ -204013,7 +203648,6 @@ fokskafli
 fokskafls
 foksköflum
 foksnjó
-foksnjóar
 foksnjóinn
 foksnjónum
 foksnjór
@@ -204576,7 +204210,6 @@ fordómar
 fordómavæð
 fordómi
 fordóminn
-fordóminum
 fordómnum
 fordóms
 fordómsins
@@ -206257,7 +205890,6 @@ fornbíls
 fornbílum
 fornblæ
 fornblæinn
-fornblæjar
 fornblænum
 fornblær
 fornblæs
@@ -206510,7 +206142,6 @@ forngöfugu
 fornhaug
 fornhauga
 fornhaugar
-fornhaugi
 fornhaugs
 fornhaugum
 fornhaugur
@@ -207093,7 +206724,6 @@ forpöntum
 forpöntun
 forranda
 forrandar
-forrandir
 forráð
 forráða
 forráðanda
@@ -207447,7 +207077,6 @@ forskólum
 forskólun
 forskrá
 forskráa
-forskráar
 forskráð
 forskráða
 forskráðan
@@ -208356,9 +207985,6 @@ forþróna
 forþrónna
 forþrónni
 forþrónum
-forþrór
-forþrórnar
-forþróum
 forþróun
 forþróunar
 forþróunin
@@ -209159,8 +208785,6 @@ fóhornsins
 fóhornum
 fóhornunum
 fókus
-fókusar
-fókusarins
 fókusinn
 fókusnum
 fókuspunkt
@@ -212159,7 +211783,6 @@ framhéraða
 framhéraði
 framhéraðs
 framhéruð
-framhéröð
 framhjól
 framhjóla
 framhjóli
@@ -212778,7 +212401,6 @@ frampörtum
 framra
 framranda
 framrandar
-framrandir
 framrar
 framrás
 framrásar
@@ -212818,7 +212440,6 @@ framrist
 framrista
 framristar
 framristin
-framristir
 framristum
 framrunna
 framrunnar
@@ -215641,7 +215262,6 @@ fréttavali
 fréttavals
 fréttavef
 fréttavefi
-fréttavefs
 fréttaþátt
 fréttaþráð
 fréttaþul
@@ -216107,7 +215727,6 @@ friðrofinn
 friðrofinu
 friðrofs
 friðrofum
-friðs
 friðsama
 friðsaman
 friðsamar
@@ -219235,7 +218854,6 @@ frumskóli
 frumskólum
 frumskrá
 frumskráa
-frumskráar
 frumskráin
 frumskrám
 frumskrána
@@ -219638,7 +219256,6 @@ frumverð
 frumverði
 frumverðið
 frumverðs
-frumveri
 frumverinn
 frumverja
 frumverjar
@@ -224997,7 +224614,6 @@ fúakláfana
 fúakláfar
 fúakláfi
 fúakláfinn
-fúakláfnum
 fúakláfs
 fúakláfum
 fúakláfur
@@ -225326,7 +224942,6 @@ fúla
 fúlabyl
 fúlabylinn
 fúlabylja
-fúlabyljar
 fúlabylji
 fúlabyljir
 fúlabyljum
@@ -226025,7 +225640,6 @@ fylgimanni
 fylgimanns
 fylgimenn
 fylgimey
-fylgimeyin
 fylgimeyja
 fylgimeyju
 fylgimeyna
@@ -226377,8 +225991,6 @@ fylla
 fyllan
 fyllandi
 fyllanna
-fyllar
-fyllarnar
 fyllast
 fylld
 fyllda
@@ -229061,15 +228673,11 @@ fögin
 fögn
 fögnin
 fögnuð
-fögnuða
-fögnuðanna
-fögnuðar
 fögnuði
 fögnuðina
 fögnuðinn
 fögnuðinum
 fögnuðir
-fögnuðnum
 fögnuðu
 fögnuðuð
 fögnuðum
@@ -229967,8 +229575,6 @@ förumönnum
 förunaut
 förunauta
 förunautar
-förunauti
-förunauts
 förunautum
 förunautur
 föruneyta
@@ -230404,7 +230010,6 @@ gaddbruni
 gaddbyl
 gaddbylinn
 gaddbylja
-gaddbyljar
 gaddbylji
 gaddbyljir
 gaddbyljum
@@ -230575,7 +230180,6 @@ gaddskálda
 gaddskáldi
 gaddskálds
 gaddsnjó
-gaddsnjóar
 gaddsnjór
 gaddsnjós
 gaddsnorka
@@ -230944,9 +230548,7 @@ gagnaði
 gagnaðila
 gagnaðilar
 gagnaðili
-gagnaðilja
 gagnaðilum
-gagnaðir
 gagnaðirðu
 gagnaðist
 gagnaðistu
@@ -231347,7 +230949,6 @@ gagnhyggnu
 gagni
 gagnið
 gagninu
-gagnir
 gagnirðu
 gagnist
 gagnistu
@@ -231679,8 +231280,6 @@ gagnstigað
 gagnstíg
 gagnstíga
 gagnstígar
-gagnstígi
-gagnstígir
 gagnstígs
 gagnstígum
 gagnstígur
@@ -232955,7 +232554,6 @@ gamalkunn
 gamalkunna
 gamalkunni
 gamalkunns
-gamalkunnt
 gamalkunnu
 gamalkú
 gamalkúa
@@ -234355,8 +233953,6 @@ gangstilli
 gangstíg
 gangstíga
 gangstígar
-gangstígi
-gangstígir
 gangstígs
 gangstígum
 gangstígur
@@ -235505,8 +235101,6 @@ garðstaurs
 garðstíg
 garðstíga
 garðstígar
-garðstígi
-garðstígir
 garðstígs
 garðstígum
 garðstígur
@@ -236553,8 +236147,6 @@ gasmælum
 gasmælunum
 gasmökk
 gasmökkinn
-gasmökknum
-gasmökks
 gasmökkum
 gasmökkur
 gasmönnum
@@ -238379,7 +237971,6 @@ gámavöllur
 gámi
 gámið
 gáminn
-gáminum
 gámir
 gámist
 gámleit
@@ -238965,7 +238556,6 @@ geðbilunin
 geðbilunum
 geðblæ
 geðblæinn
-geðblæjar
 geðblænum
 geðblær
 geðblærinn
@@ -239903,7 +239493,6 @@ geðvargana
 geðvargar
 geðvargi
 geðvarginn
-geðvargnum
 geðvargs
 geðvargur
 geðveik
@@ -240649,7 +240238,6 @@ geilarbotn
 geilarenda
 geilarendi
 geilargólf
-geilarnar
 geilin
 geilina
 geilinni
@@ -242453,7 +242041,6 @@ genasafnið
 genasafns
 genaskrá
 genaskráa
-genaskráar
 genaskráin
 genaskrám
 genaskrána
@@ -243660,8 +243247,6 @@ gervifætur
 gervigíg
 gervigíga
 gervigígar
-gervigígi
-gervigígir
 gervigígs
 gervigígum
 gervigígur
@@ -243778,7 +243363,6 @@ gerviliða
 gerviliðar
 gerviliði
 gerviliðir
-gerviliðs
 gerviliðum
 gerviliður
 gervilim
@@ -245517,7 +245101,6 @@ gilhlíða
 gilhlíðar
 gilhlíðin
 gilhlíðina
-gilhlíðir
 gilhlíðum
 gilhvamm
 gilhvamma
@@ -246830,11 +246413,7 @@ gíghringum
 gíghringur
 gíghrúgald
 gíghrúgöld
-gígi
-gígina
 gíginn
-gígir
-gígirnir
 gígja
 gígjan
 gígjanna
@@ -246939,7 +246518,6 @@ gígraðar
 gígraðir
 gígranda
 gígrandar
-gígrandir
 gígrendur
 gígrima
 gígrimana
@@ -246976,7 +246554,6 @@ gígskála
 gígskálar
 gígskálin
 gígskálina
-gígskálir
 gígskálum
 gígskorpa
 gígskorpan
@@ -247999,7 +247576,6 @@ gjaldmáta
 gjaldmáti
 gjaldmeðal
 gjaldmeðul
-gjaldmeðöl
 gjaldmiðil
 gjaldmiðla
 gjaldmiðli
@@ -248097,15 +247673,12 @@ gjallendur
 gjallgíg
 gjallgíga
 gjallgígar
-gjallgígi
-gjallgígir
 gjallgígs
 gjallgígum
 gjallgígur
 gjallgrýti
 gjallhaug
 gjallhauga
-gjallhaugi
 gjallhaugs
 gjallhnúk
 gjallhnúka
@@ -249850,7 +249423,6 @@ glapspors
 glapsporum
 glapstig
 glapstiga
-glapstigar
 glapstigi
 glapstigir
 glapstigs
@@ -250027,8 +249599,6 @@ glaskeri
 glaskerið
 glaskerin
 glaskerinu
-glaskerja
-glaskerjum
 glaskers
 glaskerum
 glasmynd
@@ -251284,7 +250854,6 @@ gleragna
 gleragnar
 gleragnir
 glerandi
-gleranna
 glerar
 glerarðu
 gleraska
@@ -251665,8 +251234,6 @@ glerkeri
 glerkerið
 glerkerin
 glerkerinu
-glerkerja
-glerkerjum
 glerkers
 glerkerum
 glerklukka
@@ -251757,7 +251324,6 @@ glermeyjar
 glermeyju
 glermeyjum
 glermeyna
-glermeynni
 glermotta
 glermottan
 glermottna
@@ -251995,7 +251561,6 @@ glerungur
 glerunin
 glerunina
 gleruninni
-glerunum
 glervamba
 glervambar
 glervambir
@@ -256033,7 +255598,6 @@ glæpadálki
 glæpadálks
 glæpadólg
 glæpadólga
-glæpadólgi
 glæpadólgs
 glæpadóm
 glæpadóma
@@ -256732,18 +256296,6 @@ glögg
 glögga
 glöggan
 glöggar
-glöggara
-glöggari
-glöggast
-glöggasta
-glöggastan
-glöggastar
-glöggasti
-glöggastir
-glöggastra
-glöggastri
-glöggasts
-glöggastur
 glöggdæm
 glöggdæma
 glöggdæman
@@ -256836,9 +256388,6 @@ glöggt
 glöggu
 glöggum
 glöggur
-glöggust
-glöggustu
-glöggustum
 glöggva
 glöggvað
 glöggvaði
@@ -257258,7 +256807,6 @@ gnómar
 gnómarnir
 gnómi
 gnóminn
-gnóminum
 gnómnum
 gnóms
 gnómsins
@@ -257914,7 +257462,6 @@ goðdómanna
 goðdómar
 goðdómi
 goðdóminn
-goðdóminum
 goðdómnum
 goðdóms
 goðdómsins
@@ -258183,7 +257730,6 @@ goðvargana
 goðvargar
 goðvargi
 goðvarginn
-goðvargnum
 goðvargs
 goðvargur
 goðveðra
@@ -259706,8 +259252,6 @@ gosmyndana
 gosmyndun
 gosmökk
 gosmökkinn
-gosmökknum
-gosmökks
 gosmökkum
 gosmökkur
 gosmöl
@@ -259917,9 +259461,6 @@ gosþróna
 gosþrónna
 gosþrónni
 gosþrónum
-gosþrór
-gosþrórnar
-gosþróum
 gosþrær
 gosþrærnar
 gosösku
@@ -261665,7 +261206,6 @@ gómhöggum
 gómi
 gómið
 góminn
-góminum
 gómir
 gómirðu
 gómist
@@ -262273,7 +261813,6 @@ grafarvist
 grafarþró
 grafarþróa
 grafarþróm
-grafarþrór
 grafarþrær
 grafarþögn
 grafast
@@ -262660,7 +262199,6 @@ graftólin
 graftólíta
 graftólíti
 graftólum
-graftrar
 graftæki
 graftækið
 graftækin
@@ -263111,7 +262649,6 @@ grannóðala
 grannóðali
 grannóðals
 grannóðul
-grannóðöl
 grannra
 grannrar
 grannrétt
@@ -263175,9 +262712,7 @@ granseil
 granseila
 granseilar
 granseilin
-granseilir
 granseilum
-granseilur
 gransel
 gransela
 granseli
@@ -263372,7 +262907,6 @@ grasamauki
 grasamauks
 grasameðal
 grasameðul
-grasameðöl
 grasamenn
 grasamiði
 grasamjólk
@@ -263540,10 +263074,7 @@ grasbít
 grasbíta
 grasbítana
 grasbítar
-grasbíti
-grasbítina
 grasbítinn
-grasbítir
 grasbítnum
 grasbíts
 grasbítum
@@ -263959,7 +263490,6 @@ grashlíð
 grashlíða
 grashlíðar
 grashlíðin
-grashlíðir
 grashlíðum
 grashnaus
 grashnausa
@@ -264119,8 +263649,6 @@ graskeri
 graskerið
 graskerin
 graskerinu
-graskerja
-graskerjum
 graskers
 graskerum
 graskinn
@@ -264486,7 +264014,6 @@ grasplássa
 grasplássi
 grasranda
 grasrandar
-grasrandir
 grasrák
 grasráka
 grasrákar
@@ -264635,7 +264162,6 @@ grasstalli
 grasstalls
 grasstilk
 grasstilka
-grasstilki
 grasstilks
 grasstrá
 grasstráa
@@ -266302,7 +265828,6 @@ grámunkana
 grámunkar
 grámunki
 grámunkinn
-grámunknum
 grámunks
 grámunkum
 grámunkur
@@ -267558,7 +267083,6 @@ greftrast
 greftrastu
 greftri
 greftrið
-greftrinum
 greftrir
 greftrirðu
 greftrist
@@ -267993,7 +267517,6 @@ greinipípu
 greinir
 greinirðu
 greinirinn
-greinirnar
 greinirör
 greiniröra
 greiniröri
@@ -268196,7 +267719,6 @@ grenirafti
 grenirafts
 grenirá
 greniráa
-greniráar
 greniráin
 grenirám
 grenirána
@@ -268210,7 +267732,6 @@ greniryð
 greniryði
 greniryðið
 greniryðs
-grenirær
 grenis
 grenisins
 greniskóg
@@ -269342,7 +268863,6 @@ gripakróar
 gripakróin
 gripakróm
 gripakróna
-gripakrór
 gripakrær
 gripaland
 gripalanda
@@ -270442,7 +269962,6 @@ grísi
 grísið
 grísina
 grísinn
-grísinum
 grísir
 grísirðu
 grísirnir
@@ -270675,7 +270194,6 @@ grjótharðs
 grjóthart
 grjóthaug
 grjóthauga
-grjóthaugi
 grjóthaugs
 grjótháls
 grjóthálsa
@@ -271503,14 +271021,12 @@ gróðaöflin
 gróðaöflum
 gróði
 gróðinn
-gróðrar
 gróðrarafl
 gróðrardís
 gróðrarfar
 gróðrarguð
 gróðrarhús
 gróðrarilm
-gróðrarins
 gróðrarlag
 gróðrarlíf
 gróðrarnál
@@ -272350,7 +271866,6 @@ gróskutími
 gróstilk
 gróstilka
 gróstilkar
-gróstilki
 gróstilks
 gróstilkum
 gróstilkur
@@ -273423,7 +272938,6 @@ grúfið
 grúfir
 grúfirðu
 grúfist
-grúft
 grúfu
 grúfum
 grúfumst
@@ -275116,7 +274630,6 @@ guðamálinu
 guðamáls
 guðamálum
 guðamóð
-guðamóði
 guðamóðinn
 guðamóðnum
 guðamóðs
@@ -275207,7 +274720,6 @@ guðbænunum
 guðdóm
 guðdómi
 guðdóminn
-guðdóminum
 guðdómleg
 guðdómlega
 guðdómlegi
@@ -275403,7 +274915,6 @@ guðmenninu
 guðmennis
 guðmennum
 guðmóð
-guðmóði
 guðmóðinn
 guðmóðir
 guðmóðirin
@@ -276159,7 +275670,6 @@ gufumylnu
 gufumylnum
 gufumylnur
 gufumökk
-gufumökks
 gufumökkum
 gufumökkur
 gufumönnum
@@ -277074,7 +276584,6 @@ gullbaugur
 gullbauk
 gullbauka
 gullbaukar
-gullbauki
 gullbauks
 gullbaukum
 gullbaukur
@@ -278031,8 +277540,6 @@ gullkeri
 gullkerið
 gullkerin
 gullkerinu
-gullkerja
-gullkerjum
 gullkers
 gullkerum
 gullkeyra
@@ -278593,7 +278100,6 @@ gullpúðri
 gullpúðrum
 gullranda
 gullrandar
-gullrandir
 gullrauð
 gullrauða
 gullrauðan
@@ -278788,7 +278294,6 @@ gullskálda
 gullskáldi
 gullskálds
 gullskálin
-gullskálir
 gullskálum
 gullskegg
 gullskeggi
@@ -279310,7 +278815,6 @@ gullölturu
 gullörn
 gullörninn
 gullörnum
-gullöxar
 gullöxi
 gullöxin
 gullöxina
@@ -280138,7 +279642,6 @@ gutlróðrar
 gutlróðri
 gutlróðrum
 gutlróður
-gutlróðurs
 gutls
 gutlsins
 gutluðu
@@ -280349,7 +279852,6 @@ gúlfullt
 gúlfullu
 gúlfullum
 gúlfullur
-gúlfyllar
 gúlfylli
 gúlfyllin
 gúlfyllina
@@ -281419,8 +280921,6 @@ gýg
 gýgi
 gýgina
 gýginni
-gýgir
-gýgirnar
 gýgja
 gýgjanna
 gýgjar
@@ -281728,7 +281228,6 @@ gæðameðala
 gæðameðali
 gæðameðals
 gæðameðul
-gæðameðöl
 gæðameira
 gæðameiri
 gæðamenn
@@ -283597,8 +283096,6 @@ göglunum
 gögn
 gögnin
 gögnuðu
-gögnuðuð
-gögnuðum
 gögnuðumst
 gögnuðust
 gögnug
@@ -284136,7 +283633,6 @@ göngustafi
 göngustafs
 göngustíg
 göngustíga
-göngustígi
 göngustígs
 göngustærð
 göngusveit
@@ -285021,8 +284517,6 @@ götustétta
 götustíg
 götustíga
 götustígar
-götustígi
-götustígir
 götustígs
 götustígum
 götustígur
@@ -285366,7 +284860,6 @@ hafblikuna
 hafblikur
 hafblæ
 hafblæinn
-hafblæjar
 hafblænum
 hafblær
 hafblærinn
@@ -285877,7 +285370,6 @@ hafísmolar
 hafísmoli
 hafísmolum
 hafísmóð
-hafísmóði
 hafísmóðs
 hafísmóður
 hafísmörk
@@ -286589,7 +286081,6 @@ hafróðrar
 hafróðri
 hafróðrum
 hafróður
-hafróðurs
 hafrót
 hafróti
 hafrótið
@@ -287800,7 +287291,6 @@ haglausust
 haglbyl
 haglbylinn
 haglbylja
-haglbyljar
 haglbylji
 haglbyljir
 haglbyljum
@@ -288022,7 +287512,6 @@ hagnaðinn
 hagnaðinum
 hagnaðist
 hagnaðistu
-hagnaðnum
 hagnaður
 hagnast
 hagnastu
@@ -290043,7 +289532,6 @@ hampnóta
 hampnótar
 hampnótin
 hampnótina
-hampnótir
 hampnótum
 hampnætur
 hampolía
@@ -290543,8 +290031,6 @@ hamraþróar
 hamraþróin
 hamraþróm
 hamraþróna
-hamraþrór
-hamraþróum
 hamraþrær
 hamraþröng
 hamraþurs
@@ -291249,7 +290735,6 @@ handfóruð
 handfórum
 handfrjáls
 handfylla
-handfyllar
 handfylli
 handfyllin
 handfyllir
@@ -292608,7 +292093,6 @@ handæði
 handæðið
 handæðinu
 handæðis
-handöxar
 handöxi
 handöxin
 handöxina
@@ -293286,7 +292770,6 @@ harðeik
 harðeikar
 harðeikin
 harðeikina
-harðeikur
 harðfeiti
 harðfeitin
 harðfeng
@@ -294392,7 +293875,6 @@ harmblíður
 harmblítt
 harmblæ
 harmblæinn
-harmblæjar
 harmblænum
 harmblær
 harmblæs
@@ -295186,7 +294668,6 @@ hattböndum
 hattbörð
 hattbörðin
 hattbörðum
-hattfyllar
 hattfylli
 hattfyllin
 hattgarm
@@ -296653,7 +296134,6 @@ háabrimum
 háabyl
 háabylinn
 háabylja
-háabyljar
 háabylji
 háabyljina
 háabyljir
@@ -297435,7 +296915,6 @@ háðsgrein
 háðsgreina
 háðshreim
 háðshreima
-háðshreimi
 háðshreims
 háðsins
 háðsk
@@ -298154,7 +297633,6 @@ hágómar
 hágómarnir
 hágómi
 hágóminn
-hágóminum
 hágómmælt
 hágómmælta
 hágómmælti
@@ -298382,7 +297860,6 @@ háhlíðar
 háhlíðin
 háhlíðina
 háhlíðinni
-háhlíðir
 háhlíðum
 háhlíðunum
 háhljóð
@@ -298616,7 +298093,6 @@ hákambar
 hákambi
 hákambinn
 hákambinum
-hákambnum
 hákambs
 hákambsins
 hákambur
@@ -298844,13 +298320,11 @@ hálabelgja
 hálabelgs
 hálabelgur
 hálagler
-hálaglera
 hálagleri
 hálaglerið
 hálaglerin
 hálaglerja
 hálaglers
-hálaglerum
 hálan
 hálana
 hálanda
@@ -300491,7 +299965,6 @@ hálfmanna
 hálfmanni
 hálfmanns
 hálfmarka
-hálfmarkar
 hálfmálm
 hálfmálma
 hálfmálmar
@@ -302458,7 +301931,6 @@ hálshjó
 hálshjóst
 hálshjóstu
 hálshjuggu
-hálshjyggi
 hálshlið
 hálshliðar
 hálshliðin
@@ -302466,7 +301938,6 @@ hálshlíð
 hálshlíða
 hálshlíðar
 hálshlíðin
-hálshlíðir
 hálshlíðum
 hálshljóð
 hálshljóða
@@ -302486,10 +301957,6 @@ hálshnýtið
 hálshnýtin
 hálshnýtis
 hálshnýtum
-hálshoggið
-hálshoggin
-hálshoggna
-hálshoggnu
 hálshring
 hálshringa
 hálshringi
@@ -302502,8 +301969,6 @@ hálshyggir
 hálshyggju
 hálshögg
 hálshöggðu
-hálshöggið
-hálshöggin
 hálshöggna
 hálshöggni
 hálshöggnu
@@ -302592,7 +302057,6 @@ hálsliðina
 hálsliðinn
 hálsliðir
 hálsliðnum
-hálsliðs
 hálsliðum
 hálsliður
 hálslín
@@ -302757,9 +302221,7 @@ hálsseil
 hálsseila
 hálsseilar
 hálsseilin
-hálsseilir
 hálsseilum
-hálsseilur
 hálssilki
 hálssilkið
 hálssilkis
@@ -304285,9 +303747,6 @@ hármeðals
 hármeðul
 hármeðulin
 hármeðulum
-hármeðöl
-hármeðölin
-hármeðölum
 hármeira
 hármeiri
 hármest
@@ -304646,7 +304105,6 @@ hárserkina
 hárserkinn
 hárserkir
 hárserkja
-hárserkjar
 hárserkjum
 hárserknum
 hárserks
@@ -305901,7 +305359,6 @@ hátíðarlag
 hátíðarleg
 hátíðarlög
 hátíðarmat
-hátíðarnar
 hátíðarsal
 hátíðartón
 hátíðasal
@@ -305968,7 +305425,6 @@ hátoppanna
 hátoppar
 hátoppi
 hátoppinn
-hátoppinum
 hátoppnum
 hátopps
 hátoppsins
@@ -309829,7 +309285,6 @@ heimahesti
 heimahests
 heimahérað
 heimahéruð
-heimahéröð
 heimahjálp
 heimahjú
 heimahjúa
@@ -311241,7 +310696,6 @@ heimtinni
 heimtins
 heimtir
 heimtirðu
-heimtirnar
 heimtist
 heimtistu
 heimtna
@@ -311418,7 +310872,6 @@ heitað
 heitaði
 heitaðir
 heitaðirðu
-heitaðu
 heitakerfa
 heitakerfi
 heitan
@@ -311616,13 +311069,11 @@ heitmanni
 heitmanns
 heitmenn
 heitmey
-heitmeyin
 heitmeyja
 heitmeyjar
 heitmeyju
 heitmeyjum
 heitmeyna
-heitmeynni
 heitmótun
 heitmær
 heitmærin
@@ -311956,7 +311407,6 @@ helblóms
 helblómum
 helblæ
 helblæinn
-helblæjar
 helblænum
 helblær
 helblærinn
@@ -312450,7 +311900,6 @@ helgimáls
 helgimálum
 helgimenn
 helgimey
-helgimeyin
 helgimeyja
 helgimeyju
 helgimeyna
@@ -312990,7 +312439,6 @@ hellinum
 hellir
 hellirá
 helliráa
-helliráar
 helliráin
 hellirám
 hellirána
@@ -313006,7 +312454,6 @@ hellirigna
 hellirigni
 hellirignt
 hellirinn
-hellirær
 hellis
 hellisbúa
 hellisbúar
@@ -314792,7 +314239,6 @@ herdómarar
 herdómari
 herdómi
 herdóminn
-herdóminum
 herdómnum
 herdóms
 herdómsins
@@ -315041,7 +314487,6 @@ herfákanna
 herfákar
 herfáki
 herfákinn
-herfákinum
 herfáknum
 herfáks
 herfáksins
@@ -315972,7 +315417,6 @@ hernaðar
 hernaði
 hernaðinn
 hernaðinum
-hernaðnum
 hernaður
 hernam
 hernamst
@@ -316116,7 +315560,6 @@ herpinót
 herpinóta
 herpinótar
 herpinótin
-herpinótir
 herpinótum
 herpinætur
 herpir
@@ -316594,7 +316037,6 @@ hersluvatn
 hersluþró
 hersluþróa
 hersluþróm
-hersluþrór
 hersluþrær
 hersnekkja
 hersnekkju
@@ -318447,7 +317889,6 @@ hetjumenna
 hetjumenni
 hetjumerki
 hetjumóð
-hetjumóði
 hetjumóðs
 hetjumóður
 hetjumund
@@ -319531,7 +318972,6 @@ heykvísl
 heykvísla
 heykvíslar
 heykvíslin
-heykvíslir
 heykvíslum
 heyköggla
 heykögglar
@@ -320396,7 +319836,6 @@ heytætlu
 heytætlum
 heytætluna
 heytætlur
-heytættur
 heytök
 heytökin
 heytöku
@@ -321265,10 +320704,6 @@ hérvist
 hérvistar
 hérvistin
 hérvistina
-héröð
-héröðin
-héröðum
-héröðunum
 hést
 héstu
 hét
@@ -322694,13 +322129,11 @@ hirðmáls
 hirðmálum
 hirðmenn
 hirðmey
-hirðmeyin
 hirðmeyja
 hirðmeyjar
 hirðmeyju
 hirðmeyjum
 hirðmeyna
-hirðmeynni
 hirðmær
 hirðmærin
 hirðmönnum
@@ -322743,7 +322176,6 @@ hirðskáldi
 hirðskálds
 hirðskrá
 hirðskráa
-hirðskráar
 hirðskráin
 hirðskrám
 hirðskrána
@@ -323255,13 +322687,11 @@ hitagjöf
 hitagjöfin
 hitagjöfum
 hitagler
-hitaglera
 hitagleri
 hitaglerið
 hitaglerin
 hitaglerja
 hitaglers
-hitaglerum
 hitagljáa
 hitagljái
 hitaglóð
@@ -324168,8 +323598,6 @@ hitukeri
 hitukerið
 hitukerin
 hitukerinu
-hitukerja
-hitukerjum
 hitukers
 hitukerum
 hituketil
@@ -324639,7 +324067,6 @@ hjallkróar
 hjallkróin
 hjallkróm
 hjallkróna
-hjallkrór
 hjallkrær
 hjallloft
 hjalllofta
@@ -324649,7 +324076,6 @@ hjallmynd
 hjallmynda
 hjallrá
 hjallráa
-hjallráar
 hjallráin
 hjallrám
 hjallrána
@@ -324657,7 +324083,6 @@ hjallránna
 hjallránni
 hjallránum
 hjallrár
-hjallrær
 hjalls
 hjallsins
 hjallsloft
@@ -324807,7 +324232,6 @@ hjarðmanni
 hjarðmanns
 hjarðmenn
 hjarðmey
-hjarðmeyin
 hjarðmeyja
 hjarðmeyju
 hjarðmeyna
@@ -324970,7 +324394,6 @@ hjartaaspa
 hjartaás
 hjartaása
 hjartaásar
-hjartaási
 hjartaáss
 hjartaásum
 hjartaátta
@@ -326234,7 +325657,6 @@ hjólasmíði
 hjólastell
 hjólastíg
 hjólastíga
-hjólastígi
 hjólastígs
 hjólastól
 hjólastóla
@@ -327131,15 +326553,7 @@ hjúuðust
 hjúum
 hjúumst
 hjúunum
-hjyggi
-hjyggir
 hjyggirðu
-hjyggist
-hjyggju
-hjyggjuð
-hjyggjum
-hjyggjumst
-hjyggjust
 hjöðnuð
 hjöðnuðu
 hjöðnuðuð
@@ -328246,7 +327660,6 @@ hlátrarans
 hlátrarar
 hlátrari
 hlátrarinn
-hlátrarins
 hlátrarnir
 hlátri
 hlátrinum
@@ -328465,7 +327878,6 @@ hleranót
 hleranóta
 hleranótar
 hleranótin
-hleranótir
 hleranótum
 hlerans
 hleranum
@@ -329385,8 +328797,6 @@ hlíðbröttu
 hlíðin
 hlíðina
 hlíðinni
-hlíðir
-hlíðirnar
 hlíðum
 hlíðunum
 hlíðþang
@@ -330358,7 +329768,6 @@ hljómhvörf
 hljómi
 hljómið
 hljóminn
-hljóminum
 hljómir
 hljómirðu
 hljómist
@@ -331253,13 +330662,11 @@ hlutgjarnt
 hlutgjörn
 hlutgjörnu
 hlutgler
-hlutglera
 hlutgleri
 hlutglerið
 hlutglerin
 hlutglerja
 hlutglers
-hlutglerum
 hluthafa
 hluthafana
 hluthafann
@@ -331584,7 +330991,6 @@ hlutvöndu
 hlutvöndum
 hlú
 hlúa
-hlúað
 hlúanda
 hlúandann
 hlúandans
@@ -332383,7 +331789,6 @@ hnakkagróf
 hnakkakró
 hnakkakróa
 hnakkakróm
-hnakkakrór
 hnakkakrær
 hnakkakúla
 hnakkakúlu
@@ -332396,7 +331801,6 @@ hnakkalegu
 hnakkalið
 hnakkaliða
 hnakkaliði
-hnakkaliðs
 hnakkalim
 hnakkalima
 hnakkalimi
@@ -332970,7 +332374,6 @@ hnausgarð
 hnausgarða
 hnausgarði
 hnausgarðs
-hnausi
 hnausinn
 hnausnum
 hnauss
@@ -333748,7 +333151,6 @@ hnéliðina
 hnéliðinn
 hnéliðir
 hnéliðnum
-hnéliðs
 hnéliðsins
 hnéliðum
 hnéliðunum
@@ -333876,7 +333278,6 @@ hnéslánum
 hnéslár
 hnéslárnar
 hnésnjó
-hnésnjóar
 hnésnjóinn
 hnésnjónum
 hnésnjór
@@ -334416,7 +333817,6 @@ hnífhvassi
 hnífhvasst
 hnífhvöss
 hnífhvössu
-hnífi
 hnífinn
 hnífjafn
 hnífjafna
@@ -334756,7 +334156,6 @@ hnjáliðina
 hnjáliðinn
 hnjáliðir
 hnjáliðnum
-hnjáliðs
 hnjáliðum
 hnjáliður
 hnjám
@@ -335778,7 +335177,6 @@ hnúaliðina
 hnúaliðinn
 hnúaliðir
 hnúaliðnum
-hnúaliðs
 hnúaliðum
 hnúaliður
 hnúameira
@@ -337088,15 +336486,12 @@ hofmannleg
 hofmennska
 hofmennsku
 hofmey
-hofmeyin
 hofmeyja
 hofmeyjar
 hofmeyju
 hofmeyjum
 hofmeyna
-hofmeynni
 hofmóð
-hofmóði
 hofmóðinn
 hofmóðnum
 hofmóðs
@@ -337600,7 +336995,6 @@ holddróg
 holddróga
 holddrógar
 holddrógin
-holddrógir
 holddrógum
 holdfall
 holdfalli
@@ -337613,7 +337007,6 @@ holdfúanum
 holdfúasár
 holdfúi
 holdfúinn
-holdfyllar
 holdfylli
 holdfyllin
 holdfyllst
@@ -338145,7 +337538,6 @@ holgómanna
 holgómar
 holgómi
 holgóminn
-holgóminum
 holgómnum
 holgóms
 holgómsins
@@ -338162,7 +337554,6 @@ holgrafni
 holgrafnir
 holgraftar
 holgrefti
-holgreftri
 holgryfja
 holgryfjan
 holgryfju
@@ -338556,7 +337947,6 @@ holrómanna
 holrómar
 holrómi
 holróminn
-holróminum
 holrómnum
 holróms
 holrómsins
@@ -339694,7 +339084,6 @@ horliðina
 horliðinn
 horliðir
 horliðnum
-horliðs
 horliðsins
 horliðum
 horliðunum
@@ -341053,7 +340442,6 @@ hóbandsrá
 hóbandsráa
 hóbandsrám
 hóbandsrár
-hóbandsrær
 hóbita
 hóbitana
 hóbitann
@@ -341484,7 +340872,6 @@ hófliðina
 hófliðinn
 hófliðir
 hófliðnum
-hófliðs
 hófliðsins
 hófliðum
 hófliðunum
@@ -342351,7 +341738,6 @@ hólkúfanna
 hólkúfar
 hólkúfi
 hólkúfinn
-hólkúfinum
 hólkúfnum
 hólkúfs
 hólkúfsins
@@ -343026,7 +342412,6 @@ hópreiða
 hópreiðar
 hópreiðin
 hópreiðina
-hópreiðir
 hópreiðum
 hóps
 hópsaga
@@ -343240,7 +342625,6 @@ hórbörnum
 hórdóm
 hórdómi
 hórdóminn
-hórdóminum
 hórdómnum
 hórdóms
 hórdómsins
@@ -343430,7 +342814,6 @@ hórukróna
 hórukrónna
 hórukrónni
 hórukrónum
-hórukrór
 hórukrær
 hórukyn
 hórukyni
@@ -343575,7 +342958,6 @@ hóstalögin
 hóstalögum
 hóstameðal
 hóstameðul
-hóstameðöl
 hóstana
 hóstandi
 hóstann
@@ -345529,8 +344911,6 @@ hraungeiri
 hraungíg
 hraungíga
 hraungígar
-hraungígi
-hraungígir
 hraungígs
 hraungígum
 hraungígur
@@ -346175,7 +345555,6 @@ hrákakera
 hrákakeri
 hrákakerið
 hrákakerin
-hrákakerja
 hrákakers
 hrákakerum
 hrákakna
@@ -347466,7 +346845,6 @@ hretasömum
 hretbyl
 hretbylinn
 hretbylja
-hretbyljar
 hretbylji
 hretbyljir
 hretbyljum
@@ -348401,7 +347779,6 @@ hringkera
 hringkeri
 hringkerið
 hringkerin
-hringkerja
 hringkers
 hringkerum
 hringl
@@ -348546,7 +347923,6 @@ hringnót
 hringnóta
 hringnótar
 hringnótin
-hringnótir
 hringnótum
 hringnum
 hringnæla
@@ -349003,7 +348379,6 @@ hríðarmold
 hríðarmóða
 hríðarmóðu
 hríðarmökk
-hríðarnar
 hríðarnótt
 hríðarorg
 hríðarorga
@@ -350816,7 +350191,6 @@ hrossamann
 hrossamenn
 hrossamóð
 hrossamóða
-hrossamóði
 hrossamóðs
 hrossamóðu
 hrossanaga
@@ -351058,9 +350432,7 @@ hróðmög
 hróðmöginn
 hróðmögum
 hróðmögur
-hróðrar
 hróðrardís
-hróðrarins
 hróðrarmál
 hróðrarval
 hróðri
@@ -352135,7 +351507,6 @@ hrútaþukls
 hrútdilk
 hrútdilka
 hrútdilkar
-hrútdilki
 hrútdilks
 hrútdilkum
 hrútdilkur
@@ -353451,7 +352822,6 @@ hrævargana
 hrævargar
 hrævargi
 hrævarginn
-hrævargnum
 hrævargs
 hrævargur
 hrævarljós
@@ -354028,7 +353398,6 @@ hugarmiða
 hugarmiðin
 hugarmiðum
 hugarmóð
-hugarmóði
 hugarmóðs
 hugarmóður
 hugarmót
@@ -354258,7 +353627,6 @@ hugblíðu
 hugblíðuna
 hugblæ
 hugblæinn
-hugblæjar
 hugblænum
 hugblær
 hugblærinn
@@ -356430,7 +355798,6 @@ huldumáls
 huldumálum
 huldumenn
 huldumey
-huldumeyin
 huldumeyja
 huldumeyju
 huldumeyna
@@ -358268,8 +357635,6 @@ huslkeri
 huslkerið
 huslkerin
 huslkerinu
-huslkerja
-huslkerjum
 huslkers
 huslkerum
 husluð
@@ -359544,7 +358909,6 @@ húmlæðunni
 húmlæðunum
 húmlæður
 húmmus
-húmmusi
 húmmusinn
 húmmusnum
 húmmuss
@@ -359909,7 +359273,6 @@ húsaformi
 húsaformið
 húsaforms
 húsafriðun
-húsafyllar
 húsafylli
 húsafyllin
 húsaga
@@ -360000,7 +359363,6 @@ húsakolum
 húsakost
 húsakostar
 húsakosti
-húsakosts
 húsakostur
 húsakot
 húsakota
@@ -360176,7 +359538,6 @@ húsaskottu
 húsaskotum
 húsaskrá
 húsaskráa
-húsaskráar
 húsaskráin
 húsaskrám
 húsaskrána
@@ -361181,8 +360542,6 @@ húslkeri
 húslkerið
 húslkerin
 húslkerinu
-húslkerja
-húslkerjum
 húslkers
 húslkerum
 húsloft
@@ -361238,9 +360597,6 @@ húsmeðals
 húsmeðul
 húsmeðulin
 húsmeðulum
-húsmeðöl
-húsmeðölin
-húsmeðölum
 húsmeiðsla
 húsmeiðsli
 húsmenn
@@ -361547,7 +360903,6 @@ húströppur
 hústu
 hústuð
 hústum
-hústættur
 hústöflu
 hústöflum
 hústöfluna
@@ -363923,7 +363278,6 @@ hverskál
 hverskála
 hverskálar
 hverskálin
-hverskálir
 hverskálum
 hversu
 hvert
@@ -364722,7 +364076,6 @@ hvílubeðs
 hvílubeður
 hvílubekk
 hvílubekki
-hvílubekks
 hvíluból
 hvílubóla
 hvílubóli
@@ -364747,7 +364100,6 @@ hvílumst
 hvíluna
 hvílunaut
 hvílunauta
-hvílunauts
 hvíluneyti
 hvílunnar
 hvílunni
@@ -364923,7 +364275,6 @@ hvíta
 hvítaaur
 hvítaaura
 hvítaaurar
-hvítaauri
 hvítaaurs
 hvítaaurum
 hvítabirna
@@ -366250,7 +365601,6 @@ hvolpavits
 hvolpi
 hvolpinn
 hvolpinum
-hvolpnum
 hvolps
 hvolpsins
 hvolpsleg
@@ -368448,7 +367798,6 @@ hægðalyfja
 hægðalyfs
 hægðameðal
 hægðameðul
-hægðameðöl
 hægðanna
 hægðar
 hægðarauka
@@ -368949,7 +368298,6 @@ hækilliða
 hækilliðar
 hækilliði
 hækilliðir
-hækilliðs
 hækilliðum
 hækilliður
 hækillinn
@@ -369486,7 +368834,6 @@ hælliðina
 hælliðinn
 hælliðir
 hælliðnum
-hælliðs
 hælliðsins
 hælliðum
 hælliðunum
@@ -369722,11 +369069,7 @@ hængáls
 hængálsins
 hængálum
 hængálunum
-hængi
-hængina
 hænginn
-hængir
-hængirnir
 hængnum
 hængs
 hængsins
@@ -371286,7 +370629,6 @@ höfuðliða
 höfuðliðar
 höfuðliði
 höfuðliðir
-höfuðliðs
 höfuðliðum
 höfuðliður
 höfuðlit
@@ -372663,7 +372005,6 @@ hömunum
 hönd
 höndin
 höndina
-höndinni
 höndla
 höndlað
 höndlaða
@@ -373955,7 +373296,6 @@ iðnaðir
 iðnaðirðu
 iðnaðist
 iðnaðistu
-iðnaðnum
 iðnaðra
 iðnaðrar
 iðnaðri
@@ -374368,7 +373708,6 @@ iðrafróar
 iðrafróin
 iðrafróna
 iðrafrónni
-iðrafyllar
 iðrafylli
 iðrafyllin
 iðrageril
@@ -375334,7 +374673,6 @@ illkvendis
 illkvendum
 illkvist
 illkvista
-illkvistar
 illkvisti
 illkvistir
 illkvists
@@ -376018,7 +375356,6 @@ ilmbauk
 ilmbauka
 ilmbaukana
 ilmbaukar
-ilmbauki
 ilmbaukinn
 ilmbauknum
 ilmbauks
@@ -376076,7 +375413,6 @@ ilmblóms
 ilmblómum
 ilmblæ
 ilmblæinn
-ilmblæjar
 ilmblænum
 ilmblær
 ilmblærinn
@@ -376316,8 +375652,6 @@ ilmkeri
 ilmkerið
 ilmkerin
 ilmkerinu
-ilmkerja
-ilmkerjum
 ilmkers
 ilmkersins
 ilmkerta
@@ -378039,9 +377373,6 @@ innhéraðs
 innhéruð
 innhéruðin
 innhéruðum
-innhéröð
-innhéröðin
-innhéröðum
 innhjúp
 innhjúpa
 innhjúpana
@@ -378064,7 +377395,6 @@ innhlíða
 innhlíðar
 innhlíðin
 innhlíðina
-innhlíðir
 innhlíðum
 innhluta
 innhlutana
@@ -378615,7 +377945,6 @@ inniskór
 inniskós
 innislopp
 innisloppa
-innisloppi
 innislopps
 innisnjóað
 innisnjóuð
@@ -379188,7 +378517,6 @@ innrammir
 innrammist
 innranda
 innrandar
-innrandir
 innranet
 innraneti
 innranetið
@@ -380406,7 +379734,6 @@ istrískuna
 íburðarráa
 íburðarrám
 íburðarrár
-íburðarrær
 íburði
 íburðinn
 íburðinum
@@ -380487,7 +379814,6 @@ istrískuna
 íbúasamtök
 íbúaskrá
 íbúaskráa
-íbúaskráar
 íbúaskráin
 íbúaskrám
 íbúaskrána
@@ -380851,7 +380177,6 @@ istrískuna
 íðvargi
 íðvarginn
 íðvarginum
-íðvargnum
 íðvargs
 íðvargsins
 íðvargur
@@ -381237,8 +380562,6 @@ istrískuna
 ígulkerið
 ígulkerin
 ígulkerinu
-ígulkerja
-ígulkerjum
 ígulkers
 ígulkerum
 ígulkörfu
@@ -383580,8 +382903,6 @@ istrískuna
 ísglampi
 ísglampinn
 ísgler
-ísglera
-ísgleranna
 ísgleri
 ísglerið
 ísglerin
@@ -383590,8 +382911,6 @@ istrískuna
 ísglerjum
 ísglers
 ísglersins
-ísglerum
-ísglerunum
 ísgljá
 ísgljáin
 ísgljána
@@ -384133,7 +383452,6 @@ istrískuna
 ískambi
 ískambinn
 ískambinum
-ískambnum
 ískambs
 ískambsins
 ískambur
@@ -385406,7 +384724,6 @@ istrískuna
 ístoppar
 ístoppi
 ístoppinn
-ístoppinum
 ístoppnum
 ístopps
 ístoppsins
@@ -385515,7 +384832,6 @@ istrískuna
 ísturnsins
 ísturnum
 ísturnunum
-ístættur
 ístöð
 ístöðin
 ístöðulaus
@@ -385719,7 +385035,6 @@ istrískuna
 ísþorskar
 ísþorski
 ísþorskinn
-ísþorsknum
 ísþorsks
 ísþorskum
 ísþorskur
@@ -385790,7 +385105,6 @@ istrískuna
 ísörnin
 ísörnum
 ísörnunum
-ísöxar
 ísöxi
 ísöxin
 ísöxina
@@ -386871,11 +386185,9 @@ jafndýru
 jafndýrum
 jafndægra
 jafndægri
-jafndægrið
 jafndægrin
 jafndægrum
 jafndægur
-jafndægurs
 jafndæm
 jafndæma
 jafndæman
@@ -388220,8 +387532,6 @@ jakakeri
 jakakerið
 jakakerin
 jakakerinu
-jakakerja
-jakakerjum
 jakakers
 jakakerum
 jakaköst
@@ -388249,7 +387559,6 @@ jakanum
 jakar
 jakaranda
 jakarandar
-jakarandir
 jakarasta
 jakarastar
 jakarastir
@@ -390159,7 +389468,6 @@ jarðöldu
 jarðöldum
 jarðölduna
 jarðöldur
-jarðöxar
 jarðöxi
 jarðöxin
 jarðöxina
@@ -390607,7 +389915,6 @@ jákoppanna
 jákoppar
 jákoppi
 jákoppinn
-jákoppinum
 jákoppnum
 jákopps
 jákoppsins
@@ -391606,8 +390913,6 @@ járnkeri
 járnkerið
 járnkerin
 járnkerinu
-járnkerja
-járnkerjum
 járnkers
 járnkerum
 járnketil
@@ -391857,7 +391162,6 @@ járnmeðala
 járnmeðali
 járnmeðals
 járnmeðul
-járnmeðöl
 járnmegn
 járnmegni
 járnmegnið
@@ -392224,7 +391528,6 @@ járnskála
 járnskálar
 járnskáli
 járnskálin
-járnskálir
 járnskálum
 járnskáp
 járnskápa
@@ -392770,7 +392073,6 @@ járnöngul
 járnöngull
 járnönguls
 járnörmum
-járnöxar
 járnöxi
 járnöxin
 járnöxina
@@ -392779,7 +392081,6 @@ járnöxum
 járnöxunum
 jás
 jásins
-ját
 játa
 játað
 játaða
@@ -392867,17 +392168,6 @@ játorðs
 játorðsins
 játorðum
 játorðunum
-játt
-játti
-játtir
-játtirðu
-játtist
-játtistu
-játtu
-játtuð
-játtum
-játtumst
-játtust
 játuð
 játuðu
 játuðuð
@@ -393972,7 +393262,6 @@ jólaglöggi
 jólaglöggs
 jólagraut
 jólagrauta
-jólagrauti
 jólahald
 jólahaldi
 jólahaldið
@@ -394469,7 +393758,6 @@ jólaskál
 jólaskála
 jólaskálar
 jólaskálin
-jólaskálir
 jólaskálum
 jólaskeið
 jólaskeiða
@@ -394493,13 +393781,11 @@ jólaskós
 jólaskraut
 jólaskrá
 jólaskráa
-jólaskráar
 jólaskráin
 jólaskrám
 jólaskrána
 jólaskrár
 jólasnjó
-jólasnjóar
 jólasnjór
 jólasnjós
 jólasokk
@@ -394956,7 +394242,6 @@ jórdönsku
 jórdönskum
 jóreyk
 jóreykinn
-jóreykjar
 jóreyknum
 jóreyks
 jóreyksins
@@ -395987,24 +395272,8 @@ júön
 júönin
 júönum
 júönunum
-jyki
-jykir
 jykirðu
-jykist
-jykju
-jykjuð
-jykjum
-jykjumst
-jykjust
-jysi
-jysir
 jysirðu
-jysist
-jysu
-jysuð
-jysum
-jysumst
-jysust
 jæja
 jæjatíma
 jæjatímana
@@ -396028,7 +395297,6 @@ jöðrunum
 jöfn
 jöfnu
 jöfnuð
-jöfnuðar
 jöfnuði
 jöfnuðinn
 jöfnuðinum
@@ -396317,7 +395585,6 @@ jökulauðna
 jökulaur
 jökulaura
 jökulaurar
-jökulauri
 jökulaurs
 jökulaurum
 jökulaxla
@@ -396747,7 +396014,6 @@ jökulkera
 jökulkeri
 jökulkerið
 jökulkerin
-jökulkerja
 jökulkers
 jökulkerum
 jökulkima
@@ -397157,7 +396423,6 @@ jörð
 jörðin
 jörðina
 jörðinni
-jörðu
 jörðuð
 jörðuðu
 jörðuðuð
@@ -397171,7 +396436,6 @@ jörðunar
 jörðunin
 jörðunina
 jörðuninni
-jörðunni
 jörðunum
 jörfa
 jörfagleða
@@ -397366,7 +396630,6 @@ jötunmátt
 jötunmenna
 jötunmenni
 jötunmóð
-jötunmóði
 jötunmóðs
 jötunmóður
 jötunmætti
@@ -397679,7 +396942,6 @@ kafaslægja
 kafaslægju
 kafaslægna
 kafasnjó
-kafasnjóar
 kafasnjór
 kafasnjós
 kafast
@@ -398722,7 +397984,6 @@ kakkirðu
 kakkist
 kakkistu
 kakksnjó
-kakksnjóar
 kakksnjór
 kakksnjós
 kakkþykk
@@ -399756,7 +399017,6 @@ kalkveruna
 kalkverur
 kalkvist
 kalkvista
-kalkvistar
 kalkvisti
 kalkvistir
 kalkvists
@@ -400004,7 +399264,6 @@ kaloríunum
 kaloríur
 kalranda
 kalrandar
-kalrandir
 kalreip
 kalreipa
 kalreipi
@@ -400450,8 +399709,6 @@ kambkeri
 kambkerið
 kambkerin
 kambkerinu
-kambkerja
-kambkerjum
 kambkers
 kambkerum
 kamblaga
@@ -400470,7 +399727,6 @@ kambmyntan
 kambmyntu
 kambmyntum
 kambmyntur
-kambnum
 kamborm
 kamborma
 kambormana
@@ -401082,7 +400338,6 @@ kanils
 kanilsins
 kanilsnúð
 kanilsnúða
-kanilsnúði
 kanilsnúðs
 kanilstöng
 kanilsykri
@@ -402040,7 +401295,6 @@ kappróðrar
 kappróðri
 kappróðrum
 kappróður
-kappróðurs
 kapprædd
 kapprædda
 kappræddan
@@ -404295,7 +403549,6 @@ kastbrúnum
 kastbyl
 kastbylinn
 kastbylja
-kastbyljar
 kastbylji
 kastbyljir
 kastbyljum
@@ -404491,7 +403744,6 @@ kastnóta
 kastnótar
 kastnótin
 kastnótina
-kastnótir
 kastnótum
 kastnætur
 kastpils
@@ -404504,7 +403756,6 @@ kastplanka
 kastplanki
 kastrá
 kastráa
-kastráar
 kastráin
 kastrám
 kastrána
@@ -404513,8 +403764,6 @@ kastránni
 kastránum
 kastrár
 kastrárnar
-kastrær
-kastrærnar
 kasts
 kastsería
 kastserían
@@ -405061,7 +404310,6 @@ kaupabækur
 kaupaðila
 kaupaðilar
 kaupaðili
-kaupaðilja
 kaupaðilum
 kaupafé
 kaupaféð
@@ -405138,7 +404386,6 @@ kaupamenn
 kaupamörk
 kaupanaut
 kaupanauta
-kaupanauts
 kaupanda
 kaupandann
 kaupandans
@@ -405411,7 +404658,6 @@ kauphéraða
 kauphéraði
 kauphéraðs
 kauphéruð
-kauphéröð
 kauphlið
 kauphliða
 kauphliðar
@@ -405670,7 +404916,6 @@ kaupskipti
 kaupskipum
 kaupskrá
 kaupskráa
-kaupskráar
 kaupskráin
 kaupskrám
 kaupskrána
@@ -405744,7 +404989,6 @@ kauptöxtum
 kaupum
 kaupunaut
 kaupunauta
-kaupunauts
 kaupunum
 kaupuppbót
 kaupupphæð
@@ -406214,7 +405458,6 @@ kálfanót
 kálfanóta
 kálfanótar
 kálfanótin
-kálfanótir
 kálfanótum
 kálfans
 kálfanum
@@ -406405,7 +405648,6 @@ kálfsklafi
 kálfsklauf
 kálfskrá
 kálfskráa
-kálfskráar
 kálfskráin
 kálfskrám
 kálfskrána
@@ -406506,7 +405748,6 @@ kálgarður
 kálgraut
 kálgrauta
 kálgrautar
-kálgrauti
 kálgrautum
 kálgrautur
 kálgresi
@@ -406623,7 +405864,6 @@ kálmaðkana
 kálmaðkar
 kálmaðki
 kálmaðkinn
-kálmaðknum
 kálmaðks
 kálmaðkur
 kálmala
@@ -408971,8 +408211,6 @@ keppin
 keppina
 keppinaut
 keppinauta
-keppinauti
-keppinauts
 keppinn
 keppinna
 keppinnar
@@ -409304,10 +408542,6 @@ kerið
 kerin
 kerinn
 kerinu
-kerja
-kerjanna
-kerjum
-kerjunum
 kerkorn
 kerkorna
 kerkorni
@@ -409959,7 +409193,6 @@ ketverði
 ketverðið
 ketverðinu
 ketverðs
-ketöxar
 ketöxi
 ketöxin
 ketöxina
@@ -410149,7 +409382,6 @@ keytukera
 keytukeri
 keytukerið
 keytukerin
-keytukerja
 keytukers
 keytukerum
 keytulykt
@@ -412136,7 +411368,6 @@ kíkirðu
 kíkirinn
 kíkis
 kíkisgler
-kíkisglera
 kíkisgleri
 kíkisglers
 kíkisins
@@ -414521,7 +413752,6 @@ kjálkahögg
 kjálkalið
 kjálkaliða
 kjálkaliði
-kjálkaliðs
 kjálkameið
 kjálkamest
 kjálkana
@@ -415032,7 +414262,6 @@ kjúkuliða
 kjúkuliðar
 kjúkuliði
 kjúkuliðir
-kjúkuliðs
 kjúkuliðum
 kjúkuliður
 kjúkulöng
@@ -415918,7 +415147,6 @@ kjörsigurs
 kjörsins
 kjörskrá
 kjörskráa
-kjörskráar
 kjörskráin
 kjörskrám
 kjörskrána
@@ -416782,7 +416010,6 @@ kjötæxlin
 kjötæxlinu
 kjötæxlis
 kjötæxlum
-kjötöxar
 kjötöxi
 kjötöxin
 kjötöxina
@@ -417111,7 +416338,6 @@ klakamarks
 klakamóð
 klakamóða
 klakamóðan
-klakamóði
 klakamóðs
 klakamóðu
 klakamóður
@@ -417170,7 +416396,6 @@ klakaþilið
 klakaþilin
 klakaþilja
 klakaþils
-klakaöxar
 klakaöxi
 klakaöxin
 klakaöxina
@@ -417876,7 +417101,6 @@ klaufans
 klaufanum
 klaufar
 klaufarhóf
-klaufarnar
 klaufarnir
 klaufaskap
 klaufaslit
@@ -417969,7 +417193,6 @@ klaufvirkt
 klaufvirku
 klaufyrki
 klaufyrkja
-klauföxar
 klauföxi
 klauföxin
 klauföxina
@@ -418154,7 +417377,6 @@ kláfhestum
 kláfhestur
 kláfi
 kláfinn
-kláfinum
 kláfnum
 kláfs
 kláfsins
@@ -418669,7 +417891,6 @@ klefaholur
 klefana
 klefanaut
 klefanauta
-klefanauts
 klefann
 klefanna
 klefans
@@ -418942,7 +418163,6 @@ klepraðu
 klepraður
 klepragíg
 klepragíga
-klepragígi
 klepragígs
 kleprana
 kleprandi
@@ -419042,7 +418262,6 @@ klerklærði
 klerklærðs
 klerklærðu
 klerklært
-klerknum
 klerkræði
 klerkræðið
 klerkræðis
@@ -419233,7 +418452,6 @@ klettakóng
 klettakró
 klettakróa
 klettakróm
-klettakrór
 klettakrær
 klettakví
 klettakvía
@@ -419336,7 +418554,6 @@ klettaþrep
 klettaþró
 klettaþróa
 klettaþróm
-klettaþrór
 klettaþrær
 klettaþurs
 klettaþök
@@ -420729,7 +419946,6 @@ klofsaumum
 klofsaumur
 klofsins
 klofsnjó
-klofsnjóar
 klofsnjór
 klofsnjós
 klofstutt
@@ -421026,7 +420242,6 @@ klókambana
 klókambar
 klókambi
 klókambinn
-klókambnum
 klókambs
 klókambur
 klókan
@@ -422721,7 +421936,6 @@ klæðnað
 klæðnaðar
 klæðnaði
 klæðnaðinn
-klæðnaðnum
 klæðnaður
 klæðning
 klæðninga
@@ -424504,7 +423718,6 @@ kofatóttar
 kofatóttin
 kofatóttir
 kofatóttum
-kofatættur
 kofavegg
 kofaveggi
 kofaveggir
@@ -424973,7 +424186,6 @@ kokksinn
 kokksins
 kokksum
 kokksunum
-kokksöxar
 kokksöxi
 kokksöxin
 kokksöxina
@@ -425239,7 +424451,6 @@ kolaburður
 kolabyl
 kolabylinn
 kolabylja
-kolabyljar
 kolabylji
 kolabyljir
 kolabyljum
@@ -425414,7 +424625,6 @@ kolagösum
 kolahaug
 kolahauga
 kolahaugar
-kolahaugi
 kolahaugs
 kolahaugum
 kolahaugur
@@ -425434,7 +424644,6 @@ kolahéraða
 kolahéraði
 kolahéraðs
 kolahéruð
-kolahéröð
 kolahitun
 kolahrím
 kolahrími
@@ -425580,7 +424789,6 @@ kolanóta
 kolanótar
 kolanótin
 kolanótina
-kolanótir
 kolanótum
 kolans
 kolanum
@@ -427096,7 +426304,6 @@ kolþernu
 kolþernum
 kolþernuna
 kolþernur
-kolöxar
 kolöxi
 kolöxin
 kolöxina
@@ -427398,7 +426605,6 @@ konsert
 konserta
 konsertana
 konsertar
-konserti
 konsertinn
 konsertína
 konsertínu
@@ -427650,7 +426856,6 @@ konunglegi
 konunglegs
 konunglegt
 konunglegu
-konungnum
 konungs
 konungsást
 konungsbát
@@ -428032,7 +427237,6 @@ koppasýran
 koppasýru
 koppi
 koppinn
-koppinum
 koppnum
 kopps
 koppsins
@@ -428414,7 +427618,6 @@ korkvefja
 korkvefjar
 korkvefjum
 korkvefnum
-korkvefs
 korkvefur
 korkþynna
 korkþynnan
@@ -428716,7 +427919,6 @@ kornhéraða
 kornhéraði
 kornhéraðs
 kornhéruð
-kornhéröð
 kornhjálm
 kornhjálma
 kornhjálmi
@@ -429001,7 +428203,6 @@ kornskál
 kornskála
 kornskálar
 kornskálin
-kornskálir
 kornskálum
 kornskemma
 kornskemmu
@@ -429029,7 +428230,6 @@ kornsmæru
 kornsmærum
 kornsmærur
 kornsnjó
-kornsnjóar
 kornsnjór
 kornsnjós
 kornstakk
@@ -429870,7 +429070,6 @@ kostnað
 kostnaðar
 kostnaði
 kostnaðinn
-kostnaðnum
 kostnaður
 kosts
 kostsama
@@ -430464,7 +429663,6 @@ kófasömum
 kófbyl
 kófbylinn
 kófbylja
-kófbyljar
 kófbylji
 kófbyljina
 kófbyljir
@@ -430538,8 +429736,6 @@ kófmekktum
 kófmekktur
 kófmökk
 kófmökkinn
-kófmökknum
-kófmökks
 kófmökkum
 kófmökkur
 kófrenning
@@ -431501,7 +430697,6 @@ kópanóta
 kópanótar
 kópanótin
 kópanótina
-kópanótir
 kópanótum
 kópans
 kópanum
@@ -432527,7 +431722,6 @@ kraftamæli
 kraftana
 kraftanna
 kraftar
-kraftarins
 kraftarík
 kraftaríka
 kraftaríki
@@ -433481,7 +432675,6 @@ krapskrið
 krapskriði
 krapskriðs
 krapsnjó
-krapsnjóar
 krapsnjór
 krapsnjós
 krapstella
@@ -433657,7 +432850,6 @@ krákurnar
 krákuskel
 krákustíg
 krákustíga
-krákustígi
 krákustígs
 krákutré
 krákutréð
@@ -434923,7 +434115,6 @@ krítina
 krítinni
 krítir
 krítirðu
-krítirnar
 krítist
 krítistu
 krítpípa
@@ -435263,7 +434454,6 @@ kroppinnar
 kroppinni
 kroppins
 kroppinu
-kroppinum
 kroppir
 kroppirðu
 kroppist
@@ -436518,13 +435708,11 @@ króndúfum
 króndúfuna
 króndúfur
 króngler
-krónglera
 króngleri
 krónglerið
 krónglerin
 krónglerja
 krónglers
-krónglerum
 krónhirti
 krónhirtir
 krónhjarta
@@ -436684,8 +435872,6 @@ krónuöli
 krónuölið
 krónuölinu
 krónuöls
-krór
-krórnar
 krótonolía
 krótonolíu
 krótontré
@@ -438764,7 +437950,6 @@ kuggar
 kuggarnir
 kuggi
 kugginn
-kugginum
 kuggnum
 kuggs
 kuggsins
@@ -439985,7 +439170,6 @@ kurlýsuna
 kurlýsunni
 kurlýsunum
 kurlýsur
-kurlöxar
 kurlöxi
 kurlöxin
 kurlöxina
@@ -440075,7 +439259,6 @@ kusk
 kuskbyl
 kuskbylinn
 kuskbylja
-kuskbyljar
 kuskbylji
 kuskbyljir
 kuskbyljum
@@ -440933,7 +440116,6 @@ kúfhöttum
 kúfi
 kúfið
 kúfinn
-kúfinum
 kúfir
 kúfirðu
 kúfisk
@@ -441606,13 +440788,11 @@ kúlugerlar
 kúlugerli
 kúlugerlum
 kúlugler
-kúluglera
 kúlugleri
 kúluglerið
 kúluglerin
 kúluglerja
 kúluglers
-kúluglerum
 kúluhamar
 kúluhamars
 kúluhamra
@@ -442163,7 +441343,6 @@ kúpuvöxnu
 kúpuvöxnum
 kúr
 kúra
-kúrað
 kúran
 kúrana
 kúrandi
@@ -443028,7 +442207,6 @@ kvalakróar
 kvalakróin
 kvalakróm
 kvalakróna
-kvalakrór
 kvalakrær
 kvalakvöld
 kvalaköst
@@ -443958,8 +443136,6 @@ kveikþróar
 kveikþróin
 kveikþróm
 kveikþróna
-kveikþrór
-kveikþróum
 kveikþrær
 kvein
 kveina
@@ -445580,7 +444756,6 @@ kviðfullu
 kviðfullum
 kviðfullur
 kviðfylla
-kviðfyllar
 kviðfylli
 kviðfyllin
 kviðfyllir
@@ -445765,7 +444940,6 @@ kviðpokinn
 kviðpokum
 kviðranda
 kviðrandar
-kviðrandir
 kviðrák
 kviðráka
 kviðrákar
@@ -445870,9 +445044,7 @@ kviðslitni
 kviðslitnu
 kviðslits
 kviðsnjó
-kviðsnjóar
 kviðsnjór
-kviðsnjós
 kviðsótt
 kviðsóttar
 kviðsóttin
@@ -446327,8 +445499,6 @@ kvikuþróar
 kvikuþróin
 kvikuþróm
 kvikuþróna
-kvikuþrór
-kvikuþróum
 kvikuþrær
 kvilla
 kvillan
@@ -446540,13 +445710,11 @@ kvistamóar
 kvistamór
 kvistamós
 kvistamóum
-kvistana
 kvistandi
 kvistanna
 kvistaprik
 kvistar
 kvistarðu
-kvistarnir
 kvistast
 kvistastu
 kvistaörðu
@@ -446843,7 +446011,6 @@ kvíanóta
 kvíanótar
 kvíanótin
 kvíanótina
-kvíanótir
 kvíanótum
 kvíanætur
 kvíar
@@ -449206,7 +448373,6 @@ kynjamáls
 kynjamálum
 kynjameðal
 kynjameðul
-kynjameðöl
 kynjamenn
 kynjamun
 kynjamunar
@@ -451378,8 +450544,6 @@ kælikeri
 kælikerið
 kælikerin
 kælikerinu
-kælikerja
-kælikerjum
 kælikers
 kælikerum
 kælikista
@@ -451580,8 +450744,6 @@ kæliþróna
 kæliþrónna
 kæliþrónni
 kæliþrónum
-kæliþrór
-kæliþróum
 kæliþrær
 kælna
 kælnar
@@ -452042,8 +451204,6 @@ kærustunum
 kærustupar
 kærustupör
 kærustur
-kæröstum
-kæröstunum
 kæs
 kæsa
 kæsandi
@@ -454033,7 +453193,6 @@ lagarkera
 lagarkeri
 lagarkerið
 lagarkerin
-lagarkerja
 lagarkers
 lagarkerum
 lagarleið
@@ -454069,8 +453228,6 @@ lagarþróar
 lagarþróin
 lagarþróm
 lagarþróna
-lagarþrór
-lagarþróum
 lagarþrær
 lagarök
 lagarökin
@@ -454974,7 +454131,6 @@ lagnótar
 lagnótin
 lagnótina
 lagnótinni
-lagnótir
 lagnótum
 lagnótunum
 lagnstanga
@@ -455055,13 +454211,11 @@ lagsmanni
 lagsmanns
 lagsmenn
 lagsmey
-lagsmeyin
 lagsmeyja
 lagsmeyjar
 lagsmeyju
 lagsmeyjum
 lagsmeyna
-lagsmeynni
 lagsmíði
 lagsmíðin
 lagsmíðina
@@ -455758,7 +454912,6 @@ lambakróar
 lambakróin
 lambakróm
 lambakróna
-lambakrór
 lambakrær
 lambakörfu
 lambalát
@@ -457092,7 +456245,6 @@ landnóta
 landnótar
 landnótin
 landnótina
-landnótir
 landnótum
 landnúmer
 landnúmera
@@ -457192,7 +456344,6 @@ landróðrar
 landróðri
 landróðrum
 landróður
-landróðurs
 landrúm
 landrúma
 landrúman
@@ -458965,7 +458116,6 @@ langraðar
 langraðir
 langranda
 langrandar
-langrandir
 langrar
 langrák
 langráka
@@ -459057,7 +458207,6 @@ langróðrar
 langróðri
 langróðrum
 langróður
-langróðurs
 langróið
 langrónara
 langrúm
@@ -460770,7 +459919,6 @@ laufaás
 laufaása
 laufaásana
 laufaásar
-laufaási
 laufaásinn
 laufaásnum
 laufaáss
@@ -460867,7 +460015,6 @@ laufása
 laufásana
 laufásanna
 laufásar
-laufási
 laufásinn
 laufásnum
 laufáss
@@ -460907,7 +460054,6 @@ laufblaðið
 laufblaðs
 laufblæ
 laufblæinn
-laufblæjar
 laufblænum
 laufblær
 laufblæs
@@ -461098,7 +460244,6 @@ laufhlíð
 laufhlíða
 laufhlíðar
 laufhlíðin
-laufhlíðir
 laufhlíðum
 laufhrúga
 laufhrúgan
@@ -461244,7 +460389,6 @@ laufóttur
 laufóttust
 laufranda
 laufrandar
-laufrandir
 laufrendur
 laufrifað
 laufrifaða
@@ -461593,7 +460737,6 @@ laugarvörð
 laugarþró
 laugarþróa
 laugarþróm
-laugarþrór
 laugarþrær
 laugasef
 laugasefi
@@ -462464,7 +461607,6 @@ launsátt
 launsátta
 launsáttar
 launsáttin
-launsáttir
 launsáttum
 launsátum
 launsátur
@@ -462493,7 +461635,6 @@ launstafir
 launstafum
 launstig
 launstiga
-launstigar
 launstigi
 launstigir
 launstigs
@@ -463638,7 +462779,6 @@ laxanóta
 laxanótar
 laxanótin
 laxanótina
-laxanótir
 laxanótum
 laxanætur
 laxar
@@ -463796,7 +462936,6 @@ laxerist
 laxeristu
 laxermeðal
 laxermeðul
-laxermeðöl
 laxerolía
 laxerolían
 laxerolíu
@@ -464087,7 +463226,6 @@ lága
 lágabyl
 lágabylinn
 lágabylja
-lágabyljar
 lágabylji
 lágabyljir
 lágabyljum
@@ -464412,7 +463550,6 @@ lághlíða
 lághlíðar
 lághlíðin
 lághlíðina
-lághlíðir
 lághlíðum
 lághund
 lághunda
@@ -465780,7 +464917,6 @@ lánsömu
 lánsömum
 lánsömust
 lánsömustu
-lánsöxar
 lánsöxi
 lánsöxin
 lánsöxina
@@ -465969,7 +465105,6 @@ lásanóta
 lásanótar
 lásanótin
 lásanótina
-lásanótir
 lásanótum
 lásanætur
 lásaplata
@@ -466500,7 +465635,6 @@ leðjuhafið
 leðjuhafs
 leðjuhaug
 leðjuhauga
-leðjuhaugi
 leðjuhaugs
 leðjukennd
 leðjukennt
@@ -467366,7 +466500,6 @@ legubekk
 legubekki
 legubekkir
 legubekkja
-legubekks
 legubekkur
 legubil
 legubila
@@ -467508,7 +466641,6 @@ leguna
 legunaut
 legunauta
 legunautar
-legunauts
 legunautum
 legunautur
 leguneyta
@@ -468441,7 +467573,6 @@ leigumunur
 leiguna
 leigunaut
 leigunauta
-leigunauts
 leigunám
 leigunámi
 leigunámið
@@ -469382,7 +468513,6 @@ leikskóli
 leikskólum
 leikskrá
 leikskráa
-leikskráar
 leikskráin
 leikskrám
 leikskrána
@@ -469915,7 +469045,6 @@ leirgólfs
 leirgólfum
 leirgraut
 leirgrauta
-leirgrauti
 leirgrá
 leirgráa
 leirgráan
@@ -470066,8 +469195,6 @@ leirkeri
 leirkerið
 leirkerin
 leirkerinu
-leirkerja
-leirkerjum
 leirkers
 leirkerum
 leirkesja
@@ -470449,7 +469576,6 @@ leirskálda
 leirskáldi
 leirskálds
 leirskálin
-leirskálir
 leirskálum
 leirskán
 leirskána
@@ -471075,8 +470201,6 @@ lekaþróna
 lekaþrónna
 lekaþrónni
 lekaþrónum
-lekaþrór
-lekaþróum
 lekaþrær
 lekaæð
 lekaæða
@@ -473286,7 +472410,6 @@ letigörðum
 letihaug
 letihauga
 letihaugar
-letihaugi
 letihaugs
 letihaugum
 letihaugur
@@ -473965,7 +473088,6 @@ leynimáls
 leynimálum
 leynimeðal
 leynimeðul
-leynimeðöl
 leynimið
 leynimiða
 leynimiðin
@@ -476269,7 +475391,6 @@ liðskála
 liðskálar
 liðskálin
 liðskálina
-liðskálir
 liðskálum
 liðskipt
 liðskipta
@@ -478940,7 +478061,6 @@ listreið
 listreiða
 listreiðar
 listreiðin
-listreiðir
 listreiðum
 listrýma
 listrými
@@ -479643,7 +478763,6 @@ litblýanti
 litblýants
 litblæ
 litblæinn
-litblæjar
 litblænum
 litblær
 litblærinn
@@ -479843,7 +478962,6 @@ litgildinu
 litgildis
 litgildum
 litgler
-litglera
 litgleri
 litglerið
 litglerin
@@ -479851,7 +478969,6 @@ litglerinu
 litglerja
 litglerjum
 litglers
-litglerum
 litglæst
 litglæsta
 litglæstan
@@ -480889,7 +480006,6 @@ lífdaggir
 lífdísil
 lífdísill
 lífdísils
-lífdísli
 lífdýr
 lífdýra
 lífdýranna
@@ -481635,7 +480751,6 @@ lífróðrar
 lífróðri
 lífróðrum
 lífróður
-lífróðurs
 lífrytma
 lífrytmann
 lífrytmans
@@ -482244,7 +481359,6 @@ lífsmeðala
 lífsmeðali
 lífsmeðals
 lífsmeðul
-lífsmeðöl
 lífsmegn
 lífsmegni
 lífsmegnið
@@ -482267,7 +481381,6 @@ lífsmottóa
 lífsmottói
 lífsmottós
 lífsmóð
-lífsmóði
 lífsmóðinn
 lífsmóðnum
 lífsmóðs
@@ -482387,7 +481500,6 @@ lífsróðrar
 lífsróðri
 lífsróðrum
 lífsróður
-lífsróðurs
 lífsróin
 lífsróna
 lífsrónni
@@ -482509,7 +481621,6 @@ lífssöguna
 lífstakt
 lífstakta
 lífstaktar
-lífstakti
 lífstakts
 lífstaktur
 lífstaug
@@ -485044,7 +484155,6 @@ línuróðrar
 línuróðri
 línuróðrum
 línuróður
-línuróðurs
 línurúlla
 línurúllan
 línurúllna
@@ -486074,7 +485184,6 @@ ljóðhljóðs
 ljóðhneigð
 ljóðhreim
 ljóðhreima
-ljóðhreimi
 ljóðhreims
 ljóðhugsun
 ljóðhög
@@ -486573,7 +485682,6 @@ ljórabúi
 ljórabúinn
 ljórabúum
 ljóragler
-ljóraglera
 ljóragleri
 ljóraglers
 ljórahlera
@@ -487410,13 +486518,11 @@ ljósglampa
 ljósglampi
 ljósglatt
 ljósgler
-ljósglera
 ljósgleri
 ljósglerið
 ljósglerin
 ljósglerja
 ljósglers
-ljósglerum
 ljósglit
 ljósgliti
 ljósglitið
@@ -487737,8 +486843,6 @@ ljóskeri
 ljóskerið
 ljóskerin
 ljóskerinu
-ljóskerja
-ljóskerjum
 ljóskers
 ljóskerum
 ljósklædd
@@ -488071,7 +487175,6 @@ ljósraddar
 ljósraddir
 ljósranda
 ljósrandar
-ljósrandir
 ljósrar
 ljósrauð
 ljósrauða
@@ -489450,7 +488553,6 @@ loðkúnni
 loðkúnum
 loðkvist
 loðkvista
-loðkvistar
 loðkvisti
 loðkvistir
 loðkvists
@@ -489633,7 +488735,6 @@ loðnunót
 loðnunóta
 loðnunótar
 loðnunótin
-loðnunótir
 loðnunótum
 loðnunum
 loðnunætur
@@ -489665,8 +488766,6 @@ loðnuþróar
 loðnuþróin
 loðnuþróm
 loðnuþróna
-loðnuþrór
-loðnuþróum
 loðnuþrær
 loðpappír
 loðpappírs
@@ -490387,7 +489486,6 @@ loftblenda
 loftblendi
 loftblæ
 loftblæinn
-loftblæjar
 loftblænum
 loftblær
 loftblæs
@@ -491153,7 +490251,6 @@ loftmælir
 loftmælis
 loftmælum
 loftmökk
-loftmökks
 loftmökkum
 loftmökkur
 loftnet
@@ -492305,7 +491402,6 @@ lognblíður
 lognblítt
 lognblæ
 lognblæinn
-lognblæjar
 lognblænum
 lognblær
 lognblæs
@@ -492541,7 +491637,6 @@ lognróðrar
 lognróðri
 lognróðrum
 lognróður
-lognróðurs
 logns
 lognsama
 lognsaman
@@ -492564,7 +491659,6 @@ lognslétti
 lognslétts
 lognsléttu
 lognsnjó
-lognsnjóar
 lognsnjór
 lognsnjós
 lognsnæ
@@ -494503,7 +493597,6 @@ lostakróar
 lostakróin
 lostakróm
 lostakróna
-lostakrór
 lostakrær
 lostaleg
 lostalega
@@ -495559,7 +494652,6 @@ lóðaskorti
 lóðaskorts
 lóðaskrá
 lóðaskráa
-lóðaskráar
 lóðaskráin
 lóðaskrám
 lóðaskrána
@@ -495998,7 +495090,6 @@ lófafarið
 lófafarinu
 lófafars
 lófafylla
-lófafyllar
 lófafylli
 lófafyllin
 lófafyllir
@@ -500375,7 +499466,6 @@ lúxushúsin
 lúxushúss
 lúxushúsum
 lúxusinn
-lúxusinum
 lúxusíbúð
 lúxusíbúða
 lúxusjeppa
@@ -502333,7 +501423,6 @@ lynghlíð
 lynghlíða
 lynghlíðar
 lynghlíðin
-lynghlíðir
 lynghlíðum
 lyngholt
 lyngholta
@@ -503337,8 +502426,6 @@ lýsikeri
 lýsikerið
 lýsikerin
 lýsikerinu
-lýsikerja
-lýsikerjum
 lýsikers
 lýsikerum
 lýsikola
@@ -503484,7 +502571,6 @@ lýsiskera
 lýsiskeri
 lýsiskerið
 lýsiskerin
-lýsiskerja
 lýsiskers
 lýsiskerum
 lýsiskola
@@ -503495,7 +502581,6 @@ lýsiskolum
 lýsiskolur
 lýsiskrá
 lýsiskráa
-lýsiskráar
 lýsiskráin
 lýsiskrám
 lýsiskrána
@@ -503670,7 +502755,6 @@ lýsugra
 lýsugrar
 lýsugraut
 lýsugrauta
-lýsugrauti
 lýsugri
 lýsugrund
 lýsugrunda
@@ -504885,7 +503969,6 @@ lærdómanna
 lærdómar
 lærdómi
 lærdóminn
-lærdóminum
 lærdómnum
 lærdóms
 lærdómsbók
@@ -505020,7 +504103,6 @@ lærliðina
 lærliðinn
 lærliðir
 lærliðnum
-lærliðs
 lærliðsins
 lærliðum
 lærliðunum
@@ -505514,9 +504596,6 @@ lögaðilans
 lögaðilar
 lögaðili
 lögaðilinn
-lögaðilja
-lögaðiljar
-lögaðiljum
 lögaðilum
 lögaldra
 lögaldrana
@@ -506061,8 +505140,6 @@ löggiltust
 löggin
 löggina
 lögginni
-löggir
-löggirnar
 löggjafa
 löggjafana
 löggjafann
@@ -506139,10 +505216,6 @@ löggustöð
 lögguþátt
 lögguþátta
 lögguþætti
-löggva
-löggvanna
-löggvar
-löggvarnar
 löggæsla
 löggæslan
 löggæslu
@@ -506962,7 +506035,6 @@ lögunarleg
 lögunaut
 lögunauta
 lögunautar
-lögunauts
 lögunautum
 lögunautur
 löguneyta
@@ -507693,7 +506765,6 @@ maðkir
 maðkirðu
 maðkist
 maðkistu
-maðknum
 maðks
 maðksins
 maðksjó
@@ -507833,7 +506904,6 @@ magafastra
 magafastri
 magafasts
 magafastur
-magafyllar
 magafylli
 magafyllin
 magaföst
@@ -508359,7 +507429,6 @@ magnsalna
 magnsins
 magnskrá
 magnskráa
-magnskráar
 magnskráin
 magnskrám
 magnskrána
@@ -508634,7 +507703,6 @@ maísflögum
 maísflögur
 maísgraut
 maísgrauta
-maísgrauti
 maísgrjón
 maísgrjóna
 maísgrjóni
@@ -509237,7 +508305,6 @@ malargötur
 malarharpa
 malarhaug
 malarhauga
-malarhaugi
 malarhaugs
 malarhjall
 malarhlass
@@ -509368,7 +508435,6 @@ malarstein
 malarstétt
 malarstíg
 malarstíga
-malarstígi
 malarstígs
 malartaka
 malartakan
@@ -511661,7 +510727,6 @@ mannskaðar
 mannskaði
 mannskamma
 mannskap
-mannskapar
 mannskaps
 mannskapur
 mannskarn
@@ -515241,7 +514306,6 @@ margyrtust
 margýgi
 margýgina
 margýginni
-margýgir
 margýgja
 margýgjar
 margýgjum
@@ -515537,7 +514601,6 @@ maríuetlu
 maríuetlum
 maríuetlur
 maríugler
-maríuglera
 maríugleri
 maríuglers
 maríugrasa
@@ -516556,7 +515619,6 @@ marsralls
 marstakt
 marstakta
 marstaktar
-marstakti
 marstakts
 marstaktur
 marstara
@@ -517362,7 +516424,6 @@ matarkróki
 matarkróks
 matarkróm
 matarkróna
-matarkrór
 matarkrær
 matarkúr
 matarkúra
@@ -518097,7 +517158,6 @@ matkvísl
 matkvísla
 matkvíslar
 matkvíslin
-matkvíslir
 matkvíslum
 matlanga
 matlangan
@@ -518488,7 +517548,6 @@ matsiðar
 matsiði
 matsiðina
 matsiðinn
-matsiðinum
 matsiðir
 matsiðnum
 matsiðum
@@ -519617,7 +518676,6 @@ málaskóli
 málaskólum
 málaskrá
 málaskráa
-málaskráar
 málaskráin
 málaskrám
 málaskrána
@@ -519756,7 +518814,6 @@ málblóms
 málblómum
 málblæ
 málblæinn
-málblæjar
 málblænum
 málblær
 málblærinn
@@ -520390,7 +519447,6 @@ málhreifur
 málhreim
 málhreima
 málhreimar
-málhreimi
 málhreims
 málhreimum
 málhreimur
@@ -521370,7 +520426,6 @@ málrómanna
 málrómar
 málrómi
 málróminn
-málróminum
 málrómnum
 málróms
 málrómsins
@@ -521429,7 +520484,6 @@ málsaðilar
 málsaðild
 málsaðilda
 málsaðili
-málsaðilja
 málsaðilum
 málsaga
 málsagan
@@ -523908,10 +522962,6 @@ meðþénara
 meðþénarar
 meðþénari
 meðþénurum
-meðöl
-meðölin
-meðölum
-meðölunum
 mega
 megabita
 megabitana
@@ -524074,8 +523124,6 @@ megingildi
 megingíg
 megingíga
 megingígar
-megingígi
-megingígir
 megingígs
 megingígum
 megingígur
@@ -524097,7 +523145,6 @@ meginherja
 meginhers
 meginhérað
 meginhéruð
-meginhéröð
 meginhlið
 meginhliða
 meginhluta
@@ -526055,10 +525102,7 @@ melgíga
 melgígana
 melgíganna
 melgígar
-melgígi
-melgígina
 melgíginn
-melgígir
 melgígnum
 melgígs
 melgígsins
@@ -526253,7 +525297,6 @@ melkambana
 melkambar
 melkambi
 melkambinn
-melkambnum
 melkambs
 melkambur
 melkast
@@ -526342,7 +525385,6 @@ mellnanna
 mellu
 melludólg
 melludólga
-melludólgi
 melludólgs
 mellufar
 mellufari
@@ -526507,7 +525549,6 @@ melrananum
 melranar
 melranda
 melrandar
-melrandir
 melrani
 melraninn
 melreiðing
@@ -527170,7 +526211,6 @@ menúett
 menúetta
 menúettana
 menúettar
-menúetti
 menúettinn
 menúetts
 menúettum
@@ -527988,7 +527028,6 @@ messi
 messið
 messing
 messingar
-messingi
 messingið
 messingin
 messingina
@@ -528306,7 +527345,6 @@ metasagan
 metasagna
 metaskála
 metaskálar
-metaskálir
 metaskálum
 metast
 metasögu
@@ -528458,7 +527496,6 @@ metnaðinum
 metnaðirðu
 metnaðist
 metnaðistu
-metnaðnum
 metnaður
 metnar
 metnara
@@ -528746,7 +527783,6 @@ meybörnum
 meydóm
 meydómi
 meydóminn
-meydóminum
 meydómnum
 meydóms
 meydómsins
@@ -528767,7 +527803,6 @@ meyfæðingu
 meygetnað
 meygetnaða
 meygetnaði
-meyin
 meyja
 meyjablóma
 meyjablómi
@@ -528891,7 +527926,6 @@ meylunum
 meylur
 meylurnar
 meyna
-meynni
 meynunna
 meynunnan
 meynunnu
@@ -529628,9 +528662,6 @@ miðhéraðs
 miðhéruð
 miðhéruðin
 miðhéruðum
-miðhéröð
-miðhéröðin
-miðhéröðum
 miðhlið
 miðhliða
 miðhliði
@@ -529644,7 +528675,6 @@ miðhlíða
 miðhlíðar
 miðhlíðin
 miðhlíðina
-miðhlíðir
 miðhlíðis
 miðhlíðum
 miðhluta
@@ -531551,7 +530581,6 @@ millinót
 millinóta
 millinótar
 millinótin
-millinótir
 millinótum
 millinu
 millinætur
@@ -535200,7 +534229,6 @@ mjalls
 mjallsins
 mjallsnjó
 mjallsnjór
-mjallsnjós
 mjallur
 mjallurinn
 mjalta
@@ -536399,7 +535427,6 @@ mjölglyrna
 mjölglyrnu
 mjölgraut
 mjölgrauta
-mjölgrauti
 mjölhnefa
 mjölhnefar
 mjölhnefi
@@ -536955,7 +535982,6 @@ moðvargana
 moðvargar
 moðvargi
 moðvarginn
-moðvargnum
 moðvargs
 moðvargur
 moðvolg
@@ -537366,7 +536392,6 @@ moldarkorn
 moldarkró
 moldarkróa
 moldarkróm
-moldarkrór
 moldarkrær
 moldarkuml
 moldarkæfa
@@ -537421,7 +536446,6 @@ moldarþrep
 moldarþró
 moldarþróa
 moldarþróm
-moldarþrór
 moldarþrær
 moldaska
 moldaskan
@@ -537469,7 +536493,6 @@ moldbrúnum
 moldbyl
 moldbylinn
 moldbylja
-moldbyljar
 moldbylji
 moldbyljir
 moldbyljum
@@ -537535,11 +536558,6 @@ moldjóst
 moldjusu
 moldjusuð
 moldjusum
-moldjysi
-moldjysir
-moldjysu
-moldjysuð
-moldjysum
 moldjörð
 moldjörðin
 moldkafald
@@ -537874,7 +536892,6 @@ mollhljóm
 mollhljóma
 mollhljómi
 mollhljóms
-molli
 mollinn
 mollinum
 mollna
@@ -541280,8 +540297,6 @@ mógasinu
 mógass
 mógassins
 mógler
-móglera
-mógleranna
 mógleri
 móglerið
 móglerin
@@ -541290,8 +540305,6 @@ móglerja
 móglerjum
 móglers
 móglersins
-móglerum
-móglerunum
 mógofótt
 mógofótta
 mógofóttan
@@ -541653,13 +540666,11 @@ mókaðra
 mókaðrar
 mókaðri
 mókaðs
-mókaðu
 mókaður
 mókakka
 mókakkanna
 mókakkar
 mókandi
-mókar
 mókarðu
 mókasta
 mókastanna
@@ -541816,7 +540827,6 @@ móktuð
 móktum
 mókuð
 mókuðu
-mókuðuð
 mókuðum
 mókum
 móköggla
@@ -542614,9 +541624,6 @@ mótaðilans
 mótaðilar
 mótaðili
 mótaðilinn
-mótaðilja
-mótaðiljar
-mótaðiljum
 mótaðilum
 mótaðir
 mótaðirðu
@@ -542700,7 +541707,6 @@ mótasafnið
 mótasafns
 mótaskrá
 mótaskráa
-mótaskráar
 mótaskráin
 mótaskrám
 mótaskrána
@@ -543268,7 +542274,6 @@ mótróðrum
 mótróðs
 mótróðsins
 mótróður
-mótróðurs
 mótrunta
 mótruntan
 mótruntna
@@ -544394,7 +543399,6 @@ munklífinu
 munklífis
 munklökkva
 munklökkvi
-munknum
 munks
 munksel
 munksela
@@ -547216,7 +546220,6 @@ mykjufýlan
 mykjufýlu
 mykjuhaug
 mykjuhauga
-mykjuhaugi
 mykjuhaugs
 mykjuhlass
 mykjuhlöss
@@ -547267,8 +546270,6 @@ mykjuþróar
 mykjuþróin
 mykjuþróm
 mykjuþróna
-mykjuþrór
-mykjuþróum
 mykjuþrær
 myl
 mylda
@@ -547584,7 +546585,6 @@ myndagátum
 myndagátur
 myndagerð
 myndagler
-myndaglera
 myndagleri
 myndaglers
 myndagnótt
@@ -547994,13 +546994,11 @@ myndgildum
 myndgleði
 myndgleðin
 myndgler
-myndglera
 myndgleri
 myndglerið
 myndglerin
 myndglerja
 myndglers
-myndglerum
 myndgnótt
 myndgrein
 myndgreina
@@ -549348,7 +548346,6 @@ myrru
 myrruhól
 myrruhóla
 myrruhólar
-myrruhóli
 myrruhóll
 myrruhóls
 myrruhólum
@@ -549769,9 +548766,6 @@ mýmekkinum
 mýmekkir
 mýmökk
 mýmökkinn
-mýmökknum
-mýmökks
-mýmökksins
 mýmökkum
 mýmökkunum
 mýmökkur
@@ -550803,7 +549797,6 @@ mývargar
 mývargi
 mývarginn
 mývarginum
-mývargnum
 mývargs
 mývargsins
 mývargur
@@ -552448,9 +551441,6 @@ mök
 mökin
 mökk
 mökkinn
-mökknum
-mökks
-mökksins
 mökkuð
 mökkuðu
 mökkuðuð
@@ -553564,7 +552554,6 @@ mötunarvél
 mötunaut
 mötunauta
 mötunautar
-mötunauts
 mötunautum
 mötunautur
 mötuneyta
@@ -554550,10 +553539,7 @@ naglbít
 naglbíta
 naglbítana
 naglbítar
-naglbíti
-naglbítina
 naglbítinn
-naglbítir
 naglbítnum
 naglbíts
 naglbítum
@@ -554800,7 +553786,6 @@ naktasts
 naktastur
 nakti
 naktir
-naktrar
 naktri
 nam
 namibísk
@@ -557023,7 +556008,6 @@ náðarljósi
 náðarljóss
 náðarmeðal
 náðarmeðul
-náðarmeðöl
 náðarnægð
 náðarorð
 náðarorða
@@ -558209,7 +557193,6 @@ námahéraða
 námahéraði
 námahéraðs
 námahéruð
-námahéröð
 námaleyfa
 námaleyfi
 námaleyfið
@@ -558628,7 +557611,6 @@ námskrafan
 námskrafna
 námskrá
 námskráa
-námskráar
 námskráin
 námskrám
 námskrána
@@ -558740,13 +557722,11 @@ námsmáti
 námsmátinn
 námsmenn
 námsmey
-námsmeyin
 námsmeyja
 námsmeyjar
 námsmeyju
 námsmeyjum
 námsmeyna
-námsmeynni
 námsmót
 námsmóta
 námsmóti
@@ -559523,7 +558503,6 @@ náttblindu
 náttblint
 náttblæ
 náttblæinn
-náttblæjar
 náttblænum
 náttblær
 náttblæs
@@ -559857,7 +558836,6 @@ náttskyrta
 náttskyrtu
 náttslopp
 náttsloppa
-náttsloppi
 náttslopps
 náttsól
 náttsóla
@@ -560417,7 +559395,6 @@ nefeðlunni
 nefeðlunum
 nefeðlur
 neffylla
-neffyllar
 neffylli
 neffyllin
 neffyllina
@@ -562563,8 +561540,6 @@ netkeri
 netkerið
 netkerin
 netkerinu
-netkerja
-netkerjum
 netkers
 netkersins
 netkerum
@@ -567310,9 +566285,7 @@ nóttlausum
 nóttleysa
 nóttleysan
 nóttleysu
-nóttu
 nóttum
-nóttunni
 nóttunum
 nótu
 nótubók
@@ -569795,7 +568768,6 @@ nýiðnað
 nýiðnaðar
 nýiðnaði
 nýiðnaðinn
-nýiðnaðnum
 nýiðnaður
 nýiðnvædd
 nýiðnvædda
@@ -569820,7 +568792,6 @@ nýíslensku
 nýja
 nýjablæ
 nýjablæinn
-nýjablæjar
 nýjablænum
 nýjablær
 nýjablæs
@@ -570845,7 +569816,6 @@ nýrnalækna
 nýrnalækni
 nýrnameðal
 nýrnameðul
-nýrnameðöl
 nýrnamör
 nýrnamörs
 nýrnanna
@@ -571378,7 +570348,6 @@ nýsmurðum
 nýsmurður
 nýsmurt
 nýsnjó
-nýsnjóar
 nýsnjóinn
 nýsnjónum
 nýsnjór
@@ -572843,7 +571812,6 @@ nærfelldur
 nærfellt
 nærflík
 nærflíka
-nærflíkar
 nærflíkin
 nærflíkina
 nærflíkum
@@ -572890,7 +571858,6 @@ nærgengum
 nærgengur
 nærgengust
 nærgler
-nærglera
 nærgleri
 nærglerið
 nærglerin
@@ -572898,7 +571865,6 @@ nærglerinu
 nærglerja
 nærglerjum
 nærglers
-nærglerum
 nærgæt
 nærgæta
 nærgætan
@@ -574998,7 +573964,6 @@ ofanburður
 ofanbyl
 ofanbylinn
 ofanbylja
-ofanbyljar
 ofanbylji
 ofanbyljir
 ofanbyljum
@@ -576015,7 +574980,6 @@ offylgis
 offyll
 offylla
 offyllandi
-offyllar
 offyllast
 offylli
 offyllið
@@ -578103,7 +577067,6 @@ ofsabræðin
 ofsabyl
 ofsabylinn
 ofsabylja
-ofsabyljar
 ofsabylji
 ofsabyljir
 ofsabyljum
@@ -580655,8 +579618,6 @@ okakeri
 okakerið
 okakerin
 okakerinu
-okakerja
-okakerjum
 okakers
 okakersins
 okakerum
@@ -581389,7 +580350,6 @@ olíuhéraða
 olíuhéraði
 olíuhéraðs
 olíuhéruð
-olíuhéröð
 olíuhimna
 olíuhimnan
 olíuhimnu
@@ -581472,8 +580432,6 @@ olíukeri
 olíukerið
 olíukerin
 olíukerinu
-olíukerja
-olíukerjum
 olíukers
 olíukerum
 olíuketil
@@ -582691,7 +581649,6 @@ orðaglensi
 orðagnótt
 orðagraut
 orðagrauta
-orðagrauti
 orðagrein
 orðagreina
 orðagrín
@@ -582928,7 +581885,6 @@ orðaskraps
 orðaskraut
 orðaskrá
 orðaskráa
-orðaskráar
 orðaskráin
 orðaskrám
 orðaskrána
@@ -583589,7 +582545,6 @@ orðhnyttnu
 orðhreim
 orðhreima
 orðhreimar
-orðhreimi
 orðhreims
 orðhreimum
 orðhreimur
@@ -584036,7 +582991,6 @@ orðrómanna
 orðrómar
 orðrómi
 orðróminn
-orðróminum
 orðrómnum
 orðróms
 orðrómsins
@@ -586478,8 +585432,6 @@ ostakeri
 ostakerið
 ostakerin
 ostakerinu
-ostakerja
-ostakerjum
 ostakers
 ostakerum
 ostakex
@@ -589125,7 +588077,6 @@ oxýtósíns
 ódómarnir
 ódómi
 ódóminn
-ódóminum
 ódómnum
 ódóms
 ódómsins
@@ -589300,7 +588251,6 @@ oxýtósíns
 ódugnaðar
 ódugnaði
 ódugnaðinn
-ódugnaðnum
 ódugnaður
 ódul
 ódula
@@ -589723,7 +588673,6 @@ oxýtósíns
 óðarrætur
 óðarskrá
 óðarskráa
-óðarskráar
 óðarskráin
 óðarskrám
 óðarskrána
@@ -589943,7 +588892,6 @@ oxýtósíns
 óðinslinna
 óðinslinni
 óðinsvérit
-óðinum
 óðir
 óðjurt
 óðjurta
@@ -590148,10 +589096,6 @@ oxýtósíns
 óðviðris
 óðviðrum
 óðviðrunum
-óðöl
-óðölin
-óðölum
-óðölunum
 óeðla
 óeðli
 óeðlið
@@ -590484,7 +589428,6 @@ oxýtósíns
 ófagnaðar
 ófagnaði
 ófagnaðinn
-ófagnaðnum
 ófagnaður
 ófagra
 ófagran
@@ -590600,7 +589543,6 @@ oxýtósíns
 ófarnaðar
 ófarnaði
 ófarnaðinn
-ófarnaðnum
 ófarnaður
 ófarnar
 ófarni
@@ -592177,10 +591119,8 @@ oxýtósíns
 ófæruveður
 ófætt
 ófögnuð
-ófögnuðar
 ófögnuði
 ófögnuðinn
-ófögnuðnum
 ófögnuður
 ófögru
 ófögrum
@@ -592798,12 +591738,6 @@ oxýtósíns
 óglögga
 óglöggan
 óglöggar
-óglöggara
-óglöggari
-óglöggast
-óglöggasta
-óglöggasti
-óglöggasts
 óglöggi
 óglöggir
 óglöggra
@@ -592814,8 +591748,6 @@ oxýtósíns
 óglöggu
 óglöggum
 óglöggur
-óglöggust
-óglöggustu
 ógn
 ógna
 ógnadjúp
@@ -594889,7 +593821,6 @@ oxýtósíns
 óhrokknu
 óhrokknum
 óhrokknust
-óhróðrar
 óhróðri
 óhróðrinum
 óhróður
@@ -595004,7 +593935,6 @@ oxýtósíns
 óhugnaðar
 óhugnaði
 óhugnaðinn
-óhugnaðnum
 óhugnaður
 óhugnan
 óhugnanar
@@ -595418,7 +594348,6 @@ oxýtósíns
 ójafnaði
 ójafnaðinn
 ójafnaðir
-ójafnaðnum
 ójafnaðra
 ójafnaðrar
 ójafnaðri
@@ -595476,7 +594405,6 @@ oxýtósíns
 ójöfn
 ójöfnu
 ójöfnuð
-ójöfnuðar
 ójöfnuði
 ójöfnuðinn
 ójöfnuðu
@@ -600546,13 +599474,11 @@ oxýtósíns
 ópalar
 ópalarnir
 ópalgler
-ópalglera
 ópalgleri
 ópalglerið
 ópalglerin
 ópalglerja
 ópalglers
-ópalglerum
 ópali
 ópalið
 ópalinn
@@ -603055,7 +601981,6 @@ oxýtósíns
 ósáttina
 ósáttinni
 ósáttir
-ósáttirnar
 ósáttra
 ósáttrar
 ósáttri
@@ -603337,7 +602262,6 @@ oxýtósíns
 ósiði
 ósiðina
 ósiðinn
-ósiðinum
 ósiðir
 ósiðirnir
 ósiðleg
@@ -607004,7 +605928,6 @@ oxýtósíns
 ótrúnaðar
 ótrúnaði
 ótrúnaðinn
-ótrúnaðnum
 ótrúnaður
 ótrúnni
 ótrúr
@@ -607108,7 +606031,6 @@ oxýtósíns
 óttageigur
 óttahreim
 óttahreima
-óttahreimi
 óttahreims
 óttahroll
 óttahrolli
@@ -611912,7 +610834,6 @@ papýrus
 papýrusa
 papýrusana
 papýrusar
-papýrusi
 papýrusinn
 papýrusins
 papýrusnum
@@ -612017,7 +610938,6 @@ pardómanna
 pardómar
 pardómi
 pardóminn
-pardóminum
 pardómnum
 pardóms
 pardómsins
@@ -615468,7 +614388,6 @@ pillir
 pillirðu
 pillist
 pillistu
-pillna
 pillu
 pilluát
 pilluáti
@@ -616915,12 +615834,10 @@ pípaðra
 pípaðrar
 pípaðri
 pípaðs
-pípaðu
 pípaður
 pípan
 pípandi
 pípanna
-pípar
 pípara
 píparana
 píparann
@@ -617042,7 +615959,6 @@ pípudalíum
 pípudalíur
 pípuð
 pípuðu
-pípuðuð
 pípuðum
 pípuenda
 pípuendana
@@ -617052,7 +615968,6 @@ pípuendar
 pípuendi
 pípuendinn
 pípuendum
-pípufyllar
 pípufylli
 pípufyllin
 pípugerð
@@ -618437,7 +617352,6 @@ plastglasa
 plastglasi
 plastglass
 plastgler
-plastglera
 plastgleri
 plastglers
 plastglös
@@ -619017,7 +617931,6 @@ plexigler
 plexigleri
 plexiglers
 plexígler
-plexíglera
 plexígleri
 plexíglers
 plikt
@@ -619622,7 +618535,6 @@ plúsgildið
 plúsgildin
 plúsgildis
 plúsgildum
-plúsi
 plúsinn
 plúsinum
 plúsmegin
@@ -620171,7 +619083,6 @@ pokanóta
 pokanótar
 pokanótin
 pokanótina
-pokanótir
 pokanótum
 pokans
 pokanum
@@ -623614,7 +622525,6 @@ prímusa
 prímusana
 prímusanna
 prímusar
-prímusi
 prímusinn
 prímusnum
 prímuss
@@ -626180,7 +625090,6 @@ púðunum
 púður
 púðurbauk
 púðurbauka
-púðurbauki
 púðurbauks
 púðurdós
 púðurdósa
@@ -626220,7 +625129,6 @@ púðurlykt
 púðurmakka
 púðurmekki
 púðurmökk
-púðurmökks
 púðurryk
 púðurryki
 púðurrykið
@@ -626586,7 +625494,6 @@ púnsskál
 púnsskála
 púnsskálar
 púnsskálin
-púnsskálir
 púnsskálum
 púnsskeið
 púnsskeiða
@@ -627554,7 +626461,6 @@ pækilkera
 pækilkeri
 pækilkerið
 pækilkerin
-pækilkerja
 pækilkers
 pækilkerum
 pækill
@@ -627581,8 +626487,6 @@ pækilþróar
 pækilþróin
 pækilþróm
 pækilþróna
-pækilþrór
-pækilþróum
 pækilþrær
 pækla
 pæklað
@@ -628321,7 +627225,6 @@ raddbetra
 raddbetri
 raddblæ
 raddblæinn
-raddblæjar
 raddblænum
 raddblær
 raddblæs
@@ -628397,7 +627300,6 @@ raddhljóði
 raddhljóðs
 raddhreim
 raddhreima
-raddhreimi
 raddhreims
 raddhæð
 raddhæðar
@@ -628574,7 +627476,6 @@ raddskipta
 raddskipti
 raddskrá
 raddskráa
-raddskráar
 raddskráin
 raddskrám
 raddskrána
@@ -628778,7 +627679,6 @@ radíusa
 radíusana
 radíusanna
 radíusar
-radíusi
 radíusinn
 radíusnum
 radíuss
@@ -631258,7 +630158,6 @@ rakstokki
 rakstokks
 rakstokkum
 rakstokkur
-rakstrar
 rakstraum
 rakstrauma
 rakstraumi
@@ -631534,7 +630433,6 @@ rammaður
 rammagerð
 rammagerða
 rammagler
-rammaglera
 rammagleri
 rammaglers
 rammagrein
@@ -632212,8 +631110,6 @@ randhvössu
 randhæng
 randhænga
 randhængar
-randhængi
-randhængir
 randhængs
 randhængum
 randhængur
@@ -632223,7 +631119,6 @@ randinn
 randinu
 randir
 randirðu
-randirnar
 randist
 randistu
 randjökla
@@ -634202,7 +633097,6 @@ rauðgranar
 rauðgrani
 rauðgraut
 rauðgrauta
-rauðgrauti
 rauðgrá
 rauðgráa
 rauðgráan
@@ -634971,7 +633865,6 @@ raufaðs
 raufaðu
 raufaður
 raufagler
-raufaglera
 raufagleri
 raufaglers
 raufandi
@@ -636029,7 +634922,6 @@ rausurum
 rausurunum
 rautt
 ráa
-ráar
 ráarbás
 ráarbása
 ráarbásana
@@ -636049,7 +634941,6 @@ ráarendinn
 ráarendum
 ráarhnokka
 ráarhnokki
-ráarinnar
 ráarveiða
 ráarveiðar
 ráarveiði
@@ -637234,7 +636125,6 @@ ráðumst
 ráðunaut
 ráðunauta
 ráðunautar
-ráðunauti
 ráðunauts
 ráðunautum
 ráðunautur
@@ -638149,7 +637039,6 @@ ránvargana
 ránvargar
 ránvargi
 ránvarginn
-ránvargnum
 ránvargs
 ránvargur
 ránveiða
@@ -638320,10 +637209,8 @@ ráseilar
 ráseilin
 ráseilina
 ráseilinni
-ráseilir
 ráseilum
 ráseilunum
-ráseilur
 rásel
 rásela
 ráselanna
@@ -639865,7 +638752,6 @@ reginmikla
 reginmikli
 reginmiklu
 reginmóð
-reginmóði
 reginmóðs
 reginmóður
 reginmun
@@ -640811,7 +639697,6 @@ regnþrónna
 regnþrónni
 regnþrónum
 regnþrór
-regnþróum
 regnþrær
 regnþung
 regnþunga
@@ -642526,10 +641411,8 @@ reitakort
 reitakorta
 reitakorti
 reitakorts
-reitana
 reitandi
 reitanna
-reitar
 reitaraða
 reitaraðar
 reitaraðir
@@ -642540,7 +641423,6 @@ reitaritið
 reitaritin
 reitarits
 reitaritum
-reitarnir
 reitaröð
 reitaröðin
 reitaröðum
@@ -642862,7 +641744,6 @@ rekaskjals
 rekaskjöl
 rekaskrá
 rekaskráa
-rekaskráar
 rekaskráin
 rekaskrám
 rekaskrána
@@ -644359,8 +643240,6 @@ restarnar
 restin
 restina
 restinni
-restir
-restirnar
 restum
 restunum
 resusapa
@@ -644736,7 +643615,6 @@ reykmýjum
 reykmýs
 reykmýsins
 reykmökk
-reykmökks
 reykmökkum
 reykmökkur
 reyknum
@@ -645497,7 +644375,6 @@ réttarins
 réttarkró
 réttarkróa
 réttarkróm
-réttarkrór
 réttarkrær
 réttarleg
 réttarlega
@@ -646979,7 +645856,6 @@ rifjaliða
 rifjaliðar
 rifjaliði
 rifjaliðir
-rifjaliðs
 rifjaliðum
 rifjaliður
 rifjalúffa
@@ -647223,11 +646099,7 @@ rifsveppum
 rifsveppur
 rift
 rifta
-riftað
-riftaði
-riftaðir
 riftaðirðu
-riftaðu
 riftan
 riftana
 riftananna
@@ -647268,9 +646140,6 @@ riftri
 rifts
 riftu
 riftuð
-riftuðu
-riftuðuð
-riftuðum
 riftum
 riftun
 riftunar
@@ -649121,7 +647990,6 @@ ristarlegg
 ristarlið
 ristarliða
 ristarliði
-ristarliðs
 ristarnar
 ristarskó
 ristarskóa
@@ -649163,7 +648031,6 @@ ristingur
 ristinni
 ristir
 ristirðu
-ristirnar
 ristisaga
 ristisagar
 ristisagir
@@ -649236,8 +648103,6 @@ risvefja
 risvefjar
 risvefjum
 risvefnum
-risvefs
-risvefsins
 risvefur
 risþak
 risþaka
@@ -649337,7 +648202,6 @@ ritasafnið
 ritasafns
 ritaskrá
 ritaskráa
-ritaskráar
 ritaskráin
 ritaskrám
 ritaskrána
@@ -649384,7 +648248,6 @@ ritblýs
 ritblýsins
 ritblæ
 ritblæinn
-ritblæjar
 ritblænum
 ritblær
 ritblærinn
@@ -649426,7 +648289,6 @@ ritdómari
 ritdómenda
 ritdómi
 ritdóminn
-ritdóminum
 ritdómnum
 ritdóms
 ritdómsins
@@ -650935,7 +649797,6 @@ ríkastur
 ríkdóm
 ríkdómi
 ríkdóminn
-ríkdóminum
 ríkdómnum
 ríkdóms
 ríkdómsins
@@ -652164,7 +651025,6 @@ rísin
 rísinn
 rísins
 rísinu
-rísinum
 rísir
 rísirðu
 rísíkera
@@ -652841,7 +651701,6 @@ roðablóms
 roðablómum
 roðablæ
 roðablæinn
-roðablæjar
 roðablænum
 roðablær
 roðablæs
@@ -653688,7 +652547,6 @@ rofhaug
 rofhauga
 rofhaugana
 rofhaugar
-rofhaugi
 rofhauginn
 rofhaugnum
 rofhaugs
@@ -654062,7 +652920,6 @@ rokavígjum
 rokbyl
 rokbylinn
 rokbylja
-rokbyljar
 rokbylji
 rokbyljina
 rokbyljir
@@ -654485,7 +653342,6 @@ rokksöguna
 rokktakt
 rokktakta
 rokktaktar
-rokktakti
 rokktakts
 rokktaktur
 rokktein
@@ -654563,8 +653419,6 @@ rokmekkina
 rokmekkir
 rokmökk
 rokmökkinn
-rokmökknum
-rokmökks
 rokmökkum
 rokmökkur
 rokna
@@ -656823,8 +655677,6 @@ rotþrónna
 rotþrónni
 rotþrónum
 rotþrór
-rotþrórnar
-rotþróum
 rotþrær
 rotþrærnar
 róa
@@ -656984,8 +655836,6 @@ róðunum
 róður
 róðurinn
 róðurnar
-róðurs
-róðursins
 róf
 rófa
 rófan
@@ -657122,7 +655972,6 @@ rófuliðina
 rófuliðinn
 rófuliðir
 rófuliðnum
-rófuliðs
 rófuliðum
 rófuliður
 rófulöng
@@ -657708,7 +656557,6 @@ rómast
 rómastu
 rómblæ
 rómblæinn
-rómblæjar
 rómblænum
 rómblær
 rómblærinn
@@ -658256,7 +657104,6 @@ rósablæjum
 rósablæjur
 rósablænum
 rósablær
-rósablæs
 rósablöð
 rósablöðin
 rósablöðku
@@ -658333,13 +657180,11 @@ rósagerðin
 rósagerðis
 rósagerðum
 rósagler
-rósaglera
 rósagleri
 rósaglerið
 rósaglerin
 rósaglerja
 rósaglers
-rósaglerum
 rósaglugga
 rósagluggi
 rósaglýja
@@ -659201,7 +658046,6 @@ róstualdar
 róstualdir
 róstudólg
 róstudólga
-róstudólgi
 róstudólgs
 róstuflokk
 róstug
@@ -661017,7 +659861,6 @@ runurímum
 runurnar
 runuskrá
 runuskráa
-runuskráar
 runuskráin
 runuskrám
 runuskrána
@@ -661168,7 +660011,6 @@ ruslagámum
 ruslagámur
 ruslahaug
 ruslahauga
-ruslahaugi
 ruslahaugs
 ruslahrúga
 ruslahrúgu
@@ -661269,7 +660111,6 @@ ruslfæðis
 ruslhaug
 ruslhauga
 ruslhaugar
-ruslhaugi
 ruslhaugs
 ruslhaugum
 ruslhaugur
@@ -661566,11 +660407,9 @@ rúblur
 rúblurnar
 rúböggum
 rúböggunum
-rúð
 rúða
 rúðan
 rúðanna
-rúðar
 rúði
 rúðir
 rúðirðu
@@ -661589,7 +660428,6 @@ rúðótts
 rúðóttu
 rúðóttum
 rúðóttur
-rúðs
 rúðu
 rúðubela
 rúðubelana
@@ -661619,13 +660457,11 @@ rúðubrots
 rúðubrotum
 rúðuð
 rúðugler
-rúðuglera
 rúðugleri
 rúðuglerið
 rúðuglerin
 rúðuglerja
 rúðuglers
-rúðuglerum
 rúðujurt
 rúðujurta
 rúðujurtar
@@ -661788,7 +660624,6 @@ rúgföxunum
 rúggraut
 rúggrauta
 rúggrautar
-rúggrauti
 rúggrautum
 rúggrautur
 rúggresi
@@ -662159,7 +660994,6 @@ rúmbur
 rúmburnar
 rúmbutakt
 rúmbutakta
-rúmbutakti
 rúmbutakts
 rúmbæla
 rúmbælanna
@@ -664659,8 +663493,6 @@ rykmýs
 rykmýsins
 rykmökk
 rykmökkinn
-rykmökknum
-rykmökks
 rykmökkum
 rykmökkur
 rykpoll
@@ -665613,7 +664445,6 @@ rýnis
 rýnisins
 rýniskrá
 rýniskráa
-rýniskráar
 rýniskráin
 rýniskrám
 rýniskrána
@@ -666464,7 +665295,6 @@ rækjunót
 rækjunóta
 rækjunótar
 rækjunótin
-rækjunótir
 rækjunótum
 rækjunum
 rækjunætur
@@ -669595,13 +668425,11 @@ safngjöf
 safngjöfin
 safngjöfum
 safngler
-safnglera
 safngleri
 safnglerið
 safnglerin
 safnglerja
 safnglers
-safnglerum
 safngrafa
 safngrafar
 safngrafir
@@ -669628,7 +668456,6 @@ safngötur
 safnhaug
 safnhauga
 safnhaugar
-safnhaugi
 safnhaugs
 safnhaugum
 safnhaugur
@@ -669693,8 +668520,6 @@ safnkeri
 safnkerið
 safnkerin
 safnkerinu
-safnkerja
-safnkerjum
 safnkers
 safnkerum
 safnkirkja
@@ -669703,7 +668528,6 @@ safnkirkna
 safnkost
 safnkostar
 safnkosti
-safnkosts
 safnkostur
 safnkössum
 safnleg
@@ -669815,7 +668639,6 @@ safnskóli
 safnskólum
 safnskrá
 safnskráa
-safnskráar
 safnskráin
 safnskrám
 safnskrána
@@ -669901,7 +668724,6 @@ safnþrónna
 safnþrónni
 safnþrónum
 safnþrór
-safnþróum
 safnþrær
 safranjurt
 saft
@@ -669937,7 +668759,6 @@ saftfóður
 saftfóðurs
 saftgraut
 saftgrauta
-saftgrauti
 safti
 saftið
 saftin
@@ -670665,7 +669486,6 @@ saka
 sakadólg
 sakadólga
 sakadólgar
-sakadólgi
 sakadólgs
 sakadólgum
 sakadólgur
@@ -670797,7 +669617,6 @@ sakartökum
 sakartökur
 sakaskrá
 sakaskráa
-sakaskráar
 sakaskráin
 sakaskrám
 sakaskrána
@@ -671647,7 +670466,6 @@ saltguluna
 salthaug
 salthauga
 salthaugar
-salthaugi
 salthaugs
 salthaugum
 salthaugur
@@ -671738,8 +670556,6 @@ saltkeri
 saltkerið
 saltkerin
 saltkerinu
-saltkerja
-saltkerjum
 saltkers
 saltkerum
 saltkex
@@ -673029,7 +671845,6 @@ samfærustu
 samfætis
 samfætt
 samfögnuð
-samfögnuða
 samfögnuði
 samfögnuðu
 samfögnum
@@ -674553,7 +673368,6 @@ samrómanna
 samrómar
 samrómi
 samróminn
-samróminum
 samrómnum
 samróms
 samrómsins
@@ -674567,12 +673381,9 @@ samruglinu
 samrugls
 samruna
 samrunamál
-samrunana
 samrunann
-samrunanna
 samrunans
 samrunanum
-samrunar
 samruni
 samruninn
 samrunna
@@ -674585,8 +673396,6 @@ samrunnins
 samrunnir
 samrunnu
 samrunnum
-samrunum
-samrununum
 samryskja
 samryskjan
 samryskju
@@ -674977,7 +673786,6 @@ samskra
 samskrar
 samskrá
 samskráa
-samskráar
 samskráin
 samskrám
 samskrána
@@ -676034,7 +674842,6 @@ sandaur
 sandaura
 sandaurana
 sandaurar
-sandauri
 sandaurinn
 sandaurnum
 sandaurs
@@ -676183,7 +674990,6 @@ sandburður
 sandbyl
 sandbylinn
 sandbylja
-sandbyljar
 sandbylji
 sandbyljir
 sandbyljum
@@ -676418,10 +675224,7 @@ sandgíg
 sandgíga
 sandgígana
 sandgígar
-sandgígi
-sandgígina
 sandgíginn
-sandgígir
 sandgígnum
 sandgígs
 sandgígum
@@ -676478,7 +675281,6 @@ sandhafs
 sandhaug
 sandhauga
 sandhaugar
-sandhaugi
 sandhaugs
 sandhaugum
 sandhaugur
@@ -676858,7 +675660,6 @@ sandmýs
 sandmýsnar
 sandmöðkum
 sandmökk
-sandmökks
 sandmökkum
 sandmökkur
 sandmöl
@@ -678345,7 +677146,6 @@ sauðakróar
 sauðakróin
 sauðakróm
 sauðakróna
-sauðakrór
 sauðakrær
 sauðakvaða
 sauðakvöð
@@ -680027,10 +678827,6 @@ sákeri
 sákerið
 sákerin
 sákerinu
-sákerja
-sákerjanna
-sákerjum
-sákerjunum
 sákers
 sákersins
 sákerum
@@ -681134,7 +679930,6 @@ sápuskál
 sápuskála
 sápuskálar
 sápuskálin
-sápuskálir
 sápuskálum
 sápuskol
 sápuskoli
@@ -681307,7 +680102,6 @@ sárameðala
 sárameðali
 sárameðals
 sárameðul
-sárameðöl
 sáramenn
 sáramerki
 sáramerkið
@@ -682103,7 +680897,6 @@ sárpínt
 sárra
 sárranda
 sárrandar
-sárrandir
 sárrar
 sárráð
 sárráða
@@ -683868,7 +682661,6 @@ seiðakera
 seiðakeri
 seiðakerið
 seiðakerin
-seiðakerja
 seiðakers
 seiðakerum
 seiðandi
@@ -684313,7 +683105,6 @@ seilingar
 seilinni
 seilir
 seilirðu
-seilirnar
 seilist
 seilistu
 seilmosa
@@ -684338,8 +683129,6 @@ seilunálar
 seilunálin
 seilunálum
 seilunum
-seilur
-seilurnar
 seim
 seima
 seimagrund
@@ -685300,12 +684089,10 @@ selanóta
 selanótar
 selanótin
 selanótina
-selanótir
 selanótum
 selanætur
 selará
 selaráa
-selaráar
 selaráin
 selarám
 selarána
@@ -685324,9 +684111,6 @@ selaróðrar
 selaróðri
 selaróðrum
 selaróður
-selaróðurs
-selarær
-selarærnar
 selasafn
 selasafna
 selasafni
@@ -685336,9 +684120,7 @@ selaseil
 selaseila
 selaseilar
 selaseilin
-selaseilir
 selaseilum
-selaseilur
 selaskoðun
 selaskot
 selaskota
@@ -685929,13 +684711,11 @@ selmegran
 selmegru
 selmegruna
 selmey
-selmeyin
 selmeyja
 selmeyjar
 selmeyju
 selmeyjum
 selmeyna
-selmeynni
 selmær
 selmærin
 selmögum
@@ -686375,7 +685155,6 @@ seltúns
 seltúnsins
 seltúnum
 seltúnunum
-seltættur
 selum
 selunum
 selur
@@ -687320,8 +686099,6 @@ sessum
 sessuna
 sessunaut
 sessunauta
-sessunauti
-sessunauts
 sessunnar
 sessunni
 sessunum
@@ -687701,8 +686478,6 @@ setthamri
 setthanda
 setthandar
 setthandir
-setthendi
-setthendur
 setthömrum
 setthönd
 setthöndin
@@ -688170,7 +686945,6 @@ sextett
 sextetta
 sextettana
 sextettar
-sextetti
 sextettinn
 sextetts
 sextettum
@@ -689923,7 +688697,6 @@ sérskólinn
 sérskólum
 sérskrá
 sérskráa
-sérskráar
 sérskráin
 sérskrám
 sérskrána
@@ -690831,7 +689604,6 @@ siði
 siðið
 siðina
 siðinn
-siðinum
 siðir
 siðirðu
 siðirnir
@@ -691077,7 +689849,6 @@ siðrænu
 siðrænum
 siðrænust
 siðrænustu
-siðs
 siðsama
 siðsaman
 siðsamar
@@ -692171,7 +690942,6 @@ sigskála
 sigskálar
 sigskálin
 sigskálina
-sigskálir
 sigskálum
 sigspá
 sigspáa
@@ -695447,7 +694217,6 @@ síðslegnum
 síðslopp
 síðsloppa
 síðsloppar
-síðsloppi
 síðslopps
 síðsloppum
 síðsloppur
@@ -695625,7 +694394,6 @@ síðuskipta
 síðuskipti
 síðuskrá
 síðuskráa
-síðuskráar
 síðuskráin
 síðuskrám
 síðuskrána
@@ -696595,7 +695363,6 @@ síldarvöru
 síldarþró
 síldarþróa
 síldarþróm
-síldarþrór
 síldarþrær
 síldaræta
 síldarætan
@@ -697042,13 +695809,11 @@ símamáls
 símamálum
 símamenn
 símamey
-símameyin
 símameyja
 símameyjar
 símameyju
 símameyjum
 símameyna
-símameynni
 símamynd
 símamynda
 símamyndar
@@ -697124,7 +695889,6 @@ símaskjás
 símaskjáum
 símaskrá
 símaskráa
-símaskráar
 símaskráin
 símaskrám
 símaskrána
@@ -698596,7 +697360,6 @@ sjakalinn
 sjakkett
 sjakketta
 sjakkettar
-sjakketti
 sjakketts
 sjakkettum
 sjakölum
@@ -700144,7 +698907,6 @@ sjódómanna
 sjódómar
 sjódómi
 sjódóminn
-sjódóminum
 sjódómnum
 sjódóms
 sjódómsins
@@ -700289,7 +699051,6 @@ sjóðillum
 sjóðillur
 sjóðina
 sjóðinn
-sjóðinum
 sjóðir
 sjóðirðu
 sjóðirnir
@@ -700636,7 +699397,6 @@ sjógutls
 sjógýgi
 sjógýgina
 sjógýginni
-sjógýgir
 sjógýgja
 sjógýgjar
 sjógýgjum
@@ -701198,7 +699958,6 @@ sjómaðkana
 sjómaðkar
 sjómaðki
 sjómaðkinn
-sjómaðknum
 sjómaðks
 sjómaðkur
 sjómaður
@@ -701519,13 +700278,11 @@ sjóngetuna
 sjóngleði
 sjóngleðin
 sjóngler
-sjónglera
 sjóngleri
 sjónglerið
 sjónglerin
 sjónglerja
 sjónglers
-sjónglerum
 sjónglögg
 sjónglögga
 sjónglöggi
@@ -702075,7 +700832,6 @@ sjóróðrar
 sjóróðri
 sjóróðrum
 sjóróður
-sjóróðurs
 sjórót
 sjóróti
 sjórótið
@@ -703314,7 +702070,6 @@ skafaþurrk
 skafbyl
 skafbylinn
 skafbylja
-skafbyljar
 skafbylji
 skafbyljir
 skafbyljum
@@ -703567,7 +702322,6 @@ skaftkera
 skaftkeri
 skaftkerið
 skaftkerin
-skaftkerja
 skaftkers
 skaftkerum
 skaftkúst
@@ -704561,7 +703315,6 @@ skapbetra
 skapbetri
 skapblæ
 skapblæinn
-skapblæjar
 skapblænum
 skapblær
 skapblæs
@@ -704782,8 +703535,6 @@ skapkeri
 skapkerið
 skapkerin
 skapkerinu
-skapkerja
-skapkerjum
 skapkers
 skapkerum
 skapkona
@@ -705192,7 +703943,6 @@ skarbítur
 skarbyl
 skarbylinn
 skarbylja
-skarbyljar
 skarbylji
 skarbyljir
 skarbyljum
@@ -705419,7 +704169,6 @@ skarngammi
 skarngamms
 skarnhaug
 skarnhauga
-skarnhaugi
 skarnhaugs
 skarni
 skarnið
@@ -705718,7 +704467,6 @@ skarþefjar
 skarþefnum
 skarþefs
 skarþefur
-skaröxar
 skaröxi
 skaröxin
 skaröxina
@@ -707167,7 +705915,6 @@ skáldmenna
 skáldmenni
 skáldmennt
 skáldmey
-skáldmeyin
 skáldmeyja
 skáldmeyju
 skáldmeyna
@@ -707354,7 +706101,6 @@ skálinn
 skálinni
 skálir
 skálirðu
-skálirnar
 skálist
 skálista
 skálistana
@@ -707470,7 +706216,6 @@ skálmina
 skálminni
 skálmir
 skálmirðu
-skálmirnar
 skálmpípa
 skálmpípan
 skálmpípna
@@ -708368,7 +707113,6 @@ skeggþráða
 skeggþræði
 skeggöld
 skeggöldin
-skeggöxar
 skeggöxi
 skeggöxin
 skeggöxina
@@ -709295,7 +708039,6 @@ skelpöddum
 skelpöddur
 skelranda
 skelrandar
-skelrandir
 skelrendur
 skelríla
 skelrílan
@@ -709318,7 +708061,6 @@ skelskúfs
 skelskúfum
 skelskúfur
 skelsnjó
-skelsnjóar
 skelsnjór
 skelsnjós
 skelsvepp
@@ -713441,7 +712183,6 @@ skítagulum
 skítagulur
 skítahaug
 skítahauga
-skítahaugi
 skítahaugs
 skítahlass
 skítahlöss
@@ -715625,8 +714366,6 @@ skolpþróar
 skolpþróin
 skolpþróm
 skolpþróna
-skolpþrór
-skolpþróum
 skolpþrær
 skolrauð
 skolrauða
@@ -715825,7 +714564,6 @@ skopblaðið
 skopblaðs
 skopblæ
 skopblæinn
-skopblæjar
 skopblænum
 skopblær
 skopblæs
@@ -718051,7 +716789,6 @@ skógarþyts
 skógarþöll
 skógarækt
 skógaröpum
-skógaröxar
 skógaröxi
 skógaröxin
 skógaröxum
@@ -718635,7 +717372,6 @@ skólahesti
 skólahests
 skólahérað
 skólahéruð
-skólahéröð
 skólahlaup
 skólahlið
 skólahliða
@@ -719000,7 +717736,6 @@ skólavef
 skólavefi
 skólavefir
 skólavefja
-skólavefs
 skólavefur
 skólaveg
 skólavegar
@@ -719695,7 +718430,6 @@ skranbúðir
 skranbúðum
 skranhaug
 skranhauga
-skranhaugi
 skranhaugs
 skrani
 skranið
@@ -721017,7 +719751,6 @@ skriflastu
 skriflás
 skriflása
 skriflásar
-skriflási
 skrifláss
 skriflásum
 skrifleg
@@ -721935,7 +720668,6 @@ skrunkur
 skrunlás
 skrunlása
 skrunlásar
-skrunlási
 skrunláss
 skrunlásum
 skrunrein
@@ -724145,7 +722877,6 @@ skutróðrar
 skutróðri
 skutróðrum
 skutróður
-skutróðurs
 skutrúm
 skutrúmi
 skutrúmið
@@ -724168,9 +722899,7 @@ skutseil
 skutseila
 skutseilar
 skutseilin
-skutseilir
 skutseilum
-skutseilur
 skutsetið
 skutsetin
 skutsetinn
@@ -726220,8 +724949,6 @@ skyrkeri
 skyrkerið
 skyrkerin
 skyrkerinu
-skyrkerja
-skyrkerjum
 skyrkers
 skyrkerum
 skyrkeröld
@@ -726374,7 +725101,6 @@ skyrskál
 skyrskála
 skyrskálar
 skyrskálin
-skyrskálir
 skyrskálum
 skyrskjóla
 skyrskjólu
@@ -726747,7 +725473,6 @@ skýjamúrum
 skýjamynd
 skýjamynda
 skýjamökk
-skýjamökks
 skýjanet
 skýjaneta
 skýjaneti
@@ -726980,7 +725705,6 @@ skýrandans
 skýrandar
 skýrandi
 skýrandinn
-skýrandir
 skýranleg
 skýranlega
 skýranlegi
@@ -728669,7 +727393,6 @@ slagbrands
 slagbyl
 slagbylinn
 slagbylja
-slagbyljar
 slagbylji
 slagbyljir
 slagbyljum
@@ -728785,7 +727508,6 @@ slagnóta
 slagnótar
 slagnótin
 slagnótina
-slagnótir
 slagnótum
 slagnum
 slagnætur
@@ -732322,7 +731044,6 @@ sloppavæð
 sloppavæða
 sloppavæði
 sloppavætt
-sloppi
 sloppið
 sloppin
 sloppinn
@@ -732330,7 +731051,6 @@ sloppinna
 sloppinnar
 sloppinni
 sloppins
-sloppinum
 sloppna
 sloppnar
 sloppnara
@@ -735140,8 +733860,6 @@ smaragðs
 smaragður
 smart
 smarta
-smartan
-smartar
 smartara
 smartari
 smartast
@@ -735155,18 +733873,12 @@ smartastri
 smartasts
 smartastur
 smarti
-smartir
 smartl
 smartli
 smartlið
 smartlinu
 smartls
 smartlsins
-smartra
-smartrar
-smartri
-smarts
-smartur
 smarögðum
 smatta
 smattana
@@ -736531,10 +735243,7 @@ smágíga
 smágígana
 smágíganna
 smágígar
-smágígi
-smágígina
 smágíginn
-smágígir
 smágígnum
 smágígs
 smágígsins
@@ -737419,8 +736128,6 @@ smákeri
 smákerið
 smákerin
 smákerinu
-smákerja
-smákerjum
 smákers
 smákersins
 smákerum
@@ -737662,7 +736369,6 @@ smákríta
 smákrítar
 smákrítin
 smákrítina
-smákrítir
 smákrítum
 smákropp
 smákroppi
@@ -737725,7 +736431,6 @@ smákvilli
 smákvillum
 smákvist
 smákvista
-smákvistar
 smákvisti
 smákvistir
 smákvists
@@ -738149,7 +736854,6 @@ smálúðunum
 smálúður
 smálúr
 smálúra
-smálúrað
 smálúrandi
 smálúrði
 smálúrðir
@@ -738295,13 +736999,11 @@ smámennska
 smámennsku
 smámennum
 smámey
-smámeyin
 smámeyja
 smámeyjar
 smámeyju
 smámeyjum
 smámeyna
-smámeynni
 smáminnka
 smáminnkað
 smáminnkar
@@ -740128,7 +738830,6 @@ smávargana
 smávargar
 smávargi
 smávarginn
-smávargnum
 smávargs
 smávargur
 smávarning
@@ -740722,8 +739423,6 @@ smeitunum
 smeitur
 smeiturinn
 smekk
-smekka
-smekkanna
 smekkbest
 smekkbesta
 smekkbesti
@@ -740827,8 +739526,6 @@ smekksins
 smekksmat
 smekksmati
 smekksmats
-smekkum
-smekkunum
 smekkur
 smekkurinn
 smekkverra
@@ -741715,7 +740412,6 @@ smíðaviti
 smíðavitið
 smíðavits
 smíðavöll
-smíðaöxar
 smíðaöxi
 smíðaöxin
 smíðaöxina
@@ -742402,7 +741098,6 @@ smókana
 smókanna
 smókar
 smókarnir
-smóki
 smóking
 smókinga
 smókingana
@@ -742413,7 +741108,6 @@ smókings
 smókingum
 smókingur
 smókinn
-smóknum
 smóks
 smóksins
 smókum
@@ -743043,9 +741737,7 @@ smölunina
 smöluninni
 smölunum
 smölununum
-smört
 smörtu
-smörtum
 smörtust
 smörtustu
 smörtustum
@@ -743970,7 +742662,6 @@ snarsogin
 snarsoginu
 snarsogs
 snarsogum
-snarst
 snarstansa
 snarstansi
 snarstefja
@@ -745842,7 +744533,6 @@ sníkjuferð
 sníkjugest
 sníkjugíg
 sníkjugíga
-sníkjugígi
 sníkjugígs
 sníkjuhátt
 sníkjujurt
@@ -746315,7 +745005,6 @@ snjóbuxur
 snjóbyl
 snjóbylinn
 snjóbylja
-snjóbyljar
 snjóbylji
 snjóbyljir
 snjóbyljum
@@ -748535,8 +747224,6 @@ snurtinn
 snurtinum
 snurts
 snurtsins
-snurtu
-snurtuð
 snurtum
 snurtunum
 snurtur
@@ -748595,7 +747282,6 @@ snúðan
 snúðana
 snúðanna
 snúðar
-snúðarins
 snúðarnir
 snúðbest
 snúðbesta
@@ -748649,9 +747335,7 @@ snúðhart
 snúðhörð
 snúðhörðu
 snúðhörðum
-snúði
 snúðinn
-snúðinum
 snúðkúla
 snúðkúlan
 snúðkúlna
@@ -748959,7 +747643,6 @@ snúrukera
 snúrukeri
 snúrukerið
 snúrukerin
-snúrukerja
 snúrukers
 snúrukerum
 snúrulengd
@@ -749545,7 +748228,6 @@ snækræklum
 snækrögum
 snækvist
 snækvista
-snækvistar
 snækvisti
 snækvistir
 snækvists
@@ -750026,18 +748708,6 @@ snögg
 snögga
 snöggan
 snöggar
-snöggara
-snöggari
-snöggast
-snöggasta
-snöggastan
-snöggastar
-snöggasti
-snöggastir
-snöggastra
-snöggastri
-snöggasts
-snöggastur
 snöggbeyg
 snöggbeygð
 snöggbeygi
@@ -750174,9 +748844,6 @@ snöggtum
 snöggu
 snöggum
 snöggur
-snöggust
-snöggustu
-snöggustum
 snöggvast
 snöggyrða
 snöggyrði
@@ -751051,7 +749718,6 @@ sogskála
 sogskálar
 sogskálin
 sogskálina
-sogskálir
 sogskálum
 sogskel
 sogskelin
@@ -752136,7 +750802,6 @@ sorpgöngum
 sorphaug
 sorphauga
 sorphaugar
-sorphaugi
 sorphaugs
 sorphaugum
 sorphaugur
@@ -754764,7 +753429,6 @@ sólpallur
 sólpöllum
 sólranda
 sólrandar
-sólrandir
 sólrauð
 sólrauða
 sólrauðan
@@ -755938,7 +754602,6 @@ sóranum
 sóri
 sórinn
 sóríasis
-sóríasiss
 sórst
 sórstu
 sóru
@@ -756045,7 +754708,6 @@ sósuskál
 sósuskála
 sósuskálar
 sósuskálin
-sósuskálir
 sósuskálum
 sósuskeið
 sósuskeiða
@@ -756856,7 +755518,6 @@ spaðbrytja
 spaðbrytji
 spaðgraut
 spaðgrauta
-spaðgrauti
 spaðhegg
 spaðheggur
 spaðhjó
@@ -756896,7 +755557,6 @@ spaðskál
 spaðskála
 spaðskálar
 spaðskálin
-spaðskálir
 spaðskálum
 spaðsúpa
 spaðsúpan
@@ -757335,7 +755995,6 @@ spariaugum
 spariaugun
 sparibauk
 sparibauka
-sparibauki
 sparibauks
 sparibros
 sparibrosa
@@ -757584,7 +756243,6 @@ sparnað
 sparnaðar
 sparnaði
 sparnaðinn
-sparnaðnum
 sparnaður
 sparnanna
 sparnar
@@ -757850,7 +756508,6 @@ spádómanna
 spádómar
 spádómi
 spádóminn
-spádóminum
 spádómnum
 spádóms
 spádómsbók
@@ -757988,7 +756645,6 @@ spákukls
 spákvenna
 spákvist
 spákvista
-spákvistar
 spákvisti
 spákvistir
 spákvists
@@ -759767,7 +758423,6 @@ spinnarar
 spinnari
 spinnarinn
 spinnast
-spinndu
 spinnegal
 spinni
 spinnið
@@ -760097,7 +758752,6 @@ spjaldleið
 spjaldlið
 spjaldliða
 spjaldliði
-spjaldliðs
 spjaldlína
 spjaldlínu
 spjaldloka
@@ -761573,7 +760227,6 @@ spónanna
 spónaplata
 spónaplötu
 spónar
-spónarins
 spónarnir
 spónasmið
 spónasmiða
@@ -762484,7 +761137,6 @@ sprytklóna
 sprytklær
 sprytrá
 sprytráa
-sprytráar
 sprytráin
 sprytrám
 sprytrána
@@ -762492,7 +761144,6 @@ sprytránna
 sprytránni
 sprytránum
 sprytrár
-sprytrær
 spryts
 sprytsegl
 sprytsegla
@@ -763888,7 +762539,6 @@ staðbinstu
 staðbittu
 staðblæ
 staðblæinn
-staðblæjar
 staðblænum
 staðblær
 staðblæs
@@ -764787,7 +763437,6 @@ staffrumur
 staffræði
 staffræðin
 staffylla
-staffyllar
 staffylli
 staffyllin
 staffyllir
@@ -765488,7 +764137,6 @@ stagfokkna
 stagfokku
 stagfokkum
 stagfokkur
-stagfyllar
 stagfylli
 stagfyllin
 staghend
@@ -766834,7 +765482,6 @@ starfsvali
 starfsvals
 starfsvef
 starfsvefi
-starfsvefs
 starfsvið
 starfsviða
 starfsviði
@@ -768385,7 +767032,6 @@ stálömmum
 stálömmuna
 stálömmur
 stálörmum
-stálöxar
 stálöxi
 stálöxin
 stálöxina
@@ -768465,7 +767111,6 @@ stássmanni
 stássmanns
 stássmenn
 stássmey
-stássmeyin
 stássmeyja
 stássmeyju
 stássmeyna
@@ -768640,7 +767285,6 @@ steðjarnir
 steðjaþró
 steðjaþróa
 steðjaþróm
-steðjaþrór
 steðjaþrær
 steðji
 steðjið
@@ -769158,8 +767802,6 @@ steinbers
 steinbít
 steinbíta
 steinbítar
-steinbíti
-steinbítir
 steinbíts
 steinbítum
 steinbítur
@@ -769571,7 +768213,6 @@ steinkera
 steinkeri
 steinkerið
 steinkerin
-steinkerja
 steinkers
 steinkerum
 steinki
@@ -770081,8 +768722,6 @@ steinþróar
 steinþróin
 steinþróm
 steinþróna
-steinþrór
-steinþróum
 steinþrykk
 steinþrær
 steinþung
@@ -770098,7 +768737,6 @@ steinþökin
 steinþökum
 steinöld
 steinöldin
-steinöxar
 steinöxi
 steinöxin
 steinöxina
@@ -771848,7 +770486,6 @@ stiklutóli
 stiklutóls
 stikluvef
 stikluvefi
-stikluvefs
 stikluvik
 stikluvika
 stikluviki
@@ -772012,9 +770649,7 @@ stilkflipi
 stilkgeril
 stilkgerla
 stilkgerli
-stilki
 stilkinn
-stilkinum
 stilklanga
 stilklangi
 stilklangs
@@ -773001,11 +771636,9 @@ stígarnir
 stígðu
 stígi
 stígið
-stígina
 stíginn
 stígir
 stígirðu
-stígirnir
 stígnum
 stígs
 stígsins
@@ -773106,7 +771739,6 @@ stíláhrif
 stíláhrifa
 stílblæ
 stílblæinn
-stílblæjar
 stílblænum
 stílblær
 stílblæs
@@ -776449,7 +775081,6 @@ stórbylgju
 stórbylgna
 stórbylinn
 stórbylja
-stórbyljar
 stórbylji
 stórbyljir
 stórbyljum
@@ -777170,7 +775801,6 @@ stórhéraða
 stórhéraði
 stórhéraðs
 stórhéruð
-stórhéröð
 stórhissa
 stórhlaup
 stórhlaupa
@@ -777449,8 +776079,6 @@ stórkeri
 stórkerið
 stórkerin
 stórkerinu
-stórkerja
-stórkerjum
 stórkers
 stórkerum
 stórkeröld
@@ -779260,7 +777888,6 @@ straumgári
 straumgáru
 straumgíg
 straumgíga
-straumgígi
 straumgígs
 straumgægi
 straumhart
@@ -779645,7 +778272,6 @@ strákgreyi
 strákgreys
 strákhlunk
 strákhvolp
-stráki
 strákinn
 strákkálf
 strákkálfa
@@ -780824,7 +779450,6 @@ stríðsöls
 stríðsöm
 stríðsömu
 stríðsömum
-stríðsöxar
 stríðsöxi
 stríðsöxin
 stríðsöxum
@@ -780850,7 +779475,6 @@ stríðælum
 stríðöldu
 stríðöldum
 stríðölum
-stríðöxar
 stríðöxi
 stríðöxin
 stríðöxina
@@ -786038,8 +784662,6 @@ suðukeri
 suðukerið
 suðukerin
 suðukerinu
-suðukerja
-suðukerjum
 suðukers
 suðukerum
 suðulauk
@@ -786191,7 +784813,6 @@ suðurheimi
 suðurheims
 suðurhérað
 suðurhéruð
-suðurhéröð
 suðurhimin
 suðurhimna
 suðurhimni
@@ -788141,8 +786762,6 @@ sundkeri
 sundkerið
 sundkerin
 sundkerinu
-sundkerja
-sundkerjum
 sundkers
 sundkerum
 sundklæða
@@ -788603,8 +787222,6 @@ sundþróna
 sundþrónna
 sundþrónni
 sundþrónum
-sundþrór
-sundþróum
 sundþrær
 sundþörung
 sundæfing
@@ -790119,7 +788736,6 @@ súpuskál
 súpuskála
 súpuskálar
 súpuskálin
-súpuskálir
 súpuskálum
 súpuskeið
 súpuskeiða
@@ -790269,7 +788885,6 @@ súrgerlum
 súrgraut
 súrgrauta
 súrgrautar
-súrgrauti
 súrgrautum
 súrgrautur
 súrhey
@@ -791497,7 +790112,6 @@ svampvef
 svampvefi
 svampvefir
 svampvefja
-svampvefs
 svampvefur
 svan
 svana
@@ -791638,13 +790252,11 @@ svankötlu
 svankötlum
 svankötlur
 svanmey
-svanmeyin
 svanmeyja
 svanmeyjar
 svanmeyju
 svanmeyjum
 svanmeyna
-svanmeynni
 svanmær
 svanmærin
 svanna
@@ -792804,7 +791416,6 @@ svefnkera
 svefnkeri
 svefnkerið
 svefnkerin
-svefnkerja
 svefnkers
 svefnkerum
 svefnklefa
@@ -792862,7 +791473,6 @@ svefnmáls
 svefnmálum
 svefnmeðal
 svefnmeðul
-svefnmeðöl
 svefnmók
 svefnmóka
 svefnmóki
@@ -793205,7 +791815,6 @@ sveiga
 sveigana
 sveiganna
 sveigar
-sveigarins
 sveigarnir
 sveigblað
 sveigblaða
@@ -794884,7 +793493,6 @@ svifaur
 svifaura
 svifaurana
 svifaurar
-svifauri
 svifaurinn
 svifaurnum
 svifaurs
@@ -796997,7 +795605,6 @@ svitalöðri
 svitalöður
 svitameðal
 svitameðul
-svitameðöl
 svitandi
 svitann
 svitans
@@ -797611,7 +796218,6 @@ svíraliða
 svíraliðar
 svíraliði
 svíraliðir
-svíraliðs
 svíraliðum
 svíraliður
 svírana
@@ -798609,7 +797215,6 @@ sykurkera
 sykurkeri
 sykurkerið
 sykurkerin
-sykurkerja
 sykurkers
 sykurkerum
 sykurkorn
@@ -800448,8 +799053,6 @@ sýrukeri
 sýrukerið
 sýrukerin
 sýrukerinu
-sýrukerja
-sýrukerjum
 sýrukers
 sýrukerum
 sýrukeröld
@@ -803782,7 +802385,6 @@ söðulliða
 söðulliðar
 söðulliði
 söðulliðir
-söðulliðs
 söðulliðum
 söðulliður
 söðullinda
@@ -803823,15 +802425,11 @@ söðulþökum
 söfn
 söfnin
 söfnuð
-söfnuða
-söfnuðanna
-söfnuðar
 söfnuði
 söfnuðina
 söfnuðinn
 söfnuðinum
 söfnuðir
-söfnuðnum
 söfnuðu
 söfnuðuð
 söfnuðum
@@ -803983,7 +802581,6 @@ sögubitinn
 sögubitum
 sögublæ
 sögublæinn
-sögublæjar
 sögublænum
 sögublær
 sögublæs
@@ -804744,7 +803341,6 @@ sökkvir
 sökkvirðu
 sökkvum
 söknuð
-söknuðar
 söknuði
 söknuðinn
 söknuðinum
@@ -804762,7 +803358,6 @@ sökótt
 sökudólg
 sökudólga
 sökudólgar
-sökudólgi
 sökudólgs
 sökudólgum
 sökudólgur
@@ -804779,8 +803374,6 @@ sökunar
 sökunaut
 sökunauta
 sökunautar
-sökunauti
-sökunauts
 sökunautum
 sökunautur
 sökunin
@@ -804913,7 +803506,6 @@ söluaðferð
 söluaðila
 söluaðilar
 söluaðili
-söluaðilja
 söluaðilum
 söluafurð
 söluafurða
@@ -805970,7 +804562,6 @@ sönghópum
 sönghópur
 sönghreim
 sönghreima
-sönghreimi
 sönghreims
 sönghús
 sönghúsa
@@ -806180,13 +804771,11 @@ söngmenn
 söngmennt
 söngmennta
 söngmey
-söngmeyin
 söngmeyja
 söngmeyjar
 söngmeyju
 söngmeyjum
 söngmeyna
-söngmeynni
 söngmót
 söngmóta
 söngmóti
@@ -806264,7 +804853,6 @@ söngómanna
 söngómar
 söngómi
 söngóminn
-söngóminum
 söngómnum
 söngóms
 söngómsins
@@ -806407,7 +804995,6 @@ söngskóli
 söngskólum
 söngskrá
 söngskráa
-söngskráar
 söngskráin
 söngskrám
 söngskrána
@@ -807001,7 +805588,6 @@ taðhaug
 taðhauga
 taðhaugana
 taðhaugar
-taðhaugi
 taðhauginn
 taðhaugnum
 taðhaugs
@@ -807124,7 +805710,6 @@ taðkvísl
 taðkvísla
 taðkvíslar
 taðkvíslin
-taðkvíslir
 taðkvíslum
 taðkvörn
 taðkvörnin
@@ -808062,7 +806647,6 @@ takthreinn
 takthreins
 takthreint
 takthreinu
-takti
 taktinn
 taktinum
 taktík
@@ -808708,7 +807292,6 @@ talnakvörn
 talnalás
 talnalása
 talnalásar
-talnalási
 talnaláss
 talnalásum
 talnaleg
@@ -809214,7 +807797,6 @@ tangóana
 tangóanna
 tangóar
 tangóarnir
-tangói
 tangóinn
 tangóinum
 tangónum
@@ -809292,7 +807874,6 @@ tankkerfum
 tankmjólk
 tankna
 tanknanna
-tanknum
 tanks
 tanksins
 tankskip
@@ -810297,7 +808878,6 @@ taparaxir
 taparðu
 tapari
 taparinn
-taparöxar
 taparöxi
 taparöxin
 taparöxina
@@ -812012,7 +810592,6 @@ tágómar
 tágómarnir
 tágómi
 tágóminn
-tágóminum
 tágómnum
 tágóms
 tágómsins
@@ -812622,7 +811201,6 @@ táliðinn
 táliðir
 táliðirnir
 táliðnum
-táliðs
 táliðsins
 táliðum
 táliðunum
@@ -815269,7 +813847,6 @@ tekoppanna
 tekoppar
 tekoppi
 tekoppinn
-tekoppinum
 tekoppnum
 tekopps
 tekoppsins
@@ -816113,10 +814690,8 @@ tennis
 tennisflöt
 tennisheim
 tennishöll
-tennisi
 tennisinn
 tennisins
-tennisinum
 tenniskona
 tenniskonu
 tennisleik
@@ -819537,7 +818112,6 @@ timburþili
 timburþils
 timburþök
 timjan
-timjani
 timjanið
 timjaninu
 timjans
@@ -819973,7 +818547,6 @@ tinnudökku
 tinnuflís
 tinnuflísa
 tinnugler
-tinnuglera
 tinnugleri
 tinnuglers
 tinnugúmmí
@@ -820044,7 +818617,6 @@ tinskála
 tinskálar
 tinskálin
 tinskálina
-tinskálir
 tinskálum
 tinskeið
 tinskeiða
@@ -820727,7 +819299,6 @@ tíðari
 tíðarinnar
 tíðaskrá
 tíðaskráa
-tíðaskráar
 tíðaskráin
 tíðaskrám
 tíðaskrána
@@ -822305,7 +820876,6 @@ tímins
 tímir
 tímirðu
 tímían
-tímíani
 tímíanið
 tímíaninu
 tímíans
@@ -823274,7 +821844,6 @@ tjaldmænis
 tjaldmænum
 tjaldnaut
 tjaldnauta
-tjaldnauts
 tjaldpoka
 tjaldpokar
 tjaldpoki
@@ -825040,7 +823609,6 @@ tollhéraða
 tollhéraði
 tollhéraðs
 tollhéruð
-tollhéröð
 tollhlið
 tollhliða
 tollhliði
@@ -825176,7 +823744,6 @@ tollskoðum
 tollskoðun
 tollskrá
 tollskráa
-tollskráar
 tollskráin
 tollskrám
 tollskrána
@@ -825590,10 +824157,7 @@ toppgíg
 toppgíga
 toppgígana
 toppgígar
-toppgígi
-toppgígina
 toppgíginn
-toppgígir
 toppgígnum
 toppgígs
 toppgígum
@@ -825683,7 +824247,6 @@ toppilíku
 toppilíkum
 toppilíkur
 toppinn
-toppinum
 toppir
 toppirðu
 toppist
@@ -826220,7 +824783,6 @@ torfgörðum
 torfhaug
 torfhauga
 torfhaugar
-torfhaugi
 torfhaugs
 torfhaugum
 torfhaugur
@@ -826638,8 +825200,6 @@ torfþróna
 torfþrónna
 torfþrónni
 torfþrónum
-torfþrór
-torfþróum
 torfþrær
 torfþök
 torfþökin
@@ -828060,7 +826620,6 @@ tóiðnað
 tóiðnaðar
 tóiðnaði
 tóiðnaðinn
-tóiðnaðnum
 tóiðnaður
 tóin
 tóinu
@@ -828871,8 +827430,6 @@ tónblæjar
 tónblænum
 tónblær
 tónblærinn
-tónblæs
-tónblæsins
 tónblöð
 tónblöðin
 tónblöðum
@@ -829260,7 +827817,6 @@ tónkvísl
 tónkvísla
 tónkvíslar
 tónkvíslin
-tónkvíslir
 tónkvíslum
 tónkvæða
 tónkvæði
@@ -831096,7 +829652,6 @@ trektkera
 trektkeri
 trektkerið
 trektkerin
-trektkerja
 trektkers
 trektkerum
 trektlaga
@@ -831246,7 +829801,6 @@ trébauk
 trébauka
 trébaukana
 trébaukar
-trébauki
 trébaukinn
 trébauknum
 trébauks
@@ -831883,8 +830437,6 @@ trékeri
 trékerið
 trékerin
 trékerinu
-trékerja
-trékerjum
 trékers
 trékersins
 trékerum
@@ -832028,7 +830580,6 @@ trékvísl
 trékvísla
 trékvíslar
 trékvíslin
-trékvíslir
 trékvíslum
 trékylfa
 trékylfan
@@ -832104,7 +830655,6 @@ trémaðkana
 trémaðkar
 trémaðki
 trémaðkinn
-trémaðknum
 trémaðks
 trémaðkur
 trémaður
@@ -832494,7 +831044,6 @@ tréskála
 tréskálar
 tréskálin
 tréskálina
-tréskálir
 tréskálum
 tréskáp
 tréskápa
@@ -834661,7 +833210,6 @@ tróðvefja
 tróðvefjar
 tróðvefjum
 tróðvefnum
-tróðvefs
 tróðvefur
 tróðvegg
 tróðveggi
@@ -834701,7 +833249,6 @@ tróki
 trókinn
 trókum
 trókunum
-trón
 tróna
 trónað
 trónaði
@@ -834710,17 +833257,11 @@ trónaðirðu
 trónaðu
 trónandi
 trónar
-tróndi
-tróndir
 tróndirðu
-tróndu
-trónduð
-tróndum
 tróni
 trónið
 trónir
 trónirðu
-trónt
 trónuðu
 trónuðuð
 trónuðum
@@ -835239,7 +833780,6 @@ trúarmáls
 trúarmálum
 trúarmátt
 trúarmóð
-trúarmóði
 trúarmóðs
 trúarmóður
 trúarmætti
@@ -835891,7 +834431,6 @@ trúnaðar
 trúnaði
 trúnaðinn
 trúnaðinum
-trúnaðnum
 trúnaður
 trúnema
 trúnemana
@@ -837035,7 +835574,6 @@ tugarins
 tugaritun
 tugaskrá
 tugaskráa
-tugaskráar
 tugaskráin
 tugaskrám
 tugaskrána
@@ -837426,8 +835964,6 @@ tunglganga
 tunglgíg
 tunglgíga
 tunglgígar
-tunglgígi
-tunglgígir
 tunglgígs
 tunglgígum
 tunglgígur
@@ -837873,7 +836409,6 @@ tunnukera
 tunnukeri
 tunnukerið
 tunnukerin
-tunnukerja
 tunnukers
 tunnukerum
 tunnuketil
@@ -839289,7 +837824,6 @@ túnrananum
 túnranar
 túnranda
 túnrandar
-túnrandir
 túnrani
 túnraninn
 túnreit
@@ -839469,7 +838003,6 @@ túnvargana
 túnvargar
 túnvargi
 túnvarginn
-túnvargnum
 túnvargs
 túnvargur
 túnvarna
@@ -843393,7 +841926,6 @@ tvíörn
 tvíörninn
 tvíörnum
 tvíörnunum
-tvíöxar
 tvíöxi
 tvíöxin
 tvíöxina
@@ -845565,7 +844097,6 @@ tættuð
 tættum
 tættumst
 tættur
-tætturnar
 tættust
 tættustu
 tættustum
@@ -845846,7 +844377,6 @@ töðutuggan
 töðutuggu
 töðutuggum
 töðutuggur
-töðutættur
 töðuvalla
 töðuvallar
 töðuvelli
@@ -846140,7 +844670,6 @@ töfrageima
 töfrageimi
 töfrageims
 töfragler
-töfraglera
 töfragleri
 töfraglers
 töfraglit
@@ -846207,7 +844736,6 @@ töfrakera
 töfrakeri
 töfrakerið
 töfrakerin
-töfrakerja
 töfrakers
 töfrakerum
 töfraklæða
@@ -846286,7 +844814,6 @@ töframálum
 töframátt
 töframeðal
 töframeðul
-töframeðöl
 töframenn
 töframjólk
 töframóða
@@ -848252,7 +846779,6 @@ ufsans
 ufsanum
 ufsar
 ufsarinnar
-ufsarnar
 ufsarnir
 ufsarós
 ufsarósa
@@ -849192,7 +847718,6 @@ ullkambana
 ullkambar
 ullkambi
 ullkambinn
-ullkambnum
 ullkambs
 ullkambur
 ullkömbum
@@ -849203,7 +847728,6 @@ ullserkina
 ullserkinn
 ullserkir
 ullserkja
-ullserkjar
 ullserkjum
 ullserknum
 ullserks
@@ -849528,7 +848052,6 @@ umbúnað
 umbúnaðar
 umbúnaði
 umbúnaðinn
-umbúnaðnum
 umbúnaður
 umbúnar
 umbúni
@@ -852431,11 +850954,6 @@ undanþegni
 undanþegnu
 undanþigg
 undanþiggi
-undanþæði
-undanþæðir
-undanþæðu
-undanþæðuð
-undanþæðum
 undanþæg
 undanþæga
 undanþægan
@@ -852766,7 +851284,6 @@ undirkomni
 undirkomnu
 undirkomu
 undirkurr
-undirkurri
 undirkurrs
 undirkúgun
 undirkvika
@@ -853370,7 +851887,6 @@ undramanns
 undramátt
 undrameðal
 undrameðul
-undrameðöl
 undramenn
 undramikið
 undramikil
@@ -853719,7 +852235,6 @@ ungbörnum
 ungdóm
 ungdómi
 ungdóminn
-ungdóminum
 ungdómnum
 ungdóms
 ungdómsár
@@ -854038,7 +852553,6 @@ ungmenninu
 ungmennis
 ungmennum
 ungmey
-ungmeyin
 ungmeyja
 ungmeyjan
 ungmeyjar
@@ -854047,7 +852561,6 @@ ungmeyjum
 ungmeyjuna
 ungmeyjur
 ungmeyna
-ungmeynni
 ungmurta
 ungmurtan
 ungmurtna
@@ -855458,7 +853971,6 @@ uppgómanna
 uppgómar
 uppgómi
 uppgóminn
-uppgóminum
 uppgómmælt
 uppgómnum
 uppgóms
@@ -855470,7 +853982,6 @@ uppgrafta
 uppgraftar
 uppgrefti
 uppgreftir
-uppgreftri
 uppgreidd
 uppgreidda
 uppgreiddi
@@ -855702,9 +854213,6 @@ upphéraðs
 upphéruð
 upphéruðin
 upphéruðum
-upphéröð
-upphéröðin
-upphéröðum
 upphilling
 upphimin
 upphiminn
@@ -855754,9 +854262,6 @@ upphjóstu
 upphjuggu
 upphjugguð
 upphjuggum
-upphjyggi
-upphjyggir
-upphjyggju
 upphlaðið
 upphlaðin
 upphlaðinn
@@ -855784,8 +854289,6 @@ upphleyptu
 upphleypu
 upphlut
 upphluta
-upphlutana
-upphlutar
 upphluti
 upphlutina
 upphlutinn
@@ -855931,11 +854434,7 @@ upphöfuðin
 upphöfuðs
 upphögg
 upphöggðu
-upphöggið
-upphöggin
 upphögginn
-upphöggins
-upphöggist
 upphöggna
 upphöggnar
 upphöggnir
@@ -856096,11 +854595,6 @@ uppjóst
 uppjusu
 uppjusuð
 uppjusum
-uppjysi
-uppjysir
-uppjysu
-uppjysuð
-uppjysum
 uppjöfnuð
 uppjöfnuði
 uppjöfnuðu
@@ -857643,7 +856137,6 @@ upptakt
 upptakta
 upptaktana
 upptaktar
-upptakti
 upptaktinn
 upptakts
 upptaktur
@@ -858442,7 +856935,6 @@ urðarhafti
 urðarhafts
 urðarhaug
 urðarhauga
-urðarhaugi
 urðarhaugs
 urðarhlíð
 urðarhlíða
@@ -859407,8 +857899,6 @@ uxunum
 úðamekkir
 úðamökk
 úðamökkinn
-úðamökknum
-úðamökks
 úðamökkum
 úðamökkur
 úðana
@@ -860261,7 +858751,6 @@ uxunum
 úlnliðinn
 úlnliðir
 úlnliðnum
-úlnliðs
 úlnliðsins
 úlnliðum
 úlnliðunum
@@ -860749,8 +859238,6 @@ uxunum
 úrgengnum
 úrgengnust
 úrgler
-úrglera
-úrgleranna
 úrgleri
 úrglerið
 úrglerin
@@ -860759,8 +859246,6 @@ uxunum
 úrglerjum
 úrglers
 úrglersins
-úrglerum
-úrglerunum
 úrgrá
 úrgráa
 úrgráan
@@ -862429,7 +860914,6 @@ uxunum
 útbúnaðar
 útbúnaði
 útbúnaðinn
-útbúnaðnum
 útbúnaður
 útbúnar
 útbúni
@@ -863497,8 +861981,6 @@ uxunum
 útglenntum
 útglenntur
 útgler
-útglera
-útgleranna
 útgleri
 útglerið
 útglerin
@@ -863507,8 +861989,6 @@ uxunum
 útglerjum
 útglers
 útglersins
-útglerum
-útglerunum
 útgraf
 útgrafa
 útgrafandi
@@ -863530,7 +862010,6 @@ uxunum
 útgrafnir
 útgrafstu
 útgraftar
-útgraftrar
 útgrátið
 útgrátin
 útgrátinn
@@ -863546,7 +862025,6 @@ uxunum
 útgref
 útgrefst
 útgrefti
-útgreftri
 útgrefur
 útgrefurðu
 útgreidd
@@ -863568,7 +862046,6 @@ uxunum
 útgreinar
 útgreinin
 útgreinina
-útgreinir
 útgreinum
 útgreitt
 útgreni
@@ -863862,9 +862339,6 @@ uxunum
 úthéruð
 úthéruðin
 úthéruðum
-úthéröð
-úthéröðin
-úthéröðum
 úthjara
 úthjarana
 úthjarann
@@ -863900,7 +862374,6 @@ uxunum
 úthlíðin
 úthlíðina
 úthlíðinni
-úthlíðir
 úthlíðum
 úthlíðunum
 úthljóð
@@ -864869,7 +863342,6 @@ uxunum
 útiróðri
 útiróðrum
 útiróður
-útiróðurs
 útirýma
 útirýmanna
 útirými
@@ -865260,12 +863732,7 @@ uxunum
 útjusu
 útjusuð
 útjusum
-útjysi
-útjysir
 útjysirðu
-útjysu
-útjysuð
-útjysum
 útjöðrum
 útjöðrunum
 útjöfnuð
@@ -866755,7 +865222,6 @@ uxunum
 útranda
 útrandanna
 útrandar
-útrandir
 útrasta
 útrastanna
 útrastar
@@ -866814,7 +865280,6 @@ uxunum
 útreiðinga
 útreiðingu
 útreiðinni
-útreiðir
 útreiðsla
 útreiðslan
 útreiðslna
@@ -866970,7 +865435,6 @@ uxunum
 útróðrunum
 útróður
 útróðurinn
-útróðurs
 útruðning
 útruðninga
 útruðningi
@@ -871787,7 +870251,6 @@ valinkunn
 valinkunna
 valinkunni
 valinkunns
-valinkunnt
 valinkunnu
 valinn
 valinna
@@ -872174,7 +870637,6 @@ valpörunar
 valpörunin
 valranda
 valrandar
-valrandir
 valrauð
 valrauða
 valrauðan
@@ -872337,7 +870799,6 @@ valskna
 valsknanna
 valskrá
 valskráa
-valskráar
 valskráin
 valskrám
 valskrána
@@ -872370,7 +870831,6 @@ valst
 valstakt
 valstakta
 valstaktar
-valstakti
 valstakts
 valstaktur
 valstrend
@@ -876245,7 +874705,6 @@ varglyndu
 varglyndum
 varglyndur
 varglynt
-vargnum
 vargoldið
 vargoldin
 vargoldinn
@@ -876903,7 +875362,6 @@ varphéraða
 varphéraði
 varphéraðs
 varphéruð
-varphéröð
 varphljóð
 varphljóða
 varphljóði
@@ -877784,7 +876242,6 @@ vatnaaugun
 vatnaaur
 vatnaaura
 vatnaaurar
-vatnaauri
 vatnaaurs
 vatnaaurum
 vatnaágang
@@ -878665,7 +877122,6 @@ vatnsglasa
 vatnsglasi
 vatnsglass
 vatnsgler
-vatnsglera
 vatnsgleri
 vatnsglers
 vatnsgljá
@@ -878868,7 +877324,6 @@ vatnskerfi
 vatnskeri
 vatnskerið
 vatnskerin
-vatnskerja
 vatnskers
 vatnskerum
 vatnsketil
@@ -879060,7 +877515,6 @@ vatnsmælir
 vatnsmælis
 vatnsmælum
 vatnsmökk
-vatnsmökks
 vatnsnafla
 vatnsnafli
 vatnsnagla
@@ -879438,8 +877892,6 @@ vatnsþróar
 vatnsþróin
 vatnsþróm
 vatnsþróna
-vatnsþrór
-vatnsþróum
 vatnsþrær
 vatnsþunga
 vatnsþungi
@@ -880896,7 +879348,6 @@ veðramætin
 veðramætis
 veðramætum
 veðramökk
-veðramökks
 veðran
 veðranar
 veðrandi
@@ -880945,7 +879396,6 @@ veðráttu
 veðráttuna
 veðreiða
 veðreiðar
-veðreiðir
 veðreiðum
 veðrétt
 veðréttar
@@ -881523,7 +879973,6 @@ veðurvef
 veðurvefi
 veðurvefir
 veðurvefja
-veðurvefs
 veðurvefur
 veðurvit
 veðurvita
@@ -881860,7 +880309,6 @@ vefjarlóði
 vefjarlóðs
 vefjarrá
 vefjarráa
-vefjarráar
 vefjarráin
 vefjarrám
 vefjarrána
@@ -881870,7 +880318,6 @@ vefjarrifa
 vefjarrifi
 vefjarrifs
 vefjarrifu
-vefjarrær
 vefjarslag
 vefjarslög
 vefjarsýna
@@ -882062,7 +880509,6 @@ vefræns
 vefrænt
 vefrænu
 vefrænum
-vefs
 vefsafn
 vefsafna
 vefsafni
@@ -882088,7 +880534,6 @@ vefsetrinu
 vefsetrum
 vefsetur
 vefseturs
-vefsins
 vefsíða
 vefsíðan
 vefsíðna
@@ -883878,7 +882323,6 @@ vegprestum
 vegprestur
 vegranda
 vegrandar
-vegrandir
 vegrendur
 vegrið
 vegriða
@@ -883895,7 +882339,6 @@ vegrönd
 vegröndin
 vegröndina
 vegröndum
-vegs
 vegsagna
 vegsagnar
 vegsagnir
@@ -883941,7 +882384,6 @@ vegsemdin
 vegsemdina
 vegsemdir
 vegsemdum
-vegsins
 vegskarð
 vegskarða
 vegskarði
@@ -884612,7 +883054,6 @@ veiðikróar
 veiðikróin
 veiðikróm
 veiðikróna
-veiðikrór
 veiðikrær
 veiðikúla
 veiðikúlan
@@ -884732,7 +883173,6 @@ veiðimiða
 veiðimiðin
 veiðimiðum
 veiðimóð
-veiðimóði
 veiðimóðs
 veiðimóður
 veiðimynd
@@ -888138,7 +886578,6 @@ verðsjánum
 verðsjár
 verðskrá
 verðskráa
-verðskráar
 verðskráð
 verðskráða
 verðskráði
@@ -888282,7 +886721,6 @@ verfákanna
 verfákar
 verfáki
 verfákinn
-verfákinum
 verfáknum
 verfáks
 verfáksins
@@ -888512,7 +886950,6 @@ verkananna
 verkanar
 verkanaut
 verkanauta
-verkanauts
 verkanda
 verkandann
 verkandans
@@ -889084,7 +887521,6 @@ verknaði
 verknaðina
 verknaðinn
 verknaðir
-verknaðnum
 verknaður
 verknám
 verknámi
@@ -890908,12 +889344,9 @@ vettlingum
 vettlingur
 vettugi
 vettvang
-vettvanga
-vettvangar
 vettvangi
 vettvangs
 vettvangur
-vettvöngum
 vetur
 veturbeit
 veturfák
@@ -891297,7 +889730,6 @@ vélanóta
 vélanótar
 vélanótin
 vélanótina
-vélanótir
 vélanótum
 vélans
 vélanum
@@ -893058,7 +891490,6 @@ viðarskýli
 viðarsmjör
 viðarspón
 viðarspóna
-viðarspóni
 viðarspónn
 viðarspóns
 viðarsprek
@@ -894490,12 +892921,9 @@ viðurkenni
 viðurkennt
 viðurlag
 viðurlaga
-viðurlagða
-viðurlagðs
 viðurlagi
 viðurlagið
 viðurlags
-viðurlagt
 viðurlit
 viðurlita
 viðurliti
@@ -894507,7 +892935,6 @@ viðurlífi
 viðurlífið
 viðurlífis
 viðurlög
-viðurlögð
 viðurlögðu
 viðurlögin
 viðurlögum
@@ -895279,8 +893706,6 @@ vikurgeiri
 vikurgíg
 vikurgíga
 vikurgígar
-vikurgígi
-vikurgígir
 vikurgígs
 vikurgígum
 vikurgígur
@@ -895294,7 +893719,6 @@ vikurgoss
 vikurgosum
 vikurhaug
 vikurhauga
-vikurhaugi
 vikurhaugs
 vikurhól
 vikurhóla
@@ -896134,7 +894558,6 @@ villuspors
 villust
 villustíg
 villustíga
-villustígi
 villustígs
 villustu
 villustum
@@ -897002,7 +895425,6 @@ vindblikum
 vindblikur
 vindblæ
 vindblæinn
-vindblæjar
 vindblænum
 vindblær
 vindblæs
@@ -897032,7 +895454,6 @@ vindbrælur
 vindbyl
 vindbylinn
 vindbylja
-vindbyljar
 vindbylji
 vindbyljir
 vindbyljum
@@ -898670,7 +897091,6 @@ vinnarar
 vinnari
 vinnarinn
 vinnast
-vinndu
 vinnenda
 vinnendum
 vinnendur
@@ -902181,8 +900601,6 @@ víðikeri
 víðikerið
 víðikerin
 víðikerinu
-víðikerja
-víðikerjum
 víðikers
 víðikerum
 víðikjarr
@@ -904678,8 +903096,6 @@ vínkeri
 vínkerið
 vínkerin
 vínkerinu
-vínkerja
-vínkerjum
 vínkers
 vínkersins
 vínkerum
@@ -904957,7 +903373,6 @@ vínskála
 vínskálar
 vínskálin
 vínskálina
-vínskálir
 vínskálum
 vínskáp
 vínskápa
@@ -905163,9 +903578,6 @@ vínþróna
 vínþrónna
 vínþrónni
 vínþrónum
-vínþrór
-vínþrórnar
-vínþróum
 vínþrúga
 vínþrúgan
 vínþrúgna
@@ -905353,7 +903765,6 @@ vírflækjum
 vírflækjur
 vírgirðing
 vírgler
-vírglera
 vírgleri
 vírglerið
 vírglerin
@@ -905361,7 +903772,6 @@ vírglerinu
 vírglerja
 vírglerjum
 vírglers
-vírglerum
 vírgrind
 vírgrinda
 vírgrindar
@@ -905456,7 +903866,6 @@ vírmaðkana
 vírmaðkar
 vírmaðki
 vírmaðkinn
-vírmaðknum
 vírmaðks
 vírmaðkur
 vírmanilla
@@ -905675,7 +904084,6 @@ vísbending
 vísdóm
 vísdómi
 vísdóminn
-vísdóminum
 vísdómlega
 vísdómnum
 vísdóms
@@ -906694,7 +905102,6 @@ voðabulls
 voðabyl
 voðabylinn
 voðabylja
-voðabyljar
 voðabylji
 voðabyljir
 voðabyljum
@@ -907457,13 +905864,11 @@ vogmestu
 vogmestum
 vogmestur
 vogmey
-vogmeyin
 vogmeyja
 vogmeyjar
 vogmeyju
 vogmeyjum
 vogmeyna
-vogmeynni
 vogmikið
 vogmikil
 vogmikill
@@ -907532,7 +905937,6 @@ vogskála
 vogskálar
 vogskálin
 vogskálina
-vogskálir
 vogskálum
 vogskorið
 vogskorin
@@ -908178,7 +906582,6 @@ vonahlíð
 vonahlíða
 vonahlíðar
 vonahlíðin
-vonahlíðir
 vonahlíðum
 vonaland
 vonalanda
@@ -909377,7 +907780,6 @@ vorblóms
 vorblómum
 vorblæ
 vorblæinn
-vorblæjar
 vorblænum
 vorblær
 vorblærinn
@@ -910541,7 +908943,6 @@ vorróðrar
 vorróðri
 vorróðrum
 vorróður
-vorróðurs
 vorrós
 vorrósa
 vorrósanna
@@ -914610,8 +913011,6 @@ völundar
 völundi
 völundinn
 völundinum
-völunds
-völundsins
 völundum
 völundunum
 völundur
@@ -914980,7 +913379,6 @@ vörnin
 vörnina
 vörninni
 vörnuð
-vörnuðar
 vörnuði
 vörnuðinn
 vörnuðinum
@@ -915539,7 +913937,6 @@ vöruskorti
 vöruskorts
 vöruskrá
 vöruskráa
-vöruskráar
 vöruskráin
 vöruskrám
 vöruskrána
@@ -917248,7 +915645,6 @@ yfirslíðri
 yfirslíður
 yfirslopp
 yfirsloppa
-yfirsloppi
 yfirslopps
 yfirslætti
 yfirslög
@@ -918625,7 +917021,6 @@ yngismanni
 yngismanns
 yngismenn
 yngismey
-yngismeyin
 yngismeyja
 yngismeyju
 yngismeyna
@@ -918681,12 +917076,7 @@ ynnum
 ynnumst
 ynnust
 yppa
-yppað
-yppaði
-yppaðir
 yppaðirðu
-yppaðist
-yppaðu
 yppandi
 ypparlega
 ypparleika
@@ -918726,11 +917116,6 @@ ypptuð
 ypptum
 ypptumst
 ypptust
-yppuðu
-yppuðuð
-yppuðum
-yppuðumst
-yppuðust
 yppum
 yppumst
 ypsílon
@@ -919145,8 +917530,6 @@ yxum
 ýdrógin
 ýdrógina
 ýdróginni
-ýdrógir
-ýdrógirnar
 ýdrógum
 ýdrógunum
 ýfa
@@ -919456,7 +917839,6 @@ yxum
 ýkju
 ýkjublæ
 ýkjublæinn
-ýkjublæjar
 ýkjublænum
 ýkjublær
 ýkjublæs
@@ -920244,7 +918626,6 @@ yxum
 ýsunótin
 ýsunótina
 ýsunótinni
-ýsunótir
 ýsunótum
 ýsunótunum
 ýsunum
@@ -920533,25 +918914,11 @@ yxum
 það
 þaðan
 þagað
-þagaða
-þagaðan
-þagaðar
-þagaðir
-þagaðra
-þagaðrar
-þagaðri
 þagaðs
 þagaður
-þagða
-þagðan
-þagðar
 þagði
 þagðir
 þagðirðu
-þagðra
-þagðrar
-þagðri
-þagður
 þagga
 þaggað
 þaggaða
@@ -922967,21 +921334,12 @@ yxum
 þáamiklum
 þáar
 þáarinnar
-þáð
-þáða
-þáðan
-þáðar
 þáði
 þáðir
 þáðirðu
-þáðra
-þáðrar
-þáðri
-þáðs
 þáðu
 þáðuð
 þáðum
-þáður
 þáfjall
 þáfjalla
 þáfjalli
@@ -924138,7 +922496,6 @@ yxum
 þelkambar
 þelkambi
 þelkambinn
-þelkambnum
 þelkambs
 þelkambur
 þelkömbum
@@ -926247,7 +924604,6 @@ yxum
 þingamenn
 þinganaut
 þinganauta
-þinganauts
 þingandi
 þinganna
 þingannir
@@ -926821,7 +925177,6 @@ yxum
 þingreiða
 þingreiðar
 þingreiðin
-þingreiðir
 þingreiðum
 þingreisa
 þingreisan
@@ -928647,7 +927002,6 @@ yxum
 þjóðskólum
 þjóðskrá
 þjóðskráa
-þjóðskráar
 þjóðskráin
 þjóðskrám
 þjóðskrána
@@ -928962,7 +927316,6 @@ yxum
 þjófnaðina
 þjófnaðinn
 þjófnaðir
-þjófnaðnum
 þjófnaður
 þjófnuðum
 þjófnum
@@ -929048,8 +927401,6 @@ yxum
 þjófsnafns
 þjófsnaut
 þjófsnauta
-þjófsnauti
-þjófsnauts
 þjófsnöfn
 þjófsorð
 þjófsorða
@@ -930095,7 +928446,6 @@ yxum
 þokumyrkri
 þokumyrkur
 þokumökk
-þokumökks
 þokumökkum
 þokumökkur
 þokumökkva
@@ -931199,7 +929549,6 @@ yxum
 þorsknálar
 þorsknálin
 þorsknálum
-þorsknum
 þorskrifa
 þorskrifan
 þorskrifna
@@ -932380,13 +930729,11 @@ yxum
 þráðfrumum
 þráðfrumur
 þráðgler
-þráðglera
 þráðgleri
 þráðglerið
 þráðglerin
 þráðglerja
 þráðglers
-þráðglerum
 þráðgras
 þráðgrasa
 þráðgrasi
@@ -933997,7 +932344,6 @@ yxum
 þreyis
 þreyisins
 þreyja
-þreyjað
 þreyjan
 þreyjana
 þreyjanar
@@ -934014,7 +932360,6 @@ yxum
 þreyjunnar
 þreyjunni
 þreyjunum
-þreyr
 þreyst
 þreyt
 þreyta
@@ -934231,7 +932576,6 @@ yxum
 þrifnaðar
 þrifnaði
 þrifnaðinn
-þrifnaðnum
 þrifnaður
 þrifnar
 þrifnara
@@ -934310,11 +932654,8 @@ yxum
 þristar
 þristarnir
 þristi
-þristina
 þristinn
 þristinum
-þristir
-þristirnir
 þrists
 þristsins
 þristum
@@ -935958,7 +934299,6 @@ yxum
 þrónum
 þrór
 þrórinnar
-þrórnar
 þrótt
 þróttar
 þróttarins
@@ -937715,7 +936055,6 @@ yxum
 þrætubækur
 þrætudólg
 þrætudólga
-þrætudólgi
 þrætudólgs
 þrætuefna
 þrætuefni
@@ -939399,11 +937738,6 @@ yxum
 þurrjusu
 þurrjusuð
 þurrjusum
-þurrjysi
-þurrjysir
-þurrjysu
-þurrjysuð
-þurrjysum
 þurrk
 þurrka
 þurrkaár
@@ -940812,7 +939146,6 @@ yxum
 þvagskála
 þvagskálar
 þvagskálin
-þvagskálir
 þvagskálum
 þvagstein
 þvagsteina
@@ -940848,8 +939181,6 @@ yxum
 þvagþrónna
 þvagþrónni
 þvagþrónum
-þvagþrór
-þvagþróum
 þvagþrær
 þvagþurrð
 þvagþörf
@@ -941864,7 +940195,6 @@ yxum
 þverranda
 þverrandar
 þverrandi
-þverrandir
 þverranin
 þverranina
 þverrar
@@ -943873,7 +942203,6 @@ yxum
 þyrnistafs
 þyrnistig
 þyrnistiga
-þyrnistigi
 þyrnistigs
 þyrnistokk
 þyrnisveig
@@ -945003,8 +943332,6 @@ yxum
 þögnumst
 þögnunum
 þöguð
-þöguðu
-þöguðum
 þögul
 þögula
 þögulan
@@ -945357,7 +943684,6 @@ yxum
 æðakvísla
 æðakvíslar
 æðakvíslin
-æðakvíslir
 æðakvíslum
 æðakökk
 æðakökkinn
@@ -947545,7 +945871,6 @@ yxum
 ærudóm
 ærudómi
 ærudóminn
-ærudóminum
 ærudómnum
 ærudóms
 ærudómsins
@@ -948471,7 +946796,6 @@ yxum
 æskuhlíða
 æskuhlíðar
 æskuhlíðin
-æskuhlíðir
 æskuhlíðum
 æskuhrein
 æskuhreina
@@ -948615,7 +946939,6 @@ yxum
 æskuminnis
 æskuminnum
 æskumóð
-æskumóði
 æskumóðinn
 æskumóðnum
 æskumóðs
@@ -949395,7 +947718,6 @@ yxum
 ættaróðali
 ættaróðals
 ættaróðul
-ættaróðöl
 ættarrót
 ættarróta
 ættarrótar
@@ -949501,7 +947823,6 @@ yxum
 ættaskipan
 ættaskrá
 ættaskráa
-ættaskráar
 ættaskráin
 ættaskrám
 ættaskrána
@@ -949805,7 +948126,6 @@ yxum
 ættjörð
 ættjörðin
 ættjörðina
-ættjörðu
 ættjörðum
 ættkona
 ættkonan
@@ -950888,7 +949208,6 @@ yxum
 æviskjólum
 æviskrá
 æviskráa
-æviskráar
 æviskráin
 æviskrám
 æviskrána
@@ -952055,7 +950374,6 @@ yxum
 ökklaliðar
 ökklaliði
 ökklaliðir
-ökklaliðs
 ökklaliðum
 ökklaliður
 ökklana
@@ -953050,8 +951368,6 @@ yxum
 ölduþrónna
 ölduþrónni
 ölduþrónum
-ölduþrór
-ölduþróum
 ölduþrær
 öledik
 ölediki
@@ -953346,10 +951662,6 @@ yxum
 ölkerið
 ölkerin
 ölkerinu
-ölkerja
-ölkerjanna
-ölkerjum
-ölkerjunum
 ölkers
 ölkersins
 ölkerum
@@ -953749,7 +952061,6 @@ yxum
 ölskálin
 ölskálina
 ölskálinni
-ölskálir
 ölskálum
 ölskálunum
 ölsköp
@@ -957696,7 +956007,6 @@ yxum
 öskubyl
 öskubylinn
 öskubylja
-öskubyljar
 öskubylji
 öskubyljir
 öskubyljum
@@ -957821,10 +956131,7 @@ yxum
 öskugíga
 öskugígana
 öskugígar
-öskugígi
-öskugígina
 öskugíginn
-öskugígir
 öskugígnum
 öskugígs
 öskugígum
@@ -957849,7 +956156,6 @@ yxum
 öskugrass
 öskugraut
 öskugrauta
-öskugrauti
 öskugrá
 öskugráa
 öskugráan
@@ -957888,7 +956194,6 @@ yxum
 öskuhaug
 öskuhauga
 öskuhaugar
-öskuhaugi
 öskuhaugs
 öskuhaugum
 öskuhaugur
@@ -957983,8 +956288,6 @@ yxum
 öskukerið
 öskukerin
 öskukerinu
-öskukerja
-öskukerjum
 öskukers
 öskukerum
 öskuköllum
@@ -958050,7 +956353,6 @@ yxum
 öskumyrkri
 öskumyrkur
 öskumökk
-öskumökks
 öskumökkum
 öskumökkur
 öskun
