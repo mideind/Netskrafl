@@ -274,12 +274,13 @@ Then, to generate the vocabulary file from the ```psql``` command line:
 \copy (select distinct ordmynd from skrafl order by ordmynd) to '~/github/Netskrafl/resources/ordalisti.full.sorted.txt';
 ```
 
-The robot *Miðlungur* uses a stricter subset of BÍN: only headwords and
-inflectional forms of grade 1 (except singular question forms, which BÍN
-grades 2), no archaic, poetic, dialectal, rare, erroneous or offensive
-headwords or forms (by ```malsnid``` and ```bmalsnid```), no subordinate
-variant forms (```bgildi = 'VIK'```), and no words longer than 10 letters.
-Define it with the following view:
+The robot *Miðlungur* uses a stricter subset of BÍN: only headwords of
+grade 1, only inflectional forms graded below 3 (grades 3 and 4 mark
+doubtful and incorrect forms), no archaic, poetic, dialectal, rare, erroneous or offensive
+headwords or forms (by ```malsnid``` and ```bmalsnid```), and no words longer
+than 10 letters. Subordinate variant forms (```bgildi = 'VIK'```) are judged
+by their grade like any other form: many of them are common, such as *jörðu*,
+*nóttu* and *hnífi*. Define it with the following view:
 
 ```sql
 begin transaction read write;
@@ -288,9 +289,8 @@ create or replace view ksnid_midlungur as
 	from kristinarsnid
 	where (malsnid is null or (malsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID','OVID'])))
 		and (bmalsnid is null or (bmalsnid <> ALL (ARRAY['SKALD','GAM','FORN','URE','STAD','SJALD','OTOK','VILLA','NID','OVID'])))
-		and (bgildi is null or bgildi <> 'VIK')
 		and einkunn = 1
-		and (beinkunn = 1 or (beyging like 'SP-%' and beinkunn = 2));
+		and coalesce(beinkunn, 0) < 3;
 commit;
 ```
 

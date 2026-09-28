@@ -38,10 +38,12 @@ full list excludes headwords and forms that BÍN grades 4 or higher (incorrect
 spellings such as *svasi*, which is correctly *Svasi*, or *allskonar*, correctly
 *alls konar*) except the variants above. The robot lists err on the side of
 removal, because players object to robots playing questionable words: Miðlungur
-takes only grade 1 headwords and forms (plus singular question forms, which BÍN
-grades 2), without marked registers or subordinate variant forms; Amlóði is a
-subset of Miðlungur; neither has words longer than 10 letters (added
-2026-09-23 after a player complaint about *svasi*).
+takes only grade 1 headwords and forms graded below 3, without marked
+registers; Amlóði is a subset of Miðlungur; neither has words longer than 10
+letters (added 2026-09-23 after a player complaint about *svasi*). Subordinate
+variant forms (`bgildi = 'VIK'`) are judged by grade like other forms and are
+never excluded as such: a first version of the rules dropped them, and with
+them common forms like *jörðu*, *nóttu* and *hnífi* (fixed 2026-09-28).
 
 Do not re-run `run_icelandic_filter` with the current venv without first
 raising `MIN_ICELANDIC_FREQUENCY`: the icegrams 2.0 model is built from a much
