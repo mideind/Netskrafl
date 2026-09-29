@@ -24,6 +24,30 @@ Icelandic source lists in `resources/`:
 - `ordalisti.remove.txt` — known errors, applied to the full and mid builds
   (not to Amlóði). Entries only need to exist; forms absent from the lists are
   harmlessly ignored, so adding a whole paradigm is fine.
+- `ordalisti.variants.txt` — headwords (`stofn;ordfl`) that BÍN grades as
+  incorrect (grade 4) but that are kept in the full list as widely used
+  variant spellings (*pítsa*, *partý*, *prótein*), curated by hand. Read only by the SQL
+  recipe in `README.md`, which bakes them into `ordalisti.full.sorted.txt`;
+  the DAWG builders and Skrafl never see this file. After editing it, reload
+  the `ordalisti_variants` table (the README block truncates it first) and
+  regenerate the full list; editing the file alone changes nothing.
+
+The full and Miðlungur lists are generated from BÍN's *Kristínarsnið* by the
+SQL recipe in `README.md` (section "Generating a new vocabulary file"). The
+full list excludes headwords and forms that BÍN grades 4 or higher (incorrect
+spellings such as *svasi*, which is correctly *Svasi*, or *allskonar*, correctly
+*alls konar*) except the variants above. The robot lists err on the side of
+removal, because players object to robots playing questionable words: Miðlungur
+takes only grade 1 headwords and forms (plus singular question forms, which BÍN
+grades 2), without marked registers or subordinate variant forms; Amlóði is a
+subset of Miðlungur; neither has words longer than 10 letters (added
+2026-09-23 after a player complaint about *svasi*).
+
+Do not re-run `run_icelandic_filter` with the current venv without first
+raising `MIN_ICELANDIC_FREQUENCY`: the icegrams 2.0 model is built from a much
+larger corpus and lets about 72,000 more words into Amlóði at the old
+threshold. The 2026-09-23 Amlóði list was produced by restricting the previous
+filtered list, not by re-running the frequency filter.
 
 A recurring class of error is a phantom BÍN lemma that produces a whole
 compound paradigm (`allfrj*` in 2021, `tæknifrj*` in 2026: the lemma "frj").

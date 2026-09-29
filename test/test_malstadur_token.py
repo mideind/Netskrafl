@@ -17,12 +17,15 @@ import pytest
 
 import skrafluser
 from skrafluser import (
+    CURRENT_KID,
     JWT_ALGORITHM,
+    JWT_AUDIENCE,
     MALSTADUR_KID,
     MALSTADUR_TOKEN_EXPIRY_GRACE,
     verify_malstadur_token,
+    verify_token,
 )
-from config import TOKEN_SECRET
+from config import PROJECT_ID, TOKEN_SECRET
 
 
 @pytest.fixture(autouse=True)
@@ -130,4 +133,56 @@ def test_missing_optional_claims_still_valid() -> None:
     assert not expired
     assert claims is not None
     assert claims.get("sub") == "1234567890"
+
+
+def test_long_expired_token_is_logged_with_its_email(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # A client stuck presenting a stale token must be traceable to a user
+    token = make_token(
+        expired_for=MALSTADUR_TOKEN_EXPIRY_GRACE + timedelta(hours=1)
+    )
+    with caplog.at_level("INFO"):
+        verify_malstadur_token(token)
+    assert "user@example.com" in caplog.text
+
+
+def make_session_token(*, expired_for: timedelta, secret: str = TOKEN_SECRET) -> str:
+    """Create a session (bearer) token of the kind issued by
+    make_login_dict(), one that expired expired_for ago"""
+    now = datetime.now(UTC)
+    payload: Dict[str, Any] = {
+        "iss": PROJECT_ID,
+        "sub": "user-id-42",
+        "aud": JWT_AUDIENCE,
+        "exp": now - expired_for,
+    }
+    return jwt.encode(
+        payload, secret, algorithm=JWT_ALGORITHM, headers={"kid": CURRENT_KID}
+    )
+
+
+def test_expired_session_token_is_logged_with_its_user(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(skrafluser, "ACCEPTED_KIDS", frozenset((CURRENT_KID,)))
+    token = make_session_token(expired_for=timedelta(days=3))
+    with caplog.at_level("WARNING"):
+        assert verify_token(token) is None
+    assert "user-id-42" in caplog.text
+    fields = getattr(caplog.records[-1], "json_fields")
+    assert fields["event"] == "token_expired"
+    assert fields["user_id"] == "user-id-42"
+    assert fields["expired_for_s"] >= 3 * 24 * 60 * 60
+
+
+def test_expired_session_token_with_wrong_signature_names_no_user(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # The subject of a token is only logged if its signature verifies
+    monkeypatch.setattr(skrafluser, "ACCEPTED_KIDS", frozenset((CURRENT_KID,)))
+    token = make_session_token(expired_for=timedelta(days=3), secret="wrong-secret")
+    with caplog.at_level("WARNING"):
+        assert verify_token(token) is None
+    assert "user-id-42" not in caplog.text
 

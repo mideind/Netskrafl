@@ -149,6 +149,7 @@ NodeTuple = Tuple[str, Optional["_DawgNode"]]
 MAXLEN = 48  # Longest possible word to be processed
 WORD_MAXLEN = 15  # Longest possible word in a game vocabulary
 COMMON_MAXLEN = 12  # Longest words in common word list used by weakest robot
+ICELANDIC_ROBOT_MAXLEN = 10  # Longest words in the Icelandic robot vocabularies
 
 NO_AML_VOCAB_SIZE = 20_000  # Norwegian easy robot vocabulary size
 NO_MID_VOCAB_SIZE = 32_500  # Norwegian medium robot vocabulary size
@@ -1182,19 +1183,33 @@ def run_skrafl() -> None:
 def run_icelandic_filter() -> None:
     """Read an Icelandic robot vocabulary and filter out words
     that occur rarely in the Icelandic Gigaword Corpus (IGC, Risamálheild),
-    as measured by the icegrams database built by Miðeind"""
+    as measured by the icegrams database built by Miðeind, as well as
+    words that are not in the Miðlungur vocabulary. The weakest robot
+    should never play a word that a stronger robot would not play."""
 
     print("Icelandic filtering in progress")
 
+    # Calibrated for the icegrams 1.x model. The icegrams 2.0 model (2026)
+    # is built from a much larger corpus: with this threshold, it lets about
+    # 72,000 more words into Amlóði's vocabulary. Raise the threshold before
+    # regenerating ordalisti.aml.filtered.txt with icegrams 2.0 or later.
     MIN_ICELANDIC_FREQUENCY = 10
 
     from icegrams.ngrams import Ngrams
 
+    def read_words(fname: str) -> Set[str]:
+        with open(rpath(fname), "r", encoding="utf-8") as f:
+            return {w for w in (line.strip() for line in f) if w}
+
+    # The Miðlungur vocabulary, as built by run_skrafl()
+    midlungur = (
+        read_words("ordalisti.mid.sorted.txt") | read_words("ordalisti.add.txt")
+    ) - read_words("ordalisti.remove.txt")
+
     # The name of the input file containing the robot vocabulary
     source = rpath("ordalisti.aml.sorted.txt")
 
-    # Read the input file, which is sorted in descending order by frequency,
-    # and filter the words
+    # Read the input file and filter the words
     ngrams = Ngrams()
     vocab: List[str] = []
     icnt = 0
@@ -1204,6 +1219,8 @@ def run_icelandic_filter() -> None:
             if not word:
                 continue
             icnt += 1
+            if len(word) > ICELANDIC_ROBOT_MAXLEN or word not in midlungur:
+                continue
             if len(word) == 2 or ngrams.freq(word) >= MIN_ICELANDIC_FREQUENCY:
                 vocab.append(word)
             # else:

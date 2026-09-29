@@ -340,10 +340,52 @@ def _decode_claims(
     return cast(JWTClaims, payload)
 
 
+def log_fields(event: str, **fields: Any) -> Dict[str, Any]:
+    """Return an 'extra' argument for a logging call that attaches structured
+    fields to the log entry. On GAE, Cloud Logging stores the entry as a
+    jsonPayload with these fields plus 'message', so that one user's entries
+    can be found with a filter such as jsonPayload.user_id="...". Elsewhere
+    (container, local) the fields are ignored, so the message text should
+    still carry the essential information. Empty fields are left out."""
+    json_fields: Dict[str, Any] = {"event": event}
+    json_fields.update((k, v) for k, v in fields.items() if v not in (None, ""))
+    return {"json_fields": json_fields}
+
+
+def _expiry_of(claims: JWTClaims) -> datetime:
+    """Return the expiry time of a set of JWT claims"""
+    exp_claim = claims.get("exp", 0.0)
+    if isinstance(exp_claim, datetime):
+        return exp_claim if exp_claim.tzinfo else exp_claim.replace(tzinfo=UTC)
+    return datetime.fromtimestamp(float(exp_claim), UTC)
+
+
+def _expired_token_fields(
+    token: str, *, issuer: str, audience: Optional[str]
+) -> Dict[str, Any]:
+    """Return the subject, e-mail and age of an expired token, as structured
+    log fields. The signature is still verified, so the claims can be trusted;
+    if it does not verify, no fields are returned."""
+    try:
+        claims = _decode_claims(
+            token, issuer=issuer, audience=audience, verify_exp=False
+        )
+        age = datetime.now(UTC) - _expiry_of(claims)
+    except (jwt.InvalidTokenError, ValueError, TypeError, OverflowError):
+        return {}
+    fields: Dict[str, Any] = {"expired_for_s": int(age.total_seconds())}
+    if sub := claims.get("sub", ""):
+        fields["sub"] = sub
+    if email := claims.get("email", ""):
+        fields["email"] = email
+    return fields
+
+
 def verify_token(token: str) -> Optional[JWTClaims]:
     """Verify a JWT-encoded session token and return its claims,
     or None if verification fails. This verifies tokens that we
     ourselves have issued via make_login_dict()."""
+    kid = ""
     try:
         kid = _check_token_header(token)
         # So far, so good. Now verify the JWT and its claims.
@@ -360,6 +402,19 @@ def verify_token(token: str) -> Optional[JWTClaims]:
             # The older KID_1 tokens are still accepted without an audience check,
             # but no longer issued for new logins (Explo only)
             return _decode_claims(token, issuer=PROJECT_ID)
+        return None
+    except jwt.ExpiredSignatureError as e:
+        # Identify the user, so that a client that keeps presenting
+        # an expired token can be traced to an account
+        audience = JWT_AUDIENCE if kid == CURRENT_KID else None
+        fields = _expired_token_fields(token, issuer=PROJECT_ID, audience=audience)
+        # The subject of our own tokens is the user id
+        user_id = fields.pop("sub", "")
+        logging.warning(
+            f"Failed to verify token: {e} (user {user_id or '[unknown]'}, "
+            f"expired {fields.get('expired_for_s', '?')} s ago)",
+            extra=log_fields("token_expired", user_id=user_id, **fields),
+        )
         return None
     except (jwt.InvalidTokenError, ValueError) as e:
         logging.warning(f"Failed to verify token: {e}")
@@ -386,20 +441,18 @@ def verify_malstadur_token(token: str) -> Tuple[bool, Optional[JWTClaims]]:
         # window, where a well-behaved client refreshes it and retries.
         # Beyond the grace window the client is evidently stuck presenting
         # the same stale token, so report "invalid" to break its retry loop.
-        try:
-            claims = _decode_claims(
-                token, issuer="malstadur", audience="netskrafl", verify_exp=False
-            )
-            exp_claim = claims.get("exp", 0.0)
-            if isinstance(exp_claim, datetime):
-                exp = exp_claim if exp_claim.tzinfo else exp_claim.replace(tzinfo=UTC)
-            else:
-                exp = datetime.fromtimestamp(float(exp_claim), UTC)
-            if datetime.now(UTC) - exp <= MALSTADUR_TOKEN_EXPIRY_GRACE:
-                return True, None
-            logging.info("Rejecting long-expired Málstaður token as invalid")
-        except (jwt.InvalidTokenError, ValueError, TypeError, OverflowError):
-            pass
+        fields = _expired_token_fields(token, issuer="malstadur", audience="netskrafl")
+        expired_for_s = fields.get("expired_for_s")
+        if expired_for_s is None:
+            # The signature or the claims did not verify
+            return False, None
+        if expired_for_s <= MALSTADUR_TOKEN_EXPIRY_GRACE.total_seconds():
+            return True, None
+        logging.info(
+            "Rejecting long-expired Málstaður token as invalid "
+            f"({fields.get('email', '[no email]')}, expired {expired_for_s} s ago)",
+            extra=log_fields("malstadur_token_long_expired", **fields),
+        )
         return False, None
     except (jwt.InvalidTokenError, ValueError):
         return False, None

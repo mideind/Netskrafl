@@ -1507,20 +1507,36 @@ class GameModel(Model["GameModel"]):
         if not user_id:
             return 0
         k: Key[UserModel] = Key(UserModel, user_id)
+        # The queries must be ordered, although the order itself is of no
+        # interest here: that makes them match the composite indexes
+        # (over, player0/player1, ts_last_move desc) in index.yaml. Without
+        # the order, Datastore merge-joins the single-property indexes, which
+        # took 12-30 seconds for a user with thousands of finished games,
+        # against 0.2-0.5 seconds with the index (measured 2026-09-21).
+        # For the same reason the keys are fetched and counted here instead
+        # of calling Query.count(), which drops the order and is just as slow.
+        # This runs on every /initgame by a non-paying user.
+        # See also iter_live_games().
         q0 = (
             cls.query(GameModel.player0 == k)
             .filter(GameModel.over == False)  # noqa: E712
+            .order(-cast(int, GameModel.ts_last_move))
         )
         q1 = (
             cls.query(GameModel.player1 == k)
             .filter(GameModel.over == False)  # noqa: E712
+            .order(-cast(int, GameModel.ts_last_move))
         )
+
+        def count(q: Query[GameModel], limit: Optional[int]) -> int:
+            return len(q.fetch(limit=limit, keys_only=True))
+
         if max_count > 0:
-            c0 = q0.count(limit=max_count)
+            c0 = count(q0, max_count)
             if c0 >= max_count:
                 return c0
-            return c0 + q1.count(limit=max_count - c0)
-        return q0.count() + q1.count()
+            return c0 + count(q1, max_count - c0)
+        return count(q0, None) + count(q1, None)
 
     @classmethod
     def delete_for_user(cls, uid: str) -> None:

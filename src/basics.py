@@ -69,7 +69,7 @@ from config import (
     ON_GCP,
 )
 from languages import set_locale
-from skrafluser import User, verify_explo_token
+from skrafluser import User, log_fields, verify_explo_token
 from skrafldb import Client
 
 
@@ -412,7 +412,17 @@ def auth_required(*, allow_anonymous: bool = True, **error_kwargs: Any) -> Route
                 # No authenticated user
                 if error_kwargs and "login_url" not in error_kwargs:
                     # This is a JSON API: Reply with a JSON error code
-                    # and an HTTP status of 401 - Unauthorized
+                    # and an HTTP status of 401 - Unauthorized.
+                    # (A rejected bearer token is logged by verify_token(),
+                    # with the user it was issued to.)
+                    has_bearer = "Authorization" in request.headers
+                    logging.info(
+                        f"Unauthorized request to {request.path} "
+                        f"({'rejected bearer token' if has_bearer else 'no credentials'})",
+                        extra=log_fields(
+                            "unauthorized", path=request.path, bearer=has_bearer
+                        ),
+                    )
                     return jsonify(**error_kwargs), 401
                 # This is probably a web route; reply with a redirect
                 # Check whether we're already coming from the
