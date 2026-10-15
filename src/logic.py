@@ -256,6 +256,10 @@ class RecentListDict(TypedDict):
     sc1: int
     elo_adj: Optional[int]
     human_elo_adj: Optional[int]
+    # Whether the opponent was a beginner, i.e. whether a zero Elo adjustment
+    # means that the opponent's beginner status left the rating unchanged.
+    # None for older games where this was not stored; robots are never beginners.
+    opp_beginner: Optional[bool]
     ts_last_move: str
     days: int
     hours: int
@@ -1541,6 +1545,7 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
                 sc1=g["sc1"],
                 elo_adj=g["elo_adj"],
                 human_elo_adj=g["human_elo_adj"],
+                opp_beginner=False if opp is None else g["opp_beginner"],
                 ts_last_move=Alphabet.format_timestamp_short(ts_end),
                 days=int(days),
                 hours=int(hours),

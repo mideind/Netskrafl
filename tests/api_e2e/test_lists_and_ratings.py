@@ -236,6 +236,14 @@ class TestRecentList:
         game_ids = [g.get("uuid") or g.get("id") for g in recent_games]
         assert game_id in game_ids
 
+        # An immediate resignation leaves the rating unchanged (a 0:0 game,
+        # when the user moved first, gets no Elo record at all), and a robot
+        # is never a beginner, so the zero must not be explained as one
+        game = next(g for g in recent_games if g.get("uuid") == game_id)
+        assert game["elo_adj"] == (None if game["sc0"] == game["sc1"] == 0 else 0)
+        assert game["human_elo_adj"] is None
+        assert game["opp_beginner"] is False
+
         auth.logout()
 
 

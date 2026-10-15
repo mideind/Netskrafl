@@ -374,6 +374,40 @@ class TestFinishedGames:
             # User1 is player0, so elo_adj should be elo0_adj = 5
             assert game_001.elo_adj == 5
 
+    def test_finished_game_info_contains_opp_beginner(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """FinishedGameInfo carries the opponent's beginner flag, None if not stored."""
+        # The fixture games may predate the flags in a persistent NDB test store
+        game = backend.games.get_by_id("finished-game-001")
+        assert game is not None
+        backend.games.update(game, beginner0=False, beginner1=True)
+        game = backend.games.get_by_id("finished-game-003")
+        assert game is not None
+        backend.games.update(game, beginner0=None, beginner1=None)
+
+        games = backend.games.list_finished_games(
+            "finished-user-1", versus="finished-user-2"
+        )
+        game_001 = next((g for g in games if g.uuid == "finished-game-001"), None)
+        assert game_001 is not None
+        # User1 is player0, so the opponent's flag is beginner1
+        assert game_001.opp_beginner is True
+
+        games = backend.games.list_finished_games(
+            "finished-user-2", versus="finished-user-1"
+        )
+        game_001 = next((g for g in games if g.uuid == "finished-game-001"), None)
+        assert game_001 is not None
+        assert game_001.opp_beginner is False
+
+        games = backend.games.list_finished_games(
+            "finished-user-2", versus="finished-user-3"
+        )
+        game_003 = next((g for g in games if g.uuid == "finished-game-003"), None)
+        assert game_003 is not None
+        assert game_003.opp_beginner is None
+
 
 class TestLiveGames:
     """Test iterating over live (active) games."""
@@ -767,7 +801,7 @@ class TestGameComparison:
             return False, f"One FinishedGameInfo is None: {g1} vs {g2}"
         fields_to_compare = [
             "uuid", "opp", "robot_level", "sc0", "sc1",
-            "elo_adj", "human_elo_adj", "manual_elo_adj", "locale"
+            "elo_adj", "human_elo_adj", "manual_elo_adj", "opp_beginner", "locale"
         ]
         for field in fields_to_compare:
             v1 = getattr(g1, field, None)

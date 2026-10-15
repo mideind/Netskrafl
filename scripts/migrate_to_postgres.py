@@ -352,7 +352,8 @@ KIND_SPECS: List[KindSpec] = [
               "over", "timestamp", "ts_last_move", "moves", "prefs",
               "tile_count", "elo0", "elo1", "elo0_adj", "elo1_adj",
               "human_elo0", "human_elo1", "human_elo0_adj", "human_elo1_adj",
-              "manual_elo0", "manual_elo1", "manual_elo0_adj", "manual_elo1_adj"),
+              "manual_elo0", "manual_elo1", "manual_elo0_adj", "manual_elo1_adj",
+              "beginner0", "beginner1"),
              conflict=("id",), shard="uuid", delta_prop="ts_last_move"),
     KindSpec("EloModel", "elo_ratings",
              ("user_id", "locale", "elo", "human_elo", "manual_elo", "timestamp"),
@@ -627,6 +628,7 @@ class Migrator:
             e.elo0, e.elo1, e.elo0_adj, e.elo1_adj,
             e.human_elo0, e.human_elo1, e.human_elo0_adj, e.human_elo1_adj,
             e.manual_elo0, e.manual_elo1, e.manual_elo0_adj, e.manual_elo1_adj,
+            e.beginner0, e.beginner1,
         )
 
     def tf_EloModel(self, e: Any) -> Optional[Row]:
