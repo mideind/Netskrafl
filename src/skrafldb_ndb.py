@@ -326,9 +326,12 @@ class Model(Generic[_T_Model], ndb.Model):
         return cast(bool, ndb.BooleanProperty(required=True))
 
     @staticmethod
-    def OptionalBool(default: Optional[bool] = None) -> Optional[bool]:
+    def OptionalBool(
+        default: Optional[bool] = None, indexed: bool = True
+    ) -> Optional[bool]:
         return cast(
-            Optional[bool], ndb.BooleanProperty(required=False, default=default)
+            Optional[bool],
+            ndb.BooleanProperty(required=False, default=default, indexed=indexed),
         )
 
     @staticmethod
@@ -1303,6 +1306,10 @@ class GameModel(Model["GameModel"]):
     # Manual-only Elo point adjustment as a result of this game
     manual_elo0_adj = Model.OptionalInt()
     manual_elo1_adj = Model.OptionalInt()
+    # Whether each player was a beginner (provisional player) when the
+    # Elo points were calculated; None in games finished before this was stored
+    beginner0 = Model.OptionalBool(indexed=False)
+    beginner1 = Model.OptionalBool(indexed=False)
 
     def set_player(self, ix: int, user_id: Optional[str]) -> None:
         """Set a player key property to point to a given user, or None"""
@@ -1359,6 +1366,7 @@ class GameModel(Model["GameModel"]):
                 elo_adj = gm.elo0_adj
                 human_elo_adj = gm.human_elo0_adj
                 manual_elo_adj = gm.manual_elo0_adj
+                opp_beginner = gm.beginner1
             else:
                 # Player 1 is the source player, 0 is the opponent
                 assert u1 == user_id
@@ -1367,6 +1375,7 @@ class GameModel(Model["GameModel"]):
                 elo_adj = gm.elo1_adj
                 human_elo_adj = gm.human_elo1_adj
                 manual_elo_adj = gm.manual_elo1_adj
+                opp_beginner = gm.beginner0
             prefs = gm.prefs or {}
             locale = gm.locale or prefs.get("locale") or DEFAULT_LOCALE
             return FinishedGameDict(
@@ -1380,6 +1389,7 @@ class GameModel(Model["GameModel"]):
                 elo_adj=elo_adj,
                 human_elo_adj=human_elo_adj,
                 manual_elo_adj=manual_elo_adj,
+                opp_beginner=opp_beginner,
                 prefs=gm.prefs,
                 locale=locale,
             )

@@ -244,6 +244,9 @@ def compute_locale_elo_for_game(
     # We look at all games played, not just in the current locale.
     est0 = u0.num_human_games() > ESTABLISHED_MARK if u0 else True
     est1 = u1.num_human_games() > ESTABLISHED_MARK if u1 else True
+    # Record the beginner status, which explains a zero Elo adjustment
+    # for the established opponent of a beginner
+    gm.beginner0, gm.beginner1 = not est0, not est1
 
     # Manual (Pro Mode) game?
     manual_game = False if robot_game else gm.manual_wordcheck()

@@ -1283,6 +1283,8 @@ class GameModel:
     manual_elo1 = _model_property("manual_elo1", None)
     manual_elo0_adj = _model_property("manual_elo0_adj", None)
     manual_elo1_adj = _model_property("manual_elo1_adj", None)
+    beginner0 = _model_property("beginner0", None)
+    beginner1 = _model_property("beginner1", None)
 
     @property
     def moves(self) -> List[MoveModel]:
@@ -1390,6 +1392,7 @@ class GameModel:
                 elo_adj=r.elo_adj,
                 human_elo_adj=r.human_elo_adj,
                 manual_elo_adj=r.manual_elo_adj,
+                opp_beginner=r.opp_beginner,
                 prefs=r.prefs,
                 locale=r.locale or DEFAULT_LOCALE,
             )
