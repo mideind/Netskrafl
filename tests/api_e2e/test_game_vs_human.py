@@ -620,5 +620,9 @@ class TestHumanGameRecent:
         [g.get("uuid") or g.get("id") for g in recent_games]
         # Game should appear in recent list for the player
         # (exact behavior depends on timing and implementation)
+        game = next((g for g in recent_games if g.get("uuid") == game_id), None)
+        if game is not None:
+            # Both players are new, so the opponent was a beginner
+            assert game["opp_beginner"] is True
 
         auth.logout()

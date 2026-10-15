@@ -251,9 +251,10 @@ class GameRepository:
                 robot_level=r["robot_level"],
                 sc0=r["sc0"],
                 sc1=r["sc1"],
-                elo_adj=r.get("elo_adj") or 0,
-                human_elo_adj=r.get("human_elo_adj") or 0,
-                manual_elo_adj=r.get("manual_elo_adj") or 0,
+                elo_adj=r.get("elo_adj"),
+                human_elo_adj=r.get("human_elo_adj"),
+                manual_elo_adj=r.get("manual_elo_adj"),
+                opp_beginner=r.get("opp_beginner"),
                 prefs=cast(Optional[PrefsDict], r.get("prefs")),
                 locale=r.get("locale"),
             )

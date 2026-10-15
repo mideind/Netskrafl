@@ -320,6 +320,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 # counting human games only
                 est0 = urec0.human_games > ESTABLISHED_MARK
                 est1 = urec1.human_games > ESTABLISHED_MARK
+                gm.beginner0, gm.beginner1 = not est0, not est1
 
                 uelo0 = urec0.human_elo or DEFAULT_ELO
                 uelo1 = urec1.human_elo or DEFAULT_ELO

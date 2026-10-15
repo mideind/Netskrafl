@@ -441,12 +441,14 @@ class GameRepository:
                 elo_adj = game.elo0_adj
                 human_elo_adj = game.human_elo0_adj
                 manual_elo_adj = game.manual_elo0_adj
+                opp_beginner = game.beginner1
             else:
                 opp = game.player0_id
                 sc0, sc1 = game.score1, game.score0
                 elo_adj = game.elo1_adj
                 human_elo_adj = game.human_elo1_adj
                 manual_elo_adj = game.manual_elo1_adj
+                opp_beginner = game.beginner0
 
             prefs = cast(Optional[PrefsDict], game.prefs)
             locale = game.locale or (prefs or {}).get("locale") or DEFAULT_LOCALE
@@ -459,9 +461,10 @@ class GameRepository:
                     robot_level=game.robot_level,
                     sc0=sc0,
                     sc1=sc1,
-                    elo_adj=elo_adj or 0,
-                    human_elo_adj=human_elo_adj or 0,
-                    manual_elo_adj=manual_elo_adj or 0,
+                    elo_adj=elo_adj,
+                    human_elo_adj=human_elo_adj,
+                    manual_elo_adj=manual_elo_adj,
+                    opp_beginner=opp_beginner,
                     prefs=prefs,
                     locale=locale,
                 )

@@ -108,11 +108,14 @@ class FinishedGameInfo:
     robot_level: int
     sc0: int
     sc1: int
-    elo_adj: int
-    human_elo_adj: int
-    manual_elo_adj: int
+    # None where no rating was adjusted: human and manual Elo in robot games
+    elo_adj: Optional[int]
+    human_elo_adj: Optional[int]
+    manual_elo_adj: Optional[int]
     prefs: Optional[PrefsDict]
     locale: Optional[str]
+    # Whether the opponent was a beginner; None if not stored with the game
+    opp_beginner: Optional[bool] = None
 
 
 @dataclass
@@ -301,6 +304,7 @@ class FinishedGameDict(TypedDict):
     elo_adj: Optional[int]
     human_elo_adj: Optional[int]
     manual_elo_adj: Optional[int]
+    opp_beginner: Optional[bool]
     prefs: Optional[PrefsDict]
     locale: str
 

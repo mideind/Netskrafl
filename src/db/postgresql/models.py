@@ -266,6 +266,11 @@ class Game(Base):
     manual_elo0_adj: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     manual_elo1_adj: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # Beginner (provisional) status of each player when the Elo points were
+    # calculated; NULL in games finished before this was stored
+    beginner0: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    beginner1: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+
     # Relationships
     player0: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player0_id])
     player1: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player1_id])
