@@ -147,8 +147,11 @@ multiple languages through separate DAWG files and tile sets.
   state (the 2026-09-11 stale-game-list bug in the Explo app)
 - Elo rating system tracks player performance
 - Google App Engine deployment across three projects: netskrafl, explo-live and
-  explo-dev (the explo-dev GAE default service is dormant; the Explo dev app runs on
-  the Digital Ocean container). The former netskrafl `demo` service was deleted on
+  explo-dev (the explo-dev GAE default service was retired on 2026-10-15: its cron
+  jobs are gone and the version, which App Engine cannot stop under automatic
+  scaling, idles at zero instances; the Explo dev app runs on the Digital Ocean
+  container, and the explo-dev `moves` service still serves Netskrafl production
+  and Málstaður). The former netskrafl `demo` service was deleted on
   2026-09-08 for lack of traffic; `app-demo.yaml` remains in case it is ever needed
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
@@ -177,14 +180,16 @@ improvement; parts of the app also sort client-side via `Alphabet` in
 ### Scheduled jobs (GAE)
 
 - `cron.yaml` defines three jobs: `/stats/run` (03:00), `/stats/ratings` (03:45)
-  and `/connect/update` ("Online users", every 2 minutes). It is deployed on all
-  three projects (netskrafl, explo-dev, explo-live), where the jobs run via
-  legacy App Engine cron, always targeting the promoted version. No per-version
+  and `/connect/update` ("Online users", every 2 minutes). It is deployed on
+  netskrafl and explo-live, where the jobs run via
+  legacy App Engine cron, always targeting the promoted version. explo-dev has
+  an empty cron configuration (since 2026-10-15): its jobs run in the DO
+  container's supercronic, and `deploy-explo.sh cron` refuses to redeploy them. No per-version
   scheduler updates are needed after deploys. (Consolidated 2026-08-07; before
   that, netskrafl triggered `/connect/update` via a version-pinned Cloud
   Scheduler job that had to be re-pinned after every promotion.)
 - The only remaining Cloud Scheduler job is `Clear-Redis` on netskrafl (yearly);
-  explo-dev also has a daily `clear-cache` job. The container migration will
+  explo-dev also has a daily `clear-cache` job, paused. The container migration will
   replace GAE cron with supercronic.
 - `/stats/ratings` (and `/stats/ratings_backfill`) are no-ops outside the
   netskrafl project (guarded by the `NETSKRAFL` config flag): the old-style,

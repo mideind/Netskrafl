@@ -24,9 +24,9 @@ function indexes
 
 function cron
 {
-    echo "Cron update starting"
-    gcloud app deploy --project=explo-dev cron.yaml
-    echo "Cron update completed"
+    # The explo-dev GAE default service is retired and the scheduled jobs run
+    # in the DO container, so explo-dev keeps an empty cron configuration
+    echo "Cron update for explo-dev is disabled (the jobs run in the DO container)"
 }
 
 function default # $1=version
