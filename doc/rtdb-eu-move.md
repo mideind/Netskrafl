@@ -31,9 +31,30 @@ instance to a new instance in europe-west1:
       WebSocket to the new host is open (status 101), and the session's presence
       entry `connection/<uid>` appeared on the new instance. So custom-token sign-in
       and the rules work there, which covers most of S2.
-- [ ] Preparation (P1–P3 below). P1 done 2026-11-04, the P2 worktree is
+- [x] 2026-11-04 15:42: P1b, `n20261104` (master 0dfdded, PR #169) deployed with
+      `--no-promote`: SERVING, traffic 0, env `FIREBASE_DB_URL` = the EU URL, no
+      warnings or failed requests at startup. Rollback target: `n20260928`.
+- [x] 2026-11-04 16:02: P2, staged deployment `malstadur-q83154u9z-mideind.vercel.app`
+      (CLI deploy from `e14b24765`, so the API shows no git SHA for it, source `cli`),
+      READY with no domain. villi was made Vercel team Owner for this: as Developer,
+      the CLI refused to create a production deployment.
+- [x] 2026-11-04: staged build tested in the browser: WebSocket to
+      `netskrafl-eu.europe-west1.firebasedatabase.app` with `ns=netskrafl-eu`, presence
+      entry on the new instance. Logging in there needed a **temporary Redirect URL in the
+      production Supabase project** (`https://malstadur-q83154u9z-mideind.vercel.app/**`,
+      added by villi); without it, Google login falls back to the Site URL. Remove it
+      after the switch (F7). Previews log in through the staging Supabase project, whose
+      allowlist accepts `*-mideind.vercel.app`.
+- [x] Preparation (P1–P3). P1b (browser test of `n20261104`) skipped: the legacy web UI
+      always redirects to `/transition` or Málstaður, so S6 covered the server.
+- [x] **The switch, 2026-11-04 16:26–16:30 UTC.** S1 16:26:36 (10.68 MB, verify OK);
+      S3 16:27:04 (`n20261104` = 100%); S5 16:27:40 (`vercel promote` needs
+      `--scope mideind`; the first attempt without it failed, which made the window of
+      mixed versions 36 s); S6 OK (97 requests with 200, no errors; villi's Málstaður
+      WebSocket on `ns=netskrafl-eu`; `game`/`user`/`connection` writes on the new instance);
+      S7 16:28:14: no stray writes; S8: #2840 squash-merged to staging as `e142d6d1e`,
+      freeze over. Main still `e14b24765`; the next release carries the constant. P1 done 2026-11-04, the P2 worktree is
       ready (deploy not yet run), and the P3 PRs are open.
-- [ ] The switch (S1–S8 below).
 - [ ] Follow-ups (F1–F5 below).
 
 ## What is copied, and why so little
@@ -261,10 +282,32 @@ start.
 
 ### S5. Promote the staged Málstaður build
 
-First check that production is still the commit P2 was built from (the
-`curl` from P2). If a release went out in between, do not promote: the staged
-build would roll it back. Rebuild P2 from the new commit instead (a few minutes;
-meanwhile Málstaður is on the old database, the "mixed state" below).
+**Release freeze.** Agree with kristofer beforehand: no merges to main, and no
+release PR from staging merged, from P2 until #2840 is merged into staging (S8).
+That is about 20 minutes. After that, every release from staging includes #2840,
+because release PRs have the `staging` branch itself as their head.
+
+Right before promoting, check two things: production is still the commit P2 was
+built from, and **no production deployment is building or queued**. A main
+build that finishes after the promote is auto-assigned the domain and would put
+Málstaður back on the old URL.
+
+```sh
+curl -s -H "Authorization: Bearer $VT" "https://api.vercel.com/v9/projects/$PRJ?teamId=$TEAM" \
+  | jq -r '.targets.production | "current: " + .url + " " + .meta.githubCommitSha[0:9]'
+curl -s -H "Authorization: Bearer $VT" "https://api.vercel.com/v6/deployments?projectId=$PRJ&teamId=$TEAM&target=production&limit=5" \
+  | jq -r '.deployments[] | [.url, .state, .meta.githubCommitSha[0:9] // "cli"] | @tsv'
+# Only READY entries, and the current one at the expected commit. Anything
+# BUILDING/QUEUED/INITIALIZING other than our own staged build: wait.
+```
+
+If a release went out in between, do not promote: the staged build would roll
+it back. Rebuild P2 from the new commit instead (a few minutes; meanwhile
+Málstaður is on the old database, the "mixed state" below).
+
+`vercel promote` keeps auto-assignment of production domains switched on (it
+also re-enables it after a rollback), so normal releases keep going live
+afterwards.
 
 ```sh
 cd ~/github/Malstadur-prod-eu && vercel promote <deployment URL from P2> --yes
@@ -320,7 +363,11 @@ it, and that no release without it may go out. Also rebuild the Málstaður-vor 
    and restart the instances. Never disable version 7, because `latest` would
    then point at a disabled version.)
 3. Málstaður: `vercel rollback` (or Instant Rollback in the dashboard) to the
-   previous production deployment, and do not merge P3.
+   previous production deployment, and do not merge #2840 (revert it in staging
+   if it is already merged). **A rollback turns off auto-assignment of production
+   domains**, so later releases from main stay staged until someone promotes one
+   (`vercel promote <deployment>`, or "Undo Rollback" in the dashboard). Tell
+   kristofer.
 4. Gáta dagsins written on the new instance meanwhile must be copied back to the
    old one (the same export/diff method, in the other direction).
 
@@ -341,6 +388,8 @@ The old instance is left intact until F1, so rolling back loses nothing else.
 - F4. Check the rules file into the repo.
 - F5. Put the new URL into `.do/app.yaml` and `doc/migration-strategy.md` for the
   future netskrafl app on Digital Ocean.
+- F7. Remove the temporary Redirect URL `https://malstadur-q83154u9z-mideind.vercel.app/**`
+  from the production Supabase project (Authentication > URL Configuration).
 - F6. Once rollback to `n20260928` is no longer wanted (say a week): add secret
   version 7 (`~/rtdb-move/secret-v7.json`, P1), so the secret matches, and the
   Digital Ocean container and any later deploy without the env override get the
