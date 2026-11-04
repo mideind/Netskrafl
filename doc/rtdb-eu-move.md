@@ -388,7 +388,7 @@ The old instance is left intact until F1, so rolling back loses nothing else.
 - F4. Check the rules file into the repo.
 - F5. Put the new URL into `.do/app.yaml` and `doc/migration-strategy.md` for the
   future netskrafl app on Digital Ocean.
-- F7. Remove the temporary Redirect URL `https://malstadur-q83154u9z-mideind.vercel.app/**`
+- [x] F7 (done by villi, 2026-11-04). Remove the temporary Redirect URL `https://malstadur-q83154u9z-mideind.vercel.app/**`
   from the production Supabase project (Authentication > URL Configuration).
 - F6. Once rollback to `n20260928` is no longer wanted (say a week): add secret
   version 7 (`~/rtdb-move/secret-v7.json`, P1), so the secret matches, and the
