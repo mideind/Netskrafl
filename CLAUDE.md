@@ -3,6 +3,15 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with
 code in this repository.
 
+## This repository is public
+
+Everything committed here (docs, this file, comments, commit messages, PR descriptions) is
+world-readable. Describe procedures and decisions, but keep low-level operational details
+out: concrete URLs and hostnames of infrastructure, deployment names, account emails, user
+and account IDs, secret names and versions, service accounts, IP addresses, key IDs and
+dashboard paths. Write "the EU database instance" or "the previous App Engine version"
+instead, and keep the specifics in private notes.
+
 ## Project Overview
 
 Netskrafl is an Icelandic crossword game website and backend server built with:

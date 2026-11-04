@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # One-off helper for moving the netskrafl project's Realtime Database from the
-# US default instance to the EU instance netskrafl-eu (europe-west1).
+# US default instance to an EU instance (europe-west1); see doc/rtdb-eu-move.md.
 #
 # Only the gatadagsins/ subtree is copied. game/, user/ and connection/ are
 # not: clients ignore the value they receive on first attach to those paths,
@@ -11,7 +11,7 @@
 #   scripts/rtdb-move-gatadagsins.sh export   # old -> $DIR/gatadagsins-before.json
 #   scripts/rtdb-move-gatadagsins.sh import   # $DIR/gatadagsins-before.json -> new (replaces the subtree)
 #   scripts/rtdb-move-gatadagsins.sh verify   # new instance == before-export?
-#   ... switch databaseURL (secret + Málstaður), move all GAE traffic at once ...
+#   ... switch: move all App Engine traffic, promote the staged Málstaður build ...
 #   scripts/rtdb-move-gatadagsins.sh diff     # re-export old, list paths written since the export
 #
 # Writes to the old instance after the export (from the old servers or from
@@ -20,8 +20,11 @@
 
 set -euo pipefail
 
-OLD=https://netskrafl.firebaseio.com
-NEW=https://netskrafl-eu.europe-west1.firebasedatabase.app
+# The database URLs are not kept in this public repository: set them in the
+# environment, e.g. RTDB_OLD_URL=https://<old>.firebaseio.com and
+# RTDB_NEW_URL=https://<new>.<region>.firebasedatabase.app
+OLD=${RTDB_OLD_URL:?Set RTDB_OLD_URL to the old instance URL}
+NEW=${RTDB_NEW_URL:?Set RTDB_NEW_URL to the new instance URL}
 NODE=gatadagsins
 DIR=${RTDB_MOVE_DIR:-$HOME/rtdb-move}
 export CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-credentials/netskrafl/service-account.json}

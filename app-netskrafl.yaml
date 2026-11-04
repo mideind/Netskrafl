@@ -39,9 +39,8 @@ env_variables:
   REDISHOST: 10.128.0.3
   REDISPORT: 6379
   PROJECT_ID: netskrafl
-  # Realtime Database instance in europe-west1 (since 2026-11-04, doc/rtdb-eu-move.md).
-  # Overrides FIREBASE_DB_URL in the client secret, which still names the old
-  # US instance (https://netskrafl.firebaseio.com) until the old version is retired.
+  # Realtime Database instance in europe-west1 (doc/rtdb-eu-move.md).
+  # Overrides FIREBASE_DB_URL in the client secret.
   FIREBASE_DB_URL: https://netskrafl-eu.europe-west1.firebasedatabase.app
 
 inbound_services:
