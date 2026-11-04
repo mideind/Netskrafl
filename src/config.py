@@ -267,7 +267,11 @@ if not NETSKRAFL:
 # Firebase configuration
 FIREBASE_API_KEY: str = j.get("FIREBASE_API_KEY", "")
 FIREBASE_SENDER_ID: str = j.get("FIREBASE_SENDER_ID", "")
-FIREBASE_DB_URL: str = j.get("FIREBASE_DB_URL", "")
+# The environment variable, if set, overrides the client secret. This pins the
+# Realtime Database to a deployed version (app-*.yaml env_variables), so that
+# moving traffic between versions also moves the database, and a rollback of
+# traffic is a rollback of the database too, regardless of when instances start.
+FIREBASE_DB_URL: str = os.environ.get("FIREBASE_DB_URL") or j.get("FIREBASE_DB_URL", "")
 FIREBASE_APP_ID: str = j.get("FIREBASE_APP_ID", "")
 assert (
     FIREBASE_API_KEY
