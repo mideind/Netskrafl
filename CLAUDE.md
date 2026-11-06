@@ -188,8 +188,11 @@ improvement; parts of the app also sort client-side via `Alphabet` in
 
 ### Scheduled jobs (GAE)
 
-- `cron.yaml` defines three jobs: `/stats/run` (03:00), `/stats/ratings` (03:45)
-  and `/connect/update` ("Online users", every 2 minutes). It is deployed on
+- `cron.yaml` defines four jobs: `/stats/run` (03:00), `/stats/ratings` (03:45),
+  `/connect/cleanup` (04:15, see below) and `/connect/update` ("Online users",
+  every 2 minutes). `cron.yaml` is deployed separately from the app
+  (`./deploy-<target>.sh cron`), so deploy it only once a version that serves
+  every listed URL has all the traffic. It is deployed on
   netskrafl and explo-live, where the jobs run via
   legacy App Engine cron, always targeting the promoted version. explo-dev has
   an empty cron configuration (since 2026-10-15): its jobs run in the DO
@@ -197,6 +200,16 @@ improvement; parts of the app also sort client-side via `Alphabet` in
   scheduler updates are needed after deploys. (Consolidated 2026-08-07; before
   that, netskrafl triggered `/connect/update` via a version-pinned Cloud
   Scheduler job that had to be re-pinned after every promotion.)
+- `/connect/cleanup` (`src/rtdb_cleanup.py`) keeps the Firebase Realtime Database
+  from growing without limit, since it has no time-to-live of its own: it deletes
+  `game/{id}` notification nodes 30 days after the game was created (judged by the
+  version 1 UUID of the game id), presence entries under `connection/` older than
+  14 days (by their push id) and Explo push tokens under `session/` not refreshed
+  for 60 days. `gatadagsins/` and `user/` are never touched. It deletes in batches,
+  oldest first, within a 3-minute budget per run, so a backlog carries over to the
+  next night. `utils/rtdb-cleanup.py` runs the same code from the command line
+  (`--dry-run`, other retention periods, no time budget, and `--wipe` to empty a
+  decommissioned instance).
 - The only remaining Cloud Scheduler job is `Clear-Redis` on netskrafl (yearly);
   explo-dev also has a daily `clear-cache` job, paused. The container migration will
   replace GAE cron with supercronic.

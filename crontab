@@ -26,3 +26,8 @@ CRON_TZ=UTC
 # Daily ratings job - 03:45 UTC
 # Updates Elo ratings and leaderboards
 45 3 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/stats/ratings
+
+# Realtime Database cleanup - 04:15 UTC
+# Deletes old game notifications, stale presence entries and push tokens
+# (see src/rtdb_cleanup.py); runs in the background within a time budget
+15 4 * * * curl -sf -H "X-Cron-Secret: ${CRON_SECRET}" http://localhost:8080/connect/cleanup
