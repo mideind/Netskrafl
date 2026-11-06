@@ -68,6 +68,24 @@ ON_GAE: bool = bool(os.environ.get("GAE_APPLICATION") or os.environ.get("GAE_SER
 # Cloud Run sets K_SERVICE and K_REVISION environment variables
 ON_GCP: bool = ON_GAE or bool(os.environ.get("K_SERVICE"))
 
+if not running_local and not ON_GAE:
+    # Containers (Docker, Digital Ocean, Cloud Run): log INFO and above to
+    # stderr, where the platform collects it. This must happen here, before
+    # other modules log anything: the first logging call made while the root
+    # logger has no handler (such as cache.py's at import time) makes Python
+    # configure it implicitly at level WARNING, after which a plain
+    # basicConfig() does nothing and every INFO line is dropped. force=True
+    # replaces any handler set up that way by the modules imported above.
+    # (Local development is configured below; on App Engine, main.py hands
+    # logging over to google.cloud.logging, which clears these handlers.)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
 
 class FlaskConfig(TypedDict):
     """The Flask configuration dictionary"""
