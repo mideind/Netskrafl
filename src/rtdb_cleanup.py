@@ -28,7 +28,10 @@
       handler; this catches the ones that were left behind, which would
       otherwise count their users as online. The only side effect: a
       client that has been connected without a break for longer than that
-      shows its user as offline until it reconnects.
+      shows its user as offline until it reconnects. Entries set to false
+      (written by older clients instead of removing the entry) are deleted
+      whatever their age: they never mean that a user is online, but
+      get_connected_users() counts every user key under connection/.
     - session/{user_id}/{token}: push notification tokens (Explo) whose
       utc timestamp is older than SESSION_RETENTION_DAYS. push_to_user()
       already ignores tokens older than 14 days, and the app writes its
@@ -285,7 +288,8 @@ def expired_presence(
     access: RtdbAccess, cutoff: datetime, stats: PathStats
 ) -> List[str]:
     """Return the paths (relative to connection/) of presence entries
-    created before the cutoff, oldest first"""
+    created before the cutoff, and of entries set to false, oldest first.
+    Other unexpected values are left alone and counted as of unknown age."""
     tree = access.get("connection")
     aged: List[Tuple[datetime, str]] = []
 
@@ -300,8 +304,17 @@ def expired_presence(
                     stats.unknown_age += 1
                 elif t < cutoff:
                     aged.append((t, path))
-            elif isinstance(value, dict) and depth < _MAX_PRESENCE_DEPTH:
-                walk(cast(Mapping[str, Any], value), path, depth + 1)
+            elif value is False:
+                # Left behind by an older client: delete it first
+                stats.scanned += 1
+                aged.append((_EARLIEST, path))
+            elif isinstance(value, dict):
+                if depth < _MAX_PRESENCE_DEPTH:
+                    walk(cast(Mapping[str, Any], value), path, depth + 1)
+            else:
+                # Not a presence entry: leave it, but make it visible
+                stats.scanned += 1
+                stats.unknown_age += 1
 
     if isinstance(tree, dict):
         walk(cast(Mapping[str, Any], tree), "", 1)
