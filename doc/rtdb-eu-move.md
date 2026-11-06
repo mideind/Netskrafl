@@ -133,14 +133,18 @@ else.
 
 - F1. After about two weeks, make the old instance read-only (`.write: false`),
   then delete its data in chunks (`firebase database:remove`, never one delete of
-  `game/`, which would lock the database for a long time) and set deny-all rules.
+  `game/`, which would lock the database for a long time; `utils/rtdb-cleanup.py
+  --wipe` deletes in batches) and set deny-all rules.
   The default instance itself cannot be deleted. Delete the local exports and
   secret copies at the same time.
-- F2. Add a nightly purge of `game/{id}` nodes for finished games (game IDs are
-  version 1 UUIDs, so a node's age is in its key), so the new instance does not
-  build up years of notifications again.
-- F3. Find out why presence entries go stale (very old entries under
-  `connection/`), since `get_connected_users()` counts every key.
+- F2. Add a nightly purge of `game/{id}` nodes, so the new instance does not
+  build up years of notifications again: the `/connect/cleanup` cron job
+  (`src/rtdb_cleanup.py`), which deletes them 30 days after the game was created
+  (game IDs are version 1 UUIDs, so a node's age is in its key). It runs in the
+  Explo projects too, which had the same build-up.
+- F3. Presence entries go stale (very old entries under `connection/`), and
+  `get_connected_users()` counts every key. The same cron job deletes entries
+  older than 14 days; why they are left behind is still to be found out.
 - F4. Check the rules file into the repo.
 - F5. Configure the new URL for the planned container deployment
   (`doc/migration-strategy.md`).

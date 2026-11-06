@@ -38,7 +38,7 @@ traffic increase. Never delete or stop old versions unless the user asks.
 | explo-live  | `app-explo-live.yaml` | `credentials/explo-live/service-account.json`| `explo-live`| `e`    |
 | explo-dev   | `app-explo.yaml`      | `credentials/explo-dev/service-account.json`| `explo-dev` | `e`    |
 
-All recurring jobs (`/stats/run`, `/stats/ratings`, `/connect/update`) run via the
+All recurring jobs (`/stats/run`, `/stats/ratings`, `/connect/cleanup`, `/connect/update`) run via the
 shared `cron.yaml`, deployed to all three projects; cron always targets the
 promoted version, so no per-version scheduler updates are needed on any target.
 
