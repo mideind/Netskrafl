@@ -69,7 +69,7 @@ from skrafldb import (
     StatsDict,
     StatsResults,
 )
-from basics import cron_request_source
+from basics import scheduler_wait_mode
 from skraflgame import Game
 from skraflelo import ESTABLISHED_MARK, compute_elo
 from autoplayers import AUTOPLAYERS
@@ -784,35 +784,13 @@ def ratings(request: Request, *, wait: bool) -> Tuple[str, int]:
 
 
 # Scheduler routes - requests are only accepted when originated
-# by an authorized scheduler (see basics.cron_request_source())
-
-
-def _scheduler_wait_mode(task_name: str) -> Optional[bool]:
-    """Check that the current request originates from an authorized
-    scheduler: the Google Cloud Scheduler, a Cloud Tasks queue, a GAE
-    cron job, an external scheduler bearing the X-Cron-Secret header
-    (e.g. supercronic in a container), or a local development server.
-    Returns None if the request is not authorized; otherwise False if
-    the task should be run asynchronously, or True to run it
-    synchronously."""
-    source = cron_request_source()
-    if source is None:
-        # Not an authorized scheduler request
-        return None
-    logging.info(f"Running {task_name} from {source}")
-    if source in ("cloud-scheduler", "external"):
-        # Run asynchronously: these schedulers expect a quick response.
-        # In particular, external schedulers (supercronic curling with an
-        # X-Cron-Secret header) run behind gunicorn's request timeout,
-        # which would otherwise kill a long-running synchronous task.
-        return False
-    return True
+# by an authorized scheduler (see basics.scheduler_wait_mode())
 
 
 @stats.route("/run", methods=["GET", "POST"])
 def stats_run() -> ResponseType:
     """Start a task to calculate Elo points for games"""
-    wait = _scheduler_wait_mode("stats")
+    wait = scheduler_wait_mode("stats")
     if wait is None:
         return "Restricted URL", 403
     return run(request, wait=wait)
@@ -821,7 +799,7 @@ def stats_run() -> ResponseType:
 @stats.route("/ratings", methods=["GET", "POST"])
 def stats_ratings() -> ResponseType:
     """Start a task to calculate top Elo rankings"""
-    wait = _scheduler_wait_mode("ratings")
+    wait = scheduler_wait_mode("ratings")
     if wait is None:
         return "Restricted URL", 403
     if not RATINGS_ENABLED:
@@ -845,7 +823,7 @@ def stats_ratings() -> ResponseType:
 def stats_ratings_backfill() -> ResponseType:
     """Backfill missing archived ratings tables, one date per invocation,
     chaining via a Cloud Tasks task until no dates are missing"""
-    if _scheduler_wait_mode("ratings_backfill") is None:
+    if scheduler_wait_mode("ratings_backfill") is None:
         return "Restricted URL", 403
     if not RATINGS_ENABLED:
         # See comment in stats_ratings() above

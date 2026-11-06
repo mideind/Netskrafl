@@ -51,6 +51,7 @@ from config import (
 )
 from languages import SUPPORTED_LOCALES
 from cache import memcache
+import rtdb_cleanup
 
 
 OnlineStatusFunc = Callable[[Iterable[str]], Iterable[bool]]
@@ -404,14 +405,10 @@ def push_to_user(
             # os = device_info.get("os") or ""
             if not isinstance(device_info, dict):
                 continue
-            utc = device_info.get("utc") or ""
-            if not utc:
+            utc = rtdb_cleanup.session_time(device_info)
+            if utc is None:
                 continue
-            # Format the string so that Python can parse it
-            # (the original string is generated in JavaScript code and
-            # is not ISO 8601 compliant as far as Python is concerned)
-            utc = utc[0:19]
-            if datetime.fromisoformat(utc).replace(tzinfo=UTC) < cutoff:
+            if utc < cutoff:
                 # The session token is too old
                 # logging.info("Skipping notification, session token is too old")
                 continue
@@ -463,3 +460,42 @@ def update() -> ResponseType:
     except Exception as e:
         logging.warning(f"Exception [{repr(e)}] raised in firebase.update()")
     return "Error", 500
+
+
+@connect.route("/cleanup", methods=["GET", "POST"])
+def cleanup() -> ResponseType:
+    """Delete Realtime Database entries that no client will read again
+    (old game notifications, stale presence entries and push tokens;
+    see rtdb_cleanup.py). This method is invoked daily from a cron job
+    that fetches /connect/cleanup; with ?dry_run=1 it only counts."""
+    # Deferred import: a module-level import would be circular
+    # (basics -> skrafluser -> firebase)
+    from basics import scheduler_wait_mode
+
+    wait = scheduler_wait_mode("RTDB cleanup")
+    if wait is None:
+        return "Restricted URL", 403
+    dry_run = request.args.get("dry_run", "") in ("1", "true")
+
+    def _cleanup() -> bool:
+        try:
+            result = rtdb_cleanup.cleanup(
+                rtdb_cleanup.FirebaseAdminAccess(_firebase_app), dry_run=dry_run
+            )
+        except Exception as e:
+            logging.error(f"Exception [{repr(e)}] raised in firebase.cleanup()")
+            return False
+        if result.ok:
+            logging.info(result.summary())
+        else:
+            logging.error(result.summary())
+        return result.ok
+
+    if not wait:
+        # Asynchronous: the scheduler expects a quick response
+        threading.Thread(target=_cleanup).start()
+        return "RTDB cleanup has been started", 200
+    if _cleanup():
+        return "RTDB cleanup has been completed", 200
+    return "RTDB cleanup failed", 500
+

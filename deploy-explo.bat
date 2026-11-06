@@ -36,9 +36,9 @@ gcloud datastore indexes cleanup --project=explo-dev index.yaml
 ECHO Index update completed
 GOTO :EOF
 :CRON
-ECHO Cron update starting
-gcloud app deploy --project=explo-dev cron.yaml
-ECHO Cron update completed
+REM The explo-dev GAE default service is retired and the scheduled jobs run
+REM in the DO container, so explo-dev keeps an empty cron configuration
+ECHO Cron update for explo-dev is disabled (the jobs run in the DO container)
 GOTO :EOF
 :STATS
 ECHO Skraflstats deployment starting

@@ -20,3 +20,10 @@ cron:
     job_retry_limit: 3
     min_backoff_seconds: 10.0
     max_doublings: 3
+- description: "Realtime Database cleanup"
+  url: /connect/cleanup
+  schedule: every day 04:15
+  retry_parameters:
+    job_retry_limit: 2
+    min_backoff_seconds: 60.0
+    max_doublings: 2

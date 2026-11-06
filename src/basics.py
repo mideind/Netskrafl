@@ -121,6 +121,28 @@ def is_cron_request() -> bool:
     return cron_request_source() is not None
 
 
+def scheduler_wait_mode(task_name: str) -> Optional[bool]:
+    """Check that the current request originates from an authorized
+    scheduler: the Google Cloud Scheduler, a Cloud Tasks queue, a GAE
+    cron job, an external scheduler bearing the X-Cron-Secret header
+    (e.g. supercronic in a container), or a local development server.
+    Returns None if the request is not authorized; otherwise False if
+    the task should be run asynchronously, or True to run it
+    synchronously."""
+    source = cron_request_source()
+    if source is None:
+        # Not an authorized scheduler request
+        return None
+    logging.info(f"Running {task_name} from {source}")
+    if source in ("cloud-scheduler", "external"):
+        # Run asynchronously: these schedulers expect a quick response.
+        # In particular, external schedulers (supercronic curling with an
+        # X-Cron-Secret header) run behind gunicorn's request timeout,
+        # which would otherwise kill a long-running synchronous task.
+        return False
+    return True
+
+
 class UserIdDict(TypedDict):
     """Old-style auxiliary user data dictionary, previously
     stored in the Flask session cookie. Has been replaced by
