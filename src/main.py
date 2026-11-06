@@ -119,14 +119,8 @@ elif ON_GAE:
     # by default this captures all logs at INFO level and higher
     cast(Any, logging_client).setup_logging()
 else:
-    # Docker/Digital Ocean/Cloud Run: use standard stderr logging
-    # This format works well with container log aggregators
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    # Docker/Digital Ocean/Cloud Run: standard stderr logging, configured
+    # in config.py so that it is in place before any module logs
     logging.info(f"{PROJECT_ID} server starting (Docker/container mode)")
 
 # Initialize Firebase
