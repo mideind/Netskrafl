@@ -204,7 +204,7 @@ improvement; parts of the app also sort client-side via `Alphabet` in
   from growing without limit, since it has no time-to-live of its own: it deletes
   `game/{id}` notification nodes 30 days after the game was created (judged by the
   version 1 UUID of the game id), presence entries under `connection/` older than
-  14 days (by their push id) and Explo push tokens under `session/` not refreshed
+  14 days (by their push id) or set to `false` (left by older clients), and Explo push tokens under `session/` not refreshed
   for 60 days. `gatadagsins/` and `user/` are never touched. It deletes in batches,
   oldest first, within a 3-minute budget per run, so a backlog carries over to the
   next night. `utils/rtdb-cleanup.py` runs the same code from the command line

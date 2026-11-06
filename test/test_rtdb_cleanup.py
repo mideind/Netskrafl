@@ -155,6 +155,10 @@ def sample_tree() -> Dict[str, Any]:
             "u2": {OLD_PUSH: True},
             # Explo: connection/{locale}/{user_id}/{push_id}
             "en_US": {"u3": {OLD_PUSH_EXPLO: True, NEW_PUSH: True}},
+            # Left behind by older clients: false is deleted whatever its
+            # age, other values are left alone
+            "u4": {NEW_PUSH: False},
+            "en_GB": {"u5": {OLD_PUSH: False, "x": "testing"}},
         },
         "session": {
             "u1": {
@@ -232,6 +236,7 @@ class TestCleanup:
         assert tree["connection"] == {
             "u1": {NEW_PUSH: True},
             "en_US": {"u3": {NEW_PUSH: True}},
+            "en_GB": {"u5": {"x": "testing"}},
         }
         assert tree["session"] == {"u1": {"token-new": sample_tree()["session"]["u1"]["token-new"]}}
         # Never touched
@@ -241,7 +246,12 @@ class TestCleanup:
         game = result.stats["game"]
         assert (game.scanned, game.expired, game.deleted, game.unknown_age) == (5, 2, 2, 2)
         presence = result.stats["connection"]
-        assert (presence.scanned, presence.expired, presence.deleted) == (5, 3, 3)
+        assert (
+            presence.scanned,
+            presence.expired,
+            presence.deleted,
+            presence.unknown_age,
+        ) == (8, 5, 5, 1)
         session = result.stats["session"]
         assert (session.scanned, session.expired, session.deleted, session.unknown_age) == (3, 2, 2, 1)
         assert "game: scanned 5, expired 2, deleted 2" in result.summary()
@@ -301,14 +311,15 @@ class TestCleanup:
         assert not result.ok
         assert result.stats["session"].error is not None
         assert result.stats["game"].deleted == 2
-        assert result.stats["connection"].deleted == 3
+        assert result.stats["connection"].deleted == 5
         assert "error" in result.summary()
 
     def test_custom_retention(self) -> None:
         fake = FakeRtdb(sample_tree())
         result = run(fake, game_days=1000, presence_days=1000, session_days=1000)
         assert result.stats["game"].expired == 0
-        assert result.stats["connection"].expired == 0
+        # Entries set to false go at any retention
+        assert result.stats["connection"].expired == 2
         # The token without a timestamp is useless at any retention
         assert result.stats["session"].expired == 1
 
