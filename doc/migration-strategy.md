@@ -90,11 +90,12 @@ through the app's own loaders without a single failure. Details in
   riddles straight into the Datastore. The current stock lasts until
   mid-January 2027; before that, generation must target PostgreSQL (or an
   importer must carry riddles over).
-- **The robot engine.** Robots use the in-process Python engine on every
-  deployment; only `/bestmoves` goes to the sidecar. A fix bringing it in
-  line with GoSkrafl (every blank placement generated, no duplicate
-  single-tile moves) is in review, and racks with two blanks remain slow
-  (several seconds per robot move); see "Open items".
+- **The robot engine.** On DO, robots take their candidate moves from the
+  sidecar (about 0.1 s per move even with two blanks on the rack), with the
+  in-process Python engine as the fallback; on App Engine they keep using
+  the Python engine, where a rack with two blanks takes a few seconds. The
+  change, which also brings the Python engine in line with GoSkrafl, is in
+  review.
 - **Other hostnames.** Besides the main backend hostname, which is the one
   that flips, App Engine still answers on its own default hostnames (cron,
   a few legacy logins, an uptime check). Those need a redirect or retirement
@@ -177,13 +178,14 @@ through the app's own loaders without a single failure. Details in
 
 ## Open items
 
-1. **Robot moves with two blanks** take several seconds of CPU in the
-   Python engine (about 3 s on the development box, more on a loaded
-   instance), against a fraction of a second for GoSkrafl on the same
-   machine. Both engines enumerate every legal move; with two blanks there
-   are tens of thousands. Options under consideration: a search that only
-   generates moves able to reach the top of the candidate list (every robot
-   picks from the top of the score-sorted list), or delegating robot move
-   generation to the sidecar on DO.
+1. **GoSkrafl doesn't know a game's tile set.** It assumes the default
+   for the locale and board type, so its scores are wrong for games with
+   the old Icelandic bag and for English on the standard board. Robots
+   detect this and fall back to the Python engine, but `/bestmoves` on DO
+   shows GoSkrafl's scores as they are. The fix is to pass the tile set
+   in the moves request.
 2. **Riddle generation into PostgreSQL** (deadline: mid-January 2027).
 3. **Locale-strict collation** (deferred, see above).
+4. **A score-bounded search** (generating only moves that can reach the top
+   of the candidate list) would speed up robots without a sidecar. Not
+   planned while the sidecar covers DO.
