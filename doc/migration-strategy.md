@@ -91,7 +91,8 @@ order:
     player-1 scores and stats-table pollution on read) — all fixed and
     regression-tested in `tests/db/test_backend_parity.py`.
   - **Replay-based differential testing** (PR #153): 105 sampled production
-    games (fixtures in `test/replay_fixtures/`, sampler in
+    games (95 since 2026-11-09: 10 were removed for vocabulary drift after the
+    BÍN grade filter, see the fixture manifest; fixtures in `test/replay_fixtures/`, sampler in
     `utils/sample_replay_games.py`) are replayed move-by-move through the
     real Flask API against both backends and the results compared. This
     found and fixed a PG `create()` upsert bug.
