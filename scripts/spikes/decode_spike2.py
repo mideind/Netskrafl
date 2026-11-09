@@ -32,7 +32,8 @@ sess = requests.Session()
 def decode(entity_json: Dict[str, Any]) -> Any:
     pb = entity_types.Entity.pb(entity_types.Entity())
     json_format.ParseDict(entity_json, pb)
-    return ndb_model._entity_from_protobuf(entity_types.Entity.wrap(pb))
+    # Private API of the pinned google-cloud-ndb version
+    return ndb_model._entity_from_protobuf(entity_types.Entity.wrap(pb))  # type: ignore
 
 
 # --- recent games by ts_last_move (indexed), decode + ground-truth compare ---

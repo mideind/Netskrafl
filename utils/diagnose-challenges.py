@@ -159,7 +159,8 @@ def main() -> int:
                 print("  (none)")
             for cm in sorted(received, key=lambda c: c.timestamp or 0):
                 ts = cm.timestamp.isoformat() if cm.timestamp else "?"
-                src_id = cm.key.parent().id() if cm.key.parent() else "?"
+                parent = cm.key.parent()
+                src_id = parent.id() if parent else "?"
                 src = UserModel.fetch(src_id) if src_id != "?" else None
                 src_nick = src.nickname if src else "?"
                 print(f"  [{ts}] from id={src_id} nick={src_nick!r}")

@@ -73,6 +73,8 @@ from __future__ import annotations
 
 from typing import (
     Any,
+    FrozenSet,
+    Iterator,
     NamedTuple,
     Optional,
     List,
@@ -82,12 +84,16 @@ from typing import (
     cast,
 )
 
+import logging
 import random
 from enum import Enum
+from itertools import combinations, product
 
+from config import MOVES_SIDECAR
 from dawgdictionary import PackedDawgDictionary
+from movesservice import best_moves_from_service
 from wordbase import Wordbase
-from languages import current_alphabet
+from languages import SUPPORTED_LOCALES, current_alphabet
 from skraflmechanics import (
     State,
     Board,
@@ -104,6 +110,30 @@ from dawgdictionary import Navigator
 # Type definitions
 
 LeftPart = Tuple[str, str, str, int]
+
+# When a GoSkrafl moves sidecar runs alongside this process (container
+# deployments), robots take their candidate moves from it: it generates
+# the same moves an order of magnitude faster than the Python engine,
+# which matters most for racks with two blanks. The robots pick from the
+# top of the score-sorted list, so only this many of the best moves are
+# requested. In simulated games, the weakest robot needed at most 159 of
+# them to find its 30 playable moves; if a robot runs out of playable
+# moves within the list, the full Python generation runs instead.
+SIDECAR_CANDIDATE_LIMIT = 500
+
+
+class LeftPartGroup(NamedTuple):
+    """Left parts of the same length that end in the same state of the
+    DAWG navigation (remaining edge prefix and next node) with the same
+    rack leave. Their right-hand continuations are identical, so they
+    are extended together, with a single navigation."""
+
+    leftparts: List[str]
+    rack_leave: str
+    prefix: str
+    next_node: int
+    # Bit pattern of the letters that can follow the left part in the DAWG
+    next_bits: int
 
 
 class MoveTuple(NamedTuple):
@@ -173,6 +203,11 @@ class Square:
     def is_open_for(self, letter_bit: int) -> bool:
         """ Can this letter be placed here? """
         return bool(self._cc & letter_bit)
+
+    @property
+    def crosscheck(self) -> int:
+        """ Bit pattern of the letters that can be placed here """
+        return self._cc
 
     @property
     def letter(self) -> str:
@@ -334,13 +369,27 @@ class Axis:
 
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
-            # to the left of the anchor square
+            # to the left of the anchor square. Left parts that end in the same
+            # navigation state with the same rack leave have the same right-hand
+            # continuations, so each such group is navigated only once, and only
+            # if a letter that can follow it in the DAWG may be placed on the
+            # anchor square from the rack leave.
+            anchor_cc = self._sq[index].crosscheck
+            all_bits = current_alphabet().all_bits_set()
             for left_len in range(1, maxleft + 1):
-                lp_list = lpn.leftparts(left_len)
-                if lp_list is not None:
-                    for leftpart, rack_leave, prefix, next_node in lp_list:
-                        rnav = ExtendRightNavigator(self, index, rack_leave)
-                        self._dawg.resume_navigation(rnav, prefix, next_node, leftpart)
+                for group in lpn.groups(left_len):
+                    leave = group.rack_leave
+                    allowed = anchor_cc & (
+                        all_bits if "?" in leave else lpn.rack_bits(leave)
+                    )
+                    if not (group.next_bits & allowed):
+                        continue
+                    rnav = ExtendRightNavigator(
+                        self, index, leave, group.leftparts
+                    )
+                    self._dawg.resume_navigation(
+                        rnav, group.prefix, group.next_node, group.leftparts[0]
+                    )
 
     def generate_moves(self, lpn: Optional[LeftPermutationNavigator]) -> None:
         """Find all valid moves on this axis by attempting to place tiles
@@ -386,11 +435,55 @@ class LeftPermutationNavigator(Navigator):
         self._leftparts: List[Optional[List[LeftPart]]] = [
             None for _ in range(self._maxleft)
         ]
+        self._groups: Dict[int, List[LeftPartGroup]] = {}
+        self._rack_bits: Dict[str, int] = {}
         self._index = 0
 
     def leftparts(self, length: int) -> Optional[List[LeftPart]]:
         """ Returns a list of leftparts of the length requested """
         return self._leftparts[length - 1] if 0 < length <= self._maxleft else None
+
+    def groups(self, length: int) -> List[LeftPartGroup]:
+        """Return the left parts of the requested length, grouped by
+        navigation state and rack leave (calculated once, then cached)"""
+        if not 0 < length <= self._maxleft:
+            return []
+        cached = self._groups.get(length)
+        if cached is not None:
+            return cached
+        alphabet = current_alphabet()
+        letter_bit = alphabet.letter_bit
+        dawg = Wordbase.dawg()
+        by_state: Dict[Tuple[str, int, str], LeftPartGroup] = {}
+        for leftpart, rack_leave, prefix, next_node in self._leftparts[length - 1] or []:
+            key = (prefix, next_node, "".join(sorted(rack_leave)))
+            group = by_state.get(key)
+            if group is None:
+                next_bits = 0
+                if prefix:
+                    # In the middle of an edge: only its next letter can follow
+                    next_bits = letter_bit.get(prefix[0], 0)
+                elif next_node:
+                    # At a node: the first letters of its outgoing edges can
+                    # follow. (A next node of 0 means that the left part is at
+                    # the end of the graph, with nothing to follow.)
+                    for edge_prefix, _ in dawg.outgoing_edges(next_node):
+                        next_bits |= letter_bit.get(edge_prefix[0], 0)
+                group = LeftPartGroup([], rack_leave, prefix, next_node, next_bits)
+                by_state[key] = group
+            group.leftparts.append(leftpart)
+        result = list(by_state.values())
+        self._groups[length] = result
+        return result
+
+    def rack_bits(self, rack: str) -> int:
+        """Return the bit pattern of the letters in a rack without blanks
+        (calculated once per distinct rack, then cached)"""
+        bits = self._rack_bits.get(rack)
+        if bits is None:
+            bits = current_alphabet().bit_pattern(rack)
+            self._rack_bits[rack] = bits
+        return bits
 
     def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
@@ -515,6 +608,28 @@ class Match(Enum):
     RACK_TILE = 2
 
 
+def _blank_placements(
+    new_tiles: List[Tuple[int, int, int, str]], rack: str
+) -> Iterator[FrozenSet[int]]:
+    """Yield every distinct choice of which new tiles of a move are
+    blanks, as sets of positions within the matched word. When the rack
+    has fewer real tiles of a letter than the move lays down, blanks make
+    up the difference, and each choice of squares for them is a distinct
+    move, generally with a distinct score. A blank is never used for a
+    letter while a real tile of that letter is left over."""
+    by_letter: Dict[str, List[int]] = {}
+    for i, _, _, letter in new_tiles:
+        by_letter.setdefault(letter, []).append(i)
+    # For each letter that needs blanks: every choice of its squares for them
+    choices: List[List[Tuple[int, ...]]] = []
+    for letter, positions in by_letter.items():
+        num_blanks = len(positions) - rack.count(letter)
+        if num_blanks > 0:
+            choices.append(list(combinations(positions, num_blanks)))
+    for combination in product(*choices):
+        yield frozenset(i for group in combination for i in group)
+
+
 class ExtendRightNavigator(Navigator):
 
     """A navigation class to be used with DawgDictionary.navigate()
@@ -524,11 +639,20 @@ class ExtendRightNavigator(Navigator):
     the board.
     """
 
-    def __init__(self, axis: Axis, anchor: int, rack: str) -> None:
+    def __init__(
+        self,
+        axis: Axis,
+        anchor: int,
+        rack: str,
+        leftparts: Optional[List[str]] = None,
+    ) -> None:
         super().__init__()
         self._axis = axis
         self._rack = rack
         self._anchor = anchor
+        # A group of left parts of the same length that share this
+        # navigation (see LeftPartGroup), or None if there is only one
+        self._leftparts = leftparts
         # The tile we are placing next
         self._index = anchor
         self._stack: List[Tuple[str, int, bool]] = []
@@ -601,49 +725,63 @@ class ExtendRightNavigator(Navigator):
     def accept(self, matched: str, final: bool) -> None:
         """Called to inform the navigator of a match
         and whether it is a final word"""
-        # pylint: disable=bad-continuation
-        if (
+        if not (
             final
             and len(matched) > 1
             and (self._index >= BOARD_SIZE or self._axis.is_empty(self._index))
         ):
+            return
+        leftparts = self._leftparts
+        if leftparts is None:
+            self._add_moves(matched)
+        else:
+            # The navigation was resumed from the first left part of a group:
+            # the right-hand part found is valid for every left part in it
+            right = matched[len(leftparts[0]):]
+            for leftpart in leftparts:
+                self._add_moves(leftpart + right)
 
-            # Solution found - make a Move object for it
-            # and add it to the AutoPlayer's list
-            ix = self._index - len(matched)  # The word's starting index within the axis
-            row, col = self._axis.coordinate_of(ix)
-            xd, yd = self._axis.coordinate_step()
-            move = Move(matched, row, col, self._axis.is_horizontal())
-            # Fetch the rack as it was at the beginning of move generation
-            autoplayer = self._axis.autoplayer
-            rack = autoplayer.rack()
-            tiles = ""
-            for c in matched:
-                if self._axis.is_empty(ix):
-                    # Empty square that is being covered by this move
-                    # Find out whether it is a blank or normal letter tile
-                    if c in rack:
-                        rack = rack.replace(c, "", 1)
-                        tile = c
-                        tiles += c
-                    else:
-                        # Must be a wildcard match
-                        rack = rack.replace("?", "", 1)
-                        tile = "?"
-                        tiles += tile + c
-                    # assert row in range(BOARD_SIZE)
-                    # assert col in range(BOARD_SIZE)
-                    # Add this cover to the Move object
-                    move.add_validated_cover(Cover(row, col, tile, c))
+    def _add_moves(self, matched: str) -> None:
+        """Add the moves that lay down the word matched, which ends just
+        before the current index, to the AutoPlayer's candidate list"""
+        # Collect the tiles that the move lays down, as
+        # (position in matched, row, col, letter) tuples
+        axis = self._axis
+        ix = self._index - len(matched)  # The word's starting index within the axis
+        new_tiles: List[Tuple[int, int, int, str]] = []
+        for i, c in enumerate(matched):
+            if axis.is_empty(ix + i):
+                row, col = axis.coordinate_of(ix + i)
+                new_tiles.append((i, row, col, c))
+        if len(new_tiles) == 1:
+            # A single tile that touches tiles both across and down forms
+            # words in both directions, so both axes find the very same move.
+            # Keep it on one axis only: the one along which it forms the
+            # longer word, or the horizontal one if the words are equally
+            # long (the same convention as GoSkrafl's TileMove). An axis
+            # only finds a single-tile move if the tile has neighbors along
+            # it, so the move is always kept exactly once.
+            _, row, col, _ = new_tiles[0]
+            board = axis.autoplayer.board()
+            across = len(board.tiles_left(row, col)) + len(board.tiles_right(row, col))
+            down = len(board.tiles_above(row, col)) + len(board.tiles_below(row, col))
+            if (across >= down) != axis.is_horizontal():
+                return
+        # Add a move for every distinct placement of blank tiles
+        row, col = axis.coordinate_of(ix)
+        horizontal = axis.is_horizontal()
+        autoplayer = axis.autoplayer
+        for blanks in _blank_placements(new_tiles, autoplayer.rack()):
+            move = Move(matched, row, col, horizontal)
+            tiles = list(matched)
+            for i, r, c, letter in new_tiles:
+                if i in blanks:
+                    tiles[i] = "?" + letter
+                    move.add_validated_cover(Cover(r, c, "?", letter))
                 else:
-                    tiles += c
-                ix += 1
-                row += xd
-                col += yd
+                    move.add_validated_cover(Cover(r, c, letter, letter))
             # Note the tiles played in the move
-            move.set_tiles(tiles)
-            # Check that we've picked off the correct number of tiles
-            # assert len(rack) == len(self._rack)
+            move.set_tiles("".join(tiles))
             autoplayer.add_candidate(move)
 
     def pop_edge(self):
@@ -686,6 +824,12 @@ class AutoPlayer:
             self._rack_bit_pattern = current_alphabet().bit_pattern(self._rack)
         # List of valid, candidate moves
         self._candidates: List[MoveBase] = []
+        # True if the candidates are only the best ones of all legal moves,
+        # as when they come from the moves sidecar
+        self._candidates_truncated = False
+        # Set by _pick_candidate() when the truncated candidate list
+        # did not contain enough playable moves
+        self._needs_all_candidates = False
 
     def board(self) -> Board:
         """ Return the board """
@@ -778,15 +922,75 @@ class AutoPlayer:
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)
 
+    def _candidates_from_sidecar(self) -> bool:
+        """Fetch the best candidate moves from the GoSkrafl moves sidecar,
+        if one runs alongside this process. Returns False if there is no
+        sidecar or it did not deliver, in which case the caller generates
+        the candidates in-process. The empty board (the first move) is
+        always left to the Python engine: it is fast there, and the two
+        engines may report a first move in different orientations. So is
+        a game in a locale this deployment does not support: GoSkrafl
+        would quietly use its U.S. English dictionary for it."""
+        state = self._state
+        if (
+            not MOVES_SIDECAR
+            or self._board.is_empty()
+            or state.locale not in SUPPORTED_LOCALES
+        ):
+            return False
+        summaries = best_moves_from_service(
+            locale=state.locale,
+            board_type=state.board_type,
+            board=self._board.row_strings(),
+            rack=self._rack,
+            limit=SIDECAR_CANDIDATE_LIMIT,
+            tile_set=state.tileset.key if state.tileset else "",
+        )
+        if summaries is None:
+            # Already logged by best_moves_from_service()
+            return False
+        try:
+            candidates: List[MoveBase] = [
+                Move.from_summary(self._board, coord, tiles)
+                for coord, tiles, _ in summaries
+            ]
+        except (ValueError, IndexError) as e:
+            logging.error(f"Unusable move from the moves sidecar: {repr(e)}")
+            return False
+        # The sidecar is told the game's tile set, but a sidecar that
+        # predates the tile_set field ignores it and assumes the default
+        # tile set for the locale and board type. Its list of the best moves
+        # would then be ranked by the wrong scores, so check them all
+        # against our own scoring.
+        for move, (coord, tiles, score) in zip(candidates, summaries):
+            if state.score(move) != score:
+                logging.warning(
+                    f"Moves sidecar scored {coord} {tiles} as {score}, "
+                    f"not {state.score(move)}: generating robot moves in-process"
+                )
+                return False
+        self._candidates = candidates
+        self._candidates_truncated = len(summaries) >= SIDECAR_CANDIDATE_LIMIT
+        return True
+
     def _generate_move(self, depth: int) -> MoveBase:
         """Finds and returns a Move object to be played,
         eventually weighted by countermoves"""
-
-        # Generate a fresh list of candidate moves
-        self._generate_candidates()
-
+        # Obtain a fresh list of candidate moves: the best ones from the
+        # moves sidecar if there is one, otherwise all of them in-process
+        self._needs_all_candidates = False
+        if not self._candidates_from_sidecar():
+            self._candidates_truncated = False
+            self._generate_candidates()
         # Pick the best move from the candidate list
         move = self._find_best_move(depth)
+        if self._needs_all_candidates:
+            # The sidecar's best moves did not include enough playable ones
+            # for this robot: generate every legal move and pick again
+            self._needs_all_candidates = False
+            self._candidates_truncated = False
+            self._generate_candidates()
+            move = self._find_best_move(depth)
         if move is not None:
             return move
 
@@ -908,6 +1112,12 @@ class AutoPlayer_Custom(AutoPlayer):
                     p += 1
             i += 1
         # Now we have a list of up to self.pick_from playable moves
+        if p < pick_from and self._candidates_truncated:
+            # We ran out of candidates before finding enough playable moves,
+            # but the candidates were only the best of all legal moves:
+            # ask for all of them (see AutoPlayer._generate_move())
+            self._needs_all_candidates = True
+            return None
         if p == 0:
             # No playable move: give up and do an Exchange or Pass instead
             return None

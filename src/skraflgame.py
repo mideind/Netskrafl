@@ -401,21 +401,10 @@ class Game:
             m: Optional[MoveBase] = None
 
             if mm.coord:
-                # Normal tile move
-                # Decode the coordinate: A15 = horizontal, 15A = vertical
-                if mm.coord[0] in Board.ROWIDS:
-                    row = Board.ROWIDS.index(mm.coord[0])
-                    col = int(mm.coord[1:]) - 1
-                    horiz = True
-                else:
-                    row = Board.ROWIDS.index(mm.coord[-1])
-                    col = int(mm.coord[0:-1]) - 1
-                    horiz = False
-                # The tiles string may contain wildcards followed by their meaning
-                # Remove the ? marks to get the "plain" word formed
+                # Normal tile move: A15 = horizontal, 15A = vertical, and the
+                # tiles string may contain blanks ('?') followed by their meaning
                 if mm.tiles:
-                    m = Move(mm.tiles.replace("?", ""), row, col, horiz)
-                    m.make_covers(game.state.board(), mm.tiles)
+                    m = Move.from_summary(game.state.board(), mm.coord, mm.tiles)
 
             elif not mm.tiles:
                 # Degenerate (error) case: this game is stored incorrectly
@@ -998,6 +987,7 @@ class Game:
                 board=state.board().row_strings(),
                 rack=state.rack(player_index),
                 limit=n,
+                tile_set=self.tileset.key,
             )
             if moves is not None:
                 return [(player_index, m) for m in moves]

@@ -1109,6 +1109,27 @@ class Move(MoveBase):
         if len(self._covers) == 2:
             self._horizontal = self._covers[0].row == cover.row
 
+    @classmethod
+    def from_summary(cls, board: Board, coord: str, tiles: str) -> Move:
+        """Create a tile move from its coordinate and tiles string, as
+        stored in a game's move list and as returned by the moves service:
+        "A15" is horizontal and "15A" vertical, and the tiles string
+        encodes a blank as '?' followed by its letter. The board must be
+        the one the move is played on, since squares already covered on
+        it are not part of the move's covers."""
+        if coord[0] in Board.ROWIDS:
+            row = Board.ROWIDS.index(coord[0])
+            col = int(coord[1:]) - 1
+            horiz = True
+        else:
+            row = Board.ROWIDS.index(coord[-1])
+            col = int(coord[0:-1]) - 1
+            horiz = False
+        # Remove the ? marks to get the "plain" word formed
+        move = cls(tiles.replace("?", ""), row, col, horiz)
+        move.make_covers(board, tiles)
+        return move
+
     def make_covers(self, board: Board, tiles: str) -> None:
         """Create a cover list out of a tile string, which may contain '?' for blanks."""
 

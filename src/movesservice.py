@@ -23,7 +23,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import logging
 
@@ -65,25 +65,28 @@ def best_moves_from_service(
     board: List[str],
     rack: str,
     limit: int,
+    tile_set: str = "",
 ) -> Optional[List[BestMoveSummary]]:
     """Obtain a list of the best available moves for the given position
     from the moves service, in descending score order. The board is a
     list of 15 strings of 15 characters ('.' for an empty square,
     lowercase for a normal tile, uppercase for a blank tile that has
-    been assigned that letter). Returns None if the service could not
-    deliver a valid reply, in which case the caller should fall back
-    to the in-process move generator."""
-    response = post_to_moves_service(
-        "/moves",
-        {
-            "locale": locale,
-            "board_type": board_type,
-            "board": board,
-            "rack": rack,
-            "limit": limit,
-        },
-        timeout=10,
-    )
+    been assigned that letter). The tile set is the game's (its key,
+    see languages.TileSet); without it, the service assumes the default
+    tile set for the locale and board type, which a game need not use.
+    Returns None if the service could not deliver a valid reply, in
+    which case the caller should fall back to the in-process move
+    generator."""
+    payload: Dict[str, Any] = {
+        "locale": locale,
+        "board_type": board_type,
+        "board": board,
+        "rack": rack,
+        "limit": limit,
+    }
+    if tile_set:
+        payload["tile_set"] = tile_set
+    response = post_to_moves_service("/moves", payload, timeout=10)
     if response is None:
         return None
     if response.status_code != 200:
