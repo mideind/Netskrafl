@@ -162,6 +162,10 @@ multiple languages through separate DAWG files and tile sets.
   container, and the explo-dev `moves` service still serves Netskrafl production
   and Málstaður). The former netskrafl `demo` service was deleted on
   2026-09-08 for lack of traffic; `app-demo.yaml` remains in case it is ever needed
+- Every production release (netskrafl or explo-live) gets a git tag with the same
+  name as its App Engine version (e.g. `n20261106`), on the deployed commit, pushed
+  to GitHub once the version has all the traffic. The `/deploy` skill does this as
+  its last step; tag by hand after any deploy made outside it
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
   current status are tracked in `doc/migration-strategy.md`

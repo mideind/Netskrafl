@@ -51,10 +51,13 @@ The default service name is `default`.
 - Determine the target from `$ARGUMENTS` (default `netskrafl`).
 - Confirm what is being deployed: run `git status -s` and `git log --oneline -1`.
   Warn if the working tree is dirty or `HEAD` is not the merged/intended commit.
+  Record `git rev-parse HEAD` as `COMMIT`: the release tag (step 5) goes on it,
+  so it must be a commit that is on GitHub (normally `origin/master`).
 - Compute the version id unless one was given:
   - `BASE="<prefix>$(date +%Y%m%d)"` (e.g. `n20260616`).
-  - List existing ids: `gcloud app versions list --project=<project> --service=default --format="value(version.id)"`.
-  - If `BASE` is free, use it. Otherwise append the first free lowercase letter:
+  - List existing ids: `gcloud app versions list --project=<project> --service=default --format="value(version.id)"`,
+    and existing release tags: `git fetch --tags && git tag -l "<prefix>*"`.
+  - If `BASE` is free in both lists, use it. Otherwise append the first free lowercase letter:
     `BASE` taken → try `${BASE}a`, `${BASE}b`, … (matches the convention: add
     `a`,`b`,`c`… for multiple releases on the same day).
 - **Tell the user the exact target project and version id, and get explicit
@@ -137,6 +140,17 @@ For each stage in **10% → 25% → 50% → 100%**:
 
 ### 5. Finish
 
+- **Tag the release** once the version has 100% of the traffic on `netskrafl` or
+  `explo-live` (production; explo-dev deploys are not tagged). The tag has the
+  same name as the App Engine version and points at `COMMIT` from step 1, so a
+  bug or anomaly seen in production can be traced back to the exact source:
+  ```bash
+  git tag -a <VERSION> <COMMIT> -m "<project> production release <VERSION>, 100% traffic $(date -u +%F)"
+  git push origin <VERSION>
+  ```
+  This is part of the deploy the user approved; no separate confirmation is
+  needed. If the rollout is abandoned or rolled back before 100%, do not tag.
+  Never move or delete an existing release tag.
 - **Do not delete or stop old versions** — leave them for rollback. Mention to
   the user that older versions remain and can be cleaned up later.
 - Report the final state: `gcloud app versions list --project=<project> --service=default --format="table(version.id, traffic_split, version.servingStatus)"`.
