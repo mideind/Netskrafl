@@ -1647,8 +1647,9 @@ def upload_dawgs_to_spaces() -> None:
         DO_SPACES_PATH: Path prefix in bucket (default: dawg)
     """
     try:
-        import boto3
-        from botocore.config import Config
+        # Optional dependency, only needed for uploading (not in the venv)
+        import boto3  # type: ignore
+        from botocore.config import Config  # type: ignore
     except ImportError:
         print("Error: boto3 is required for uploading. Install with: pip install boto3")
         sys.exit(1)
