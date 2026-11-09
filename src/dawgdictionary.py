@@ -180,6 +180,12 @@ class PackedDawgDictionary:
         assert self.b is not None
         Navigation(nav, self).resume(prefix, nextnode, leftpart)
 
+    def outgoing_edges(self, node: int) -> PrefixNodes:
+        """Return the (prefix, next node) tuples of the edges leaving
+        the node at the given offset in the graph (cached)"""
+        assert self.b is not None
+        return Navigation._tuple_from_node(self, node)
+
     def two_letter_words(self) -> TwoLetterListTuple:
         """Return the two letter words in this DAWG,
         sorted by first letter and by second letter"""
@@ -460,7 +466,9 @@ class Navigation:
             yield prefix, nextnode
 
     @staticmethod
-    @lru_cache(maxsize=8 * 1024)  # 8K entries seems to be plenty
+    # A search with two blanks on the rack visits some 20K distinct nodes,
+    # which thrashed the previous 8K-entry cache; 64K entries cost a few MB
+    @lru_cache(maxsize=64 * 1024)
     def _tuple_from_node(pd: PackedDawgDictionary, offset: int) -> PrefixNodes:
         """Return a cached tuple of prefixes and next node offsets along an edge"""
         return tuple(Navigation._iter_from_node(pd, offset))

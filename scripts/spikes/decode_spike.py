@@ -43,7 +43,8 @@ def decode(entity_json: Dict[str, Any]) -> Any:
     pb = entity_types.Entity.pb(entity_types.Entity())
     json_format.ParseDict(entity_json, pb)
     wrapped = entity_types.Entity.wrap(pb)
-    return ndb_model._entity_from_protobuf(wrapped)
+    # Private API of the pinned google-cloud-ndb version
+    return ndb_model._entity_from_protobuf(wrapped)  # type: ignore
 
 
 def compare(a: Any, b: Any) -> List[str]:

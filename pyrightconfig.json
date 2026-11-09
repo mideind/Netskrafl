@@ -2,5 +2,11 @@
   "pythonVersion": "3.11",
   "venvPath": ".",
   "venv": "venv",
-  "reportMissingModuleSource": false
+  "reportMissingModuleSource": false,
+  "executionEnvironments": [
+    {
+      "root": "test",
+      "extraPaths": ["src"]
+    }
+  ]
 }

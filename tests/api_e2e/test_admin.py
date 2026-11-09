@@ -15,7 +15,7 @@ establishes a thread-local session and commits it on completion.
 from __future__ import annotations
 
 from threading import Thread
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from flask.testing import FlaskClient
 
@@ -173,7 +173,7 @@ class TestAdminDeferred:
     """Test the deferred (background-thread) admin jobs against PG."""
 
     @staticmethod
-    def _run_deferred(target: object) -> None:
+    def _run_deferred(target: Callable[[], object]) -> None:
         """Run a deferred admin job on a real background thread,
         as the admin routes do."""
         t = Thread(target=target)

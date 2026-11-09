@@ -122,7 +122,7 @@ FROM golang:1.25-bookworm AS goskrafl-builder
 
 # Pin an exact commit for reproducible builds; bump deliberately.
 ARG GOSKRAFL_REPO=https://github.com/vthorsteinsson/GoSkrafl
-ARG GOSKRAFL_COMMIT=a31f109376eb79bd4f0be868d53df50403ca1f24
+ARG GOSKRAFL_COMMIT=17352c787e0d5699ef8ef432c74be14fe16e73ac
 
 RUN git clone --no-checkout ${GOSKRAFL_REPO} /goskrafl && \
     cd /goskrafl && \

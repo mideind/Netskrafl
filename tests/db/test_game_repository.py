@@ -1586,6 +1586,7 @@ class TestGameRowLocking:
         pg_backend.commit()
 
         url = get_config().get_database_url(DEFAULT_TEST_DATABASE_URL)
+        assert url is not None
         engine2 = create_engine(url)
         try:
             # Acquire the row lock in the primary session

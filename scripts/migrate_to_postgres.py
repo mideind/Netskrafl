@@ -609,17 +609,26 @@ class Migrator:
     def tf_GameModel(self, e: Any) -> Optional[Row]:
         from psycopg2.extras import Json
 
+        # Each player is either a user id (a human) or None (the robot).
+        # A valid game has at least one human, and every human must exist
+        # as a user. Invalid games are skipped and their ids logged; the app
+        # never creates them, but users have been deleted by hand. (Nulling
+        # a missing user instead would turn that player into the robot.)
+        game_id = str(e.key.id())
         p0, p1 = self._uid(e.player0), self._uid(e.player1)
-        if p0 is not None and not self._known_user(p0):
-            self.bump("games.orphan_player0_nulled")
-            p0 = None
-        if p1 is not None and not self._known_user(p1):
-            self.bump("games.orphan_player1_nulled")
-            p1 = None
+        humans = [uid for uid in (p0, p1) if uid is not None]
+        if not humans:
+            self.bump("games.no_human_player_skipped")
+            log.warning("GameModel %s skipped: both players are the robot", game_id)
+            return None
+        if any(uid not in self.user_ids for uid in humans):
+            self.bump("games.orphan_player_skipped")
+            log.warning("GameModel %s skipped: a player's user entity is missing", game_id)
+            return None
         if e.rack0 is None or e.rack1 is None:
             self.bump("games.null_rack_coerced")
         return (
-            str(e.key.id()), p0, p1, e.locale, e.rack0 or "", e.rack1 or "",
+            game_id, p0, p1, e.locale, e.rack0 or "", e.rack1 or "",
             e.irack0, e.irack1, e.score0 or 0, e.score1 or 0, e.to_move or 0,
             e.robot_level or 0, bool(e.over),
             utc_ts(e.timestamp) or SENTINEL_TS, utc_ts(e.ts_last_move),
