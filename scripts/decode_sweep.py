@@ -20,8 +20,14 @@
       DATABASE_BACKEND=postgresql \\
       DATABASE_URL=postgresql://test:test@localhost:5432/explo_live_copy \\
       venv/bin/python scripts/decode_sweep.py [users|games|all] [limit]
+          [--shard I/N | --jobs N]
 
-    Reads only. ~600 games/s on the development box (2026-09-10).
+    --shard I/N sweeps only the rows whose id hashes to I modulo N (I is
+    0-based), so N processes with I = 0..N-1 cover every row exactly once.
+    --jobs N does that for you: it runs the N shards as child processes in
+    parallel and fails if any of them fails. A limit applies per shard.
+
+    Reads only. ~600 games/s per process on the development box (2026-09-10).
 
 """
 
@@ -29,7 +35,9 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterator, List, Optional, Tuple
 
+import argparse
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -44,16 +52,42 @@ from skraflgame import Game  # noqa: E402
 from skrafluser import User  # noqa: E402
 
 
-def iter_ids(url: str, table: str, order: str, limit: int) -> Iterator[str]:
-    """Stream the ids of a table through a server-side cursor"""
+Shard = Tuple[int, int]  # (index, count): index in 0..count-1
+
+
+def parse_shard(text: str) -> Shard:
+    """Parse "I/N" into (I, N), with 0 <= I < N"""
+    try:
+        i_text, n_text = text.split("/")
+        index, count = int(i_text), int(n_text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected I/N, got {text!r}")
+    if count < 1 or not 0 <= index < count:
+        raise argparse.ArgumentTypeError(f"need 0 <= I < N, got {text!r}")
+    return index, count
+
+
+def iter_ids(
+    url: str, table: str, order: str, limit: int, shard: Optional[Shard]
+) -> Iterator[str]:
+    """Stream the ids of a table (or of one shard of it) through a
+    server-side cursor"""
     conn = psycopg2.connect(url)
     try:
         cur = conn.cursor(name="sweep")
         cur.itersize = 5000
-        sql = f'SELECT id FROM "{table}" ORDER BY "{order}"'
+        sql = f'SELECT id FROM "{table}"'
+        params: Optional[Tuple[int, int]] = None
+        if shard is not None:
+            # hashtext() is stable for a given value, so every id lands in
+            # exactly one shard; the mask keeps the modulo non-negative
+            # (%% is a literal % in a parameterized psycopg2 query)
+            sql += " WHERE (hashtext(id) & 2147483647) %% %s = %s"
+            params = (shard[1], shard[0])
+        sql += f' ORDER BY "{order}"'
         if limit:
             sql += f" LIMIT {int(limit)}"
-        cur.execute(sql)
+        cur.execute(sql, params)
         for (i,) in cur:
             yield str(i)
     finally:
@@ -67,6 +101,7 @@ def sweep(
     order: str,
     loader: Callable[[str], Optional[Any]],
     limit: int,
+    shard: Optional[Shard],
 ) -> Tuple[int, List[Tuple[str, str]]]:
     """Load every row of a table through the app; return (count, bad rows)"""
     from db.session import get_session_manager
@@ -75,7 +110,9 @@ def sweep(
     t0 = time.time()
     n = 0
     bad: List[Tuple[str, str]] = []
-    for i in iter_ids(url, table, order, limit):
+    if shard is not None:
+        label = f"{label}[{shard[0]}/{shard[1]}]"
+    for i in iter_ids(url, table, order, limit, shard):
         n += 1
         try:
             # One request-scoped session per load, so that a failure
@@ -100,24 +137,55 @@ def sweep(
     return n, bad
 
 
+def run_jobs(what: str, limit: int, jobs: int) -> int:
+    """Run every shard of the sweep as a child process, in parallel.
+    The children share this process's stdout; their lines are labelled
+    with the shard. Returns 1 if any shard failed."""
+    children = [
+        subprocess.Popen(
+            [sys.executable, __file__, what, str(limit), "--shard", f"{i}/{jobs}"]
+        )
+        for i in range(jobs)
+    ]
+    failed = [i for i, child in enumerate(children) if child.wait() != 0]
+    if failed:
+        print(f"FAILED shards: {', '.join(f'{i}/{jobs}' for i in failed)}", flush=True)
+        return 1
+    print(f"All {jobs} shards clean", flush=True)
+    return 0
+
+
 def main() -> int:
-    what = sys.argv[1] if len(sys.argv) > 1 else "all"
-    limit = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    parser = argparse.ArgumentParser(description="Load every migrated user and game through the app")
+    parser.add_argument("what", nargs="?", choices=("users", "games", "all"), default="all")
+    parser.add_argument("limit", nargs="?", type=int, default=0,
+                        help="stop after this many rows per table (per shard); 0 = all")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--shard", type=parse_shard, metavar="I/N",
+                       help="sweep only shard I (0-based) of N")
+    group.add_argument("--jobs", type=int, metavar="N",
+                       help="run all N shards in parallel as child processes")
+    args = parser.parse_args()
     url = os.environ.get("DATABASE_URL")
     if not url or os.environ.get("DATABASE_BACKEND", "").lower() != "postgresql":
         sys.exit("Set DATABASE_BACKEND=postgresql and DATABASE_URL to the copy to sweep")
+    if args.jobs is not None:
+        if args.jobs < 1:
+            sys.exit("--jobs must be at least 1")
+        return run_jobs(args.what, args.limit, args.jobs)
+    shard: Optional[Shard] = args.shard
     init_session_manager("postgresql", url)
     failures = 0
-    if what in ("users", "all"):
+    if args.what in ("users", "all"):
         _, bad = sweep(
             "users", url, "users", "id",
-            lambda uid: User.load_if_exists(uid), limit,
+            lambda uid: User.load_if_exists(uid), args.limit, shard,
         )
         failures += len(bad)
-    if what in ("games", "all"):
+    if args.what in ("games", "all"):
         _, bad = sweep(
             "games", url, "games", "ts_last_move",
-            lambda gid: Game.load(gid, use_cache=False), limit,
+            lambda gid: Game.load(gid, use_cache=False), args.limit, shard,
         )
         failures += len(bad)
     return 1 if failures else 0

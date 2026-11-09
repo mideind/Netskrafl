@@ -241,7 +241,10 @@ plan, all in the writer/bookkeeping layer:
   core; the JSON layer is pure Python). The migrator stays on the GAE
   runtime version (3.11) with the pinned google-cloud-ndb anyway.
 - `scripts/decode_sweep.py` implements verification step 4b below and
-  replaces the ad-hoc sweep used for explo-dev.
+  replaces the ad-hoc sweep used for explo-dev. At ~600 games/s per
+  process, netskrafl's 10.4M games would take ~5 hours in one process,
+  so `--jobs N` runs N hash-partitioned shards in parallel (`--shard I/N`
+  runs one of them).
 
 ## Rehearsal sequence (Phase D steps 4–5)
 
