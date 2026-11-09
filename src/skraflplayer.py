@@ -944,6 +944,7 @@ class AutoPlayer:
             board=self._board.row_strings(),
             rack=self._rack,
             limit=SIDECAR_CANDIDATE_LIMIT,
+            tile_set=state.tileset.key if state.tileset else "",
         )
         if summaries is None:
             # Already logged by best_moves_from_service()
@@ -956,11 +957,11 @@ class AutoPlayer:
         except (ValueError, IndexError) as e:
             logging.error(f"Unusable move from the moves sidecar: {repr(e)}")
             return False
-        # The sidecar does not know the game's tile set: it assumes the
-        # default one for the locale and board type, while a game may use
-        # another (the old Icelandic bag, or the new English tile set on
-        # the standard board). Its list of the best moves is then ranked
-        # by the wrong scores, so check them all against our own scoring.
+        # The sidecar is told the game's tile set, but a sidecar that
+        # predates the tile_set field ignores it and assumes the default
+        # tile set for the locale and board type. Its list of the best moves
+        # would then be ranked by the wrong scores, so check them all
+        # against our own scoring.
         for move, (coord, tiles, score) in zip(candidates, summaries):
             if state.score(move) != score:
                 logging.warning(

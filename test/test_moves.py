@@ -17,6 +17,7 @@ from collections import Counter
 
 import pytest
 
+from config import BoardTypes
 from utils import CustomClient, login_user
 
 # An empty 15x15 board, as 15 rows of 15 spaces
@@ -91,22 +92,33 @@ KUD_LAYOUT: List[Tuple[int, int, bool, str]] = [
 ]
 
 
-def _engine_position(layout: List[Tuple[int, int, bool, str]], rack: str) -> Any:
-    """Return an is_IS State with the given words on the board
-    (all real tiles) and the given rack for player 0"""
+def _engine_position(
+    layout: List[Tuple[int, int, bool, str]],
+    rack: str,
+    locale: str = "is_IS",
+    tileset: Any = None,
+    board_type: BoardTypes = "standard",
+) -> Any:
+    """Return a State with the given words on the board (all real tiles)
+    and the given rack for player 0; by default an is_IS game with the
+    locale's tile set on the standard board"""
     from skraflmechanics import State
     from languages import tileset_for_locale, set_locale
 
-    locale = "is_IS"
     set_locale(locale)
     state = State(
-        tileset=tileset_for_locale(locale),
+        tileset=tileset or tileset_for_locale(locale),
         drawtiles=False,
         locale=locale,
-        board_type="standard",
+        board_type=board_type,
     )
     board = state.board()
+    # The layouts start at (7, 5), through the center of the standard
+    # board; on the Explo board, whose start square is (3, 3), shift them
+    # so that the first word covers that square instead
+    dr, dc = (-4, -2) if board_type == "explo" else (0, 0)
     for row, col, horizontal, word in layout:
+        row, col = row + dr, col + dc
         for k, letter in enumerate(word):
             r, c = (row, col + k) if horizontal else (row + k, col)
             board.set_tile(r, c, letter)
@@ -187,6 +199,91 @@ def test_engine_blank_placements_and_no_duplicates() -> None:
     assert max(covers.values()) == 1
 
 
+@pytest.fixture(scope="module")
+def service_knows_tile_sets() -> bool:
+    """True if the moves service takes the tile_set field: it then rejects
+    an unknown tile set, while an older service ignores the field"""
+    from movesservice import best_moves_from_service
+
+    state = _engine_position(LINE_LAYOUT, "aðeinst")
+    reply = best_moves_from_service(
+        locale="is_IS",
+        board_type="standard",
+        board=state.board().row_strings(),
+        rack="aðeinst",
+        limit=1,
+        tile_set="no-such-tile-set",
+    )
+    return reply is None
+
+
+# Positions for the tile set equivalence test, in other locales
+ENGLISH_LAYOUT: List[Tuple[int, int, bool, str]] = [
+    (7, 5, True, "horse"),
+    (7, 7, False, "rats"),
+]
+NORWEGIAN_LAYOUT: List[Tuple[int, int, bool, str]] = [(7, 5, True, "huset")]
+
+
+@pytest.mark.parametrize(
+    "layout,rack,locale,tileset_name,board_type",
+    [
+        (L_LAYOUT, "aaði?nn", "is_IS", "OldTileSet", "standard"),
+        (L_LAYOUT, "aaði?nn", "is_IS", "NewTileSet", "explo"),
+        (ENGLISH_LAYOUT, "aeinst?", "en_US", "EnglishTileSet", "standard"),
+        (ENGLISH_LAYOUT, "aeinst?", "en_US", "NewEnglishTileSet", "standard"),
+        (ENGLISH_LAYOUT, "aeinst?", "en_GB", "EnglishTileSet", "explo"),
+        (NORWEGIAN_LAYOUT, "aeinrs?", "nb_NO", "OriginalNorwegianTileSet", "explo"),
+        (NORWEGIAN_LAYOUT, "aeinrs?", "nn_NO", "NewNorwegianTileSet", "standard"),
+    ],
+)
+def test_best_moves_equivalence_tile_sets(
+    service_knows_tile_sets: bool,
+    layout: List[Tuple[int, int, bool, str]],
+    rack: str,
+    locale: str,
+    tileset_name: str,
+    board_type: BoardTypes,
+) -> None:
+    """The two engines also agree for every tile set, on either board,
+    when the moves service is told the game's tile set, including the
+    combinations that differ from a locale's default (the old Icelandic
+    bag, the classic English tile set on the standard board)"""
+    import languages
+    from skraflplayer import AutoPlayer
+    from movesservice import best_moves_from_service
+
+    if not service_knows_tile_sets:
+        pytest.skip("The moves service predates the tile_set field")
+    tileset = getattr(languages, tileset_name)
+    state = _engine_position(layout, rack, locale, tileset, board_type)
+    python_moves = Counter(m.summary(state) for m, _ in AutoPlayer(0, state).generate_best_moves(0))
+    service_moves = best_moves_from_service(
+        locale=locale,
+        board_type=board_type,
+        board=state.board().row_strings(),
+        rack=rack,
+        limit=0,
+        tile_set=tileset.key,
+    )
+    assert service_moves is not None
+    assert len(python_moves) > 0
+    assert python_moves == Counter(tuple(m) for m in service_moves)
+
+
+def test_tile_set_keys() -> None:
+    """Every tile set has a distinct key for the moves service"""
+    import languages
+
+    tilesets = [
+        cls for cls in vars(languages).values()
+        if isinstance(cls, type) and issubclass(cls, languages.TileSet) and cls is not languages.TileSet
+    ]
+    keys = [ts.key for ts in tilesets]
+    assert len(tilesets) == 7
+    assert all(keys) and len(set(keys)) == len(keys)
+
+
 def test_engine_single_tile_move_direction() -> None:
     """A single tile that forms words both across and down is reported
     once, along the longer word (across if equally long), as GoSkrafl
@@ -218,9 +315,13 @@ class _FakeSidecar:
             state = _engine_position(L_LAYOUT, rack)
             reply = [m.summary(state) for m, _ in _best_moves(rack)]
         self.reply = reply
+        self.tile_set = ""
 
-    def __call__(self, *, locale: str, board_type: str, board: List[str], rack: str, limit: int) -> Any:
+    def __call__(
+        self, *, locale: str, board_type: str, board: List[str], rack: str, limit: int, tile_set: str = ""
+    ) -> Any:
         self.calls += 1
+        self.tile_set = tile_set
         if self.reply is None or not limit:
             return self.reply
         return self.reply[:limit]
@@ -259,6 +360,7 @@ def test_robot_takes_candidates_from_sidecar(monkeypatch: pytest.MonkeyPatch) ->
     robot, state, generated = _robot_with_sidecar(monkeypatch, fake, TOP_SCORE, "aaði?nn")
     move = robot.generate_move()
     assert fake.calls == 1 and generated[0] == 0
+    assert fake.tile_set == "icelandic_new"
     assert state.score(move) == best_score
 
 
@@ -320,6 +422,37 @@ def test_robot_with_real_sidecar(monkeypatch: pytest.MonkeyPatch) -> None:
     state = _engine_position(L_LAYOUT, "??anrst")
     move = autoplayer_create(state, TOP_SCORE).generate_move()
     best = AutoPlayer(0, _engine_position(L_LAYOUT, "??anrst")).generate_best_moves(1)[0]
+    assert state.score(move) == best.score
+
+
+def test_robot_with_real_sidecar_old_bag(
+    monkeypatch: pytest.MonkeyPatch, service_knows_tile_sets: bool
+) -> None:
+    """In a game with the old Icelandic bag, a moves service that knows
+    the tile set scores like the game, so the robot uses its moves
+    without falling back to the in-process engine"""
+    import languages
+    import skraflplayer
+    from autoplayers import TOP_SCORE, autoplayer_create
+    from skraflplayer import AutoPlayer
+
+    if not service_knows_tile_sets:
+        pytest.skip("The moves service predates the tile_set field")
+    best = AutoPlayer(
+        0, _engine_position(L_LAYOUT, "aaði?nn", tileset=languages.OldTileSet)
+    ).generate_best_moves(1)[0]
+    monkeypatch.setattr(skraflplayer, "MOVES_SIDECAR", True)
+    generated = [0]
+    original = skraflplayer.AutoPlayer._generate_candidates
+
+    def counting(self: Any) -> None:
+        generated[0] += 1
+        original(self)
+
+    monkeypatch.setattr(skraflplayer.AutoPlayer, "_generate_candidates", counting)
+    state = _engine_position(L_LAYOUT, "aaði?nn", tileset=languages.OldTileSet)
+    move = autoplayer_create(state, TOP_SCORE).generate_move()
+    assert generated[0] == 0
     assert state.score(move) == best.score
 
 

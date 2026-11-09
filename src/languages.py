@@ -67,6 +67,9 @@ class TileSet(abc.ABC):
 
     # The following will be overridden in derived classes
     alphabet: Alphabet
+    # The name of the tile set in requests to the GoSkrafl moves service
+    # (its tile_set field); keep the two engines' tile sets identical
+    key: str = ""
     scores: Dict[str, int] = dict()
     bag_tiles: List[Tuple[str, int]] = []
     _full_bag = ""
@@ -102,6 +105,7 @@ class OldTileSet(TileSet):
     # Letter scores in the old (original) Icelandic tile set
 
     alphabet = IcelandicAlphabet
+    key = "icelandic_old"
 
     scores = {
         "a": 1,
@@ -192,6 +196,7 @@ class NewTileSet(TileSet):
     """
 
     alphabet = IcelandicAlphabet
+    key = "icelandic_new"
 
     # Scores in new Icelandic tile set
 
@@ -283,6 +288,7 @@ class EnglishTileSet(TileSet):
     """
 
     alphabet = EnglishAlphabet
+    key = "english_classic"
 
     scores = {
         "e": 1,
@@ -360,6 +366,7 @@ class NewEnglishTileSet(TileSet):
     """
 
     alphabet = EnglishAlphabet
+    key = "english_new"
 
     scores = {
         "i": 1,
@@ -440,6 +447,7 @@ class PolishTileSet(TileSet):
     """Polish tile set"""
 
     alphabet = PolishAlphabet
+    key = "polish"
 
     scores = {
         "a": 1,
@@ -528,6 +536,7 @@ class OriginalNorwegianTileSet(TileSet):
     """
 
     alphabet = NorwegianAlphabet
+    key = "norwegian_original"
 
     scores = {
         "a": 1,
@@ -605,6 +614,7 @@ class NewNorwegianTileSet(TileSet):
     """
 
     alphabet = NorwegianAlphabet
+    key = "norwegian_new"
 
     scores = {
         "a": 1,

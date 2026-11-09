@@ -987,6 +987,7 @@ class Game:
                 board=state.board().row_strings(),
                 rack=state.rack(player_index),
                 limit=n,
+                tile_set=self.tileset.key,
             )
             if moves is not None:
                 return [(player_index, m) for m in moves]
