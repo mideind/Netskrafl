@@ -109,6 +109,20 @@ from dawgdictionary import Navigator
 LeftPart = Tuple[str, str, str, int]
 
 
+class LeftPartGroup(NamedTuple):
+    """Left parts of the same length that end in the same state of the
+    DAWG navigation (remaining edge prefix and next node) with the same
+    rack leave. Their right-hand continuations are identical, so they
+    are extended together, with a single navigation."""
+
+    leftparts: List[str]
+    rack_leave: str
+    prefix: str
+    next_node: int
+    # Bit pattern of the letters that can follow the left part in the DAWG
+    next_bits: int
+
+
 class MoveTuple(NamedTuple):
     move: MoveBase
     score: int
@@ -176,6 +190,11 @@ class Square:
     def is_open_for(self, letter_bit: int) -> bool:
         """ Can this letter be placed here? """
         return bool(self._cc & letter_bit)
+
+    @property
+    def crosscheck(self) -> int:
+        """ Bit pattern of the letters that can be placed here """
+        return self._cc
 
     @property
     def letter(self) -> str:
@@ -337,13 +356,27 @@ class Axis:
 
         if maxleft > 0 and lpn is not None:
             # Follow this by an effort to permute left prefixes into the open space
-            # to the left of the anchor square
+            # to the left of the anchor square. Left parts that end in the same
+            # navigation state with the same rack leave have the same right-hand
+            # continuations, so each such group is navigated only once, and only
+            # if a letter that can follow it in the DAWG may be placed on the
+            # anchor square from the rack leave.
+            anchor_cc = self._sq[index].crosscheck
+            all_bits = current_alphabet().all_bits_set()
             for left_len in range(1, maxleft + 1):
-                lp_list = lpn.leftparts(left_len)
-                if lp_list is not None:
-                    for leftpart, rack_leave, prefix, next_node in lp_list:
-                        rnav = ExtendRightNavigator(self, index, rack_leave)
-                        self._dawg.resume_navigation(rnav, prefix, next_node, leftpart)
+                for group in lpn.groups(left_len):
+                    leave = group.rack_leave
+                    allowed = anchor_cc & (
+                        all_bits if "?" in leave else lpn.rack_bits(leave)
+                    )
+                    if not (group.next_bits & allowed):
+                        continue
+                    rnav = ExtendRightNavigator(
+                        self, index, leave, group.leftparts
+                    )
+                    self._dawg.resume_navigation(
+                        rnav, group.prefix, group.next_node, group.leftparts[0]
+                    )
 
     def generate_moves(self, lpn: Optional[LeftPermutationNavigator]) -> None:
         """Find all valid moves on this axis by attempting to place tiles
@@ -389,11 +422,55 @@ class LeftPermutationNavigator(Navigator):
         self._leftparts: List[Optional[List[LeftPart]]] = [
             None for _ in range(self._maxleft)
         ]
+        self._groups: Dict[int, List[LeftPartGroup]] = {}
+        self._rack_bits: Dict[str, int] = {}
         self._index = 0
 
     def leftparts(self, length: int) -> Optional[List[LeftPart]]:
         """ Returns a list of leftparts of the length requested """
         return self._leftparts[length - 1] if 0 < length <= self._maxleft else None
+
+    def groups(self, length: int) -> List[LeftPartGroup]:
+        """Return the left parts of the requested length, grouped by
+        navigation state and rack leave (calculated once, then cached)"""
+        if not 0 < length <= self._maxleft:
+            return []
+        cached = self._groups.get(length)
+        if cached is not None:
+            return cached
+        alphabet = current_alphabet()
+        letter_bit = alphabet.letter_bit
+        dawg = Wordbase.dawg()
+        by_state: Dict[Tuple[str, int, str], LeftPartGroup] = {}
+        for leftpart, rack_leave, prefix, next_node in self._leftparts[length - 1] or []:
+            key = (prefix, next_node, "".join(sorted(rack_leave)))
+            group = by_state.get(key)
+            if group is None:
+                next_bits = 0
+                if prefix:
+                    # In the middle of an edge: only its next letter can follow
+                    next_bits = letter_bit.get(prefix[0], 0)
+                elif next_node:
+                    # At a node: the first letters of its outgoing edges can
+                    # follow. (A next node of 0 means that the left part is at
+                    # the end of the graph, with nothing to follow.)
+                    for edge_prefix, _ in dawg.outgoing_edges(next_node):
+                        next_bits |= letter_bit.get(edge_prefix[0], 0)
+                group = LeftPartGroup([], rack_leave, prefix, next_node, next_bits)
+                by_state[key] = group
+            group.leftparts.append(leftpart)
+        result = list(by_state.values())
+        self._groups[length] = result
+        return result
+
+    def rack_bits(self, rack: str) -> int:
+        """Return the bit pattern of the letters in a rack without blanks
+        (calculated once per distinct rack, then cached)"""
+        bits = self._rack_bits.get(rack)
+        if bits is None:
+            bits = current_alphabet().bit_pattern(rack)
+            self._rack_bits[rack] = bits
+        return bits
 
     def push_edge(self, firstchar: str) -> bool:
         """ Returns True if the edge should be entered or False if not """
@@ -549,11 +626,20 @@ class ExtendRightNavigator(Navigator):
     the board.
     """
 
-    def __init__(self, axis: Axis, anchor: int, rack: str) -> None:
+    def __init__(
+        self,
+        axis: Axis,
+        anchor: int,
+        rack: str,
+        leftparts: Optional[List[str]] = None,
+    ) -> None:
         super().__init__()
         self._axis = axis
         self._rack = rack
         self._anchor = anchor
+        # A group of left parts of the same length that share this
+        # navigation (see LeftPartGroup), or None if there is only one
+        self._leftparts = leftparts
         # The tile we are placing next
         self._index = anchor
         self._stack: List[Tuple[str, int, bool]] = []
@@ -632,7 +718,20 @@ class ExtendRightNavigator(Navigator):
             and (self._index >= BOARD_SIZE or self._axis.is_empty(self._index))
         ):
             return
-        # Solution found: collect the tiles that it lays down, as
+        leftparts = self._leftparts
+        if leftparts is None:
+            self._add_moves(matched)
+        else:
+            # The navigation was resumed from the first left part of a group:
+            # the right-hand part found is valid for every left part in it
+            right = matched[len(leftparts[0]):]
+            for leftpart in leftparts:
+                self._add_moves(leftpart + right)
+
+    def _add_moves(self, matched: str) -> None:
+        """Add the moves that lay down the word matched, which ends just
+        before the current index, to the AutoPlayer's candidate list"""
+        # Collect the tiles that the move lays down, as
         # (position in matched, row, col, letter) tuples
         axis = self._axis
         ix = self._index - len(matched)  # The word's starting index within the axis

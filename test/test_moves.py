@@ -116,6 +116,7 @@ def _engine_position(layout: List[Tuple[int, int, bool, str]], rack: str) -> Any
         (L_LAYOUT, "aðeinst"),
         (L_LAYOUT, "aaði?nn"),
         (L_LAYOUT, "eeirr?s"),
+        (L_LAYOUT, "??anrst"),
     ],
 )
 def test_best_moves_equivalence(
