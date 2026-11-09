@@ -610,12 +610,17 @@ class Migrator:
         from psycopg2.extras import Json
 
         p0, p1 = self._uid(e.player0), self._uid(e.player1)
-        if p0 is not None and not self._known_user(p0):
-            self.bump("games.orphan_player0_nulled")
-            p0 = None
-        if p1 is not None and not self._known_user(p1):
-            self.bump("games.orphan_player1_nulled")
-            p1 = None
+        # A NULL player means the robot, so a player whose user entity is
+        # missing cannot be nulled: that would turn a game into a robot game
+        # (or a robot-vs-robot game) and could make the robot move in it.
+        # The app never deletes users, so such games only exist where a user
+        # was removed by hand; skip them, and log their ids.
+        if (p0 is not None and not self._known_user(p0)) or (
+            p1 is not None and not self._known_user(p1)
+        ):
+            self.bump("games.orphan_player_skipped")
+            log.warning("GameModel %s skipped: a player's user entity is missing", e.key.id())
+            return None
         if e.rack0 is None or e.rack1 is None:
             self.bump("games.null_rack_coerced")
         return (
