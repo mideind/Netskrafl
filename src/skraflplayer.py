@@ -84,13 +84,16 @@ from typing import (
     cast,
 )
 
+import logging
 import random
 from enum import Enum
 from itertools import combinations, product
 
+from config import MOVES_SIDECAR
 from dawgdictionary import PackedDawgDictionary
+from movesservice import best_moves_from_service
 from wordbase import Wordbase
-from languages import current_alphabet
+from languages import SUPPORTED_LOCALES, current_alphabet
 from skraflmechanics import (
     State,
     Board,
@@ -107,6 +110,16 @@ from dawgdictionary import Navigator
 # Type definitions
 
 LeftPart = Tuple[str, str, str, int]
+
+# When a GoSkrafl moves sidecar runs alongside this process (container
+# deployments), robots take their candidate moves from it: it generates
+# the same moves an order of magnitude faster than the Python engine,
+# which matters most for racks with two blanks. The robots pick from the
+# top of the score-sorted list, so only this many of the best moves are
+# requested. In simulated games, the weakest robot needed at most 159 of
+# them to find its 30 playable moves; if a robot runs out of playable
+# moves within the list, the full Python generation runs instead.
+SIDECAR_CANDIDATE_LIMIT = 500
 
 
 class LeftPartGroup(NamedTuple):
@@ -740,15 +753,19 @@ class ExtendRightNavigator(Navigator):
             if axis.is_empty(ix + i):
                 row, col = axis.coordinate_of(ix + i)
                 new_tiles.append((i, row, col, c))
-        if len(new_tiles) == 1 and axis.is_vertical():
-            # A single tile that also touches a tile to its left or right
-            # forms words in both directions, so the horizontal axis finds
-            # the very same move: leave it to that axis to avoid a duplicate
+        if len(new_tiles) == 1:
+            # A single tile that touches tiles both across and down forms
+            # words in both directions, so both axes find the very same move.
+            # Keep it on one axis only: the one along which it forms the
+            # longer word, or the horizontal one if the words are equally
+            # long (the same convention as GoSkrafl's TileMove). An axis
+            # only finds a single-tile move if the tile has neighbors along
+            # it, so the move is always kept exactly once.
             _, row, col, _ = new_tiles[0]
             board = axis.autoplayer.board()
-            if (col > 0 and board.is_covered(row, col - 1)) or (
-                col < BOARD_SIZE - 1 and board.is_covered(row, col + 1)
-            ):
+            across = len(board.tiles_left(row, col)) + len(board.tiles_right(row, col))
+            down = len(board.tiles_above(row, col)) + len(board.tiles_below(row, col))
+            if (across >= down) != axis.is_horizontal():
                 return
         # Add a move for every distinct placement of blank tiles
         row, col = axis.coordinate_of(ix)
@@ -807,6 +824,12 @@ class AutoPlayer:
             self._rack_bit_pattern = current_alphabet().bit_pattern(self._rack)
         # List of valid, candidate moves
         self._candidates: List[MoveBase] = []
+        # True if the candidates are only the best ones of all legal moves,
+        # as when they come from the moves sidecar
+        self._candidates_truncated = False
+        # Set by _pick_candidate() when the truncated candidate list
+        # did not contain enough playable moves
+        self._needs_all_candidates = False
 
     def board(self) -> Board:
         """ Return the board """
@@ -899,15 +922,74 @@ class AutoPlayer:
                 axis.init_crosschecks()
                 axis.generate_moves(lpn)
 
+    def _candidates_from_sidecar(self) -> bool:
+        """Fetch the best candidate moves from the GoSkrafl moves sidecar,
+        if one runs alongside this process. Returns False if there is no
+        sidecar or it did not deliver, in which case the caller generates
+        the candidates in-process. The empty board (the first move) is
+        always left to the Python engine: it is fast there, and the two
+        engines may report a first move in different orientations. So is
+        a game in a locale this deployment does not support: GoSkrafl
+        would quietly use its U.S. English dictionary for it."""
+        state = self._state
+        if (
+            not MOVES_SIDECAR
+            or self._board.is_empty()
+            or state.locale not in SUPPORTED_LOCALES
+        ):
+            return False
+        summaries = best_moves_from_service(
+            locale=state.locale,
+            board_type=state.board_type,
+            board=self._board.row_strings(),
+            rack=self._rack,
+            limit=SIDECAR_CANDIDATE_LIMIT,
+        )
+        if summaries is None:
+            # Already logged by best_moves_from_service()
+            return False
+        try:
+            candidates: List[MoveBase] = [
+                Move.from_summary(self._board, coord, tiles)
+                for coord, tiles, _ in summaries
+            ]
+        except (ValueError, IndexError) as e:
+            logging.error(f"Unusable move from the moves sidecar: {repr(e)}")
+            return False
+        # The sidecar does not know the game's tile set: it assumes the
+        # default one for the locale and board type, while a game may use
+        # another (the old Icelandic bag, or the new English tile set on
+        # the standard board). Its list of the best moves is then ranked
+        # by the wrong scores, so check them all against our own scoring.
+        for move, (coord, tiles, score) in zip(candidates, summaries):
+            if state.score(move) != score:
+                logging.warning(
+                    f"Moves sidecar scored {coord} {tiles} as {score}, "
+                    f"not {state.score(move)}: generating robot moves in-process"
+                )
+                return False
+        self._candidates = candidates
+        self._candidates_truncated = len(summaries) >= SIDECAR_CANDIDATE_LIMIT
+        return True
+
     def _generate_move(self, depth: int) -> MoveBase:
         """Finds and returns a Move object to be played,
         eventually weighted by countermoves"""
-
-        # Generate a fresh list of candidate moves
-        self._generate_candidates()
-
+        # Obtain a fresh list of candidate moves: the best ones from the
+        # moves sidecar if there is one, otherwise all of them in-process
+        self._needs_all_candidates = False
+        if not self._candidates_from_sidecar():
+            self._candidates_truncated = False
+            self._generate_candidates()
         # Pick the best move from the candidate list
         move = self._find_best_move(depth)
+        if self._needs_all_candidates:
+            # The sidecar's best moves did not include enough playable ones
+            # for this robot: generate every legal move and pick again
+            self._needs_all_candidates = False
+            self._candidates_truncated = False
+            self._generate_candidates()
+            move = self._find_best_move(depth)
         if move is not None:
             return move
 
@@ -1029,6 +1111,12 @@ class AutoPlayer_Custom(AutoPlayer):
                     p += 1
             i += 1
         # Now we have a list of up to self.pick_from playable moves
+        if p < pick_from and self._candidates_truncated:
+            # We ran out of candidates before finding enough playable moves,
+            # but the candidates were only the best of all legal moves:
+            # ask for all of them (see AutoPlayer._generate_move())
+            self._needs_all_candidates = True
+            return None
         if p == 0:
             # No playable move: give up and do an Exchange or Pass instead
             return None

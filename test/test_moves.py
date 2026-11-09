@@ -82,6 +82,13 @@ L_LAYOUT: List[Tuple[int, int, bool, str]] = [
     (7, 7, False, "stór"),
     (10, 8, True, "ós"),
 ]
+# A position where a single tile (ð on G9) forms a longer word down
+# ("kúð") than across ("ið")
+KUD_LAYOUT: List[Tuple[int, int, bool, str]] = [
+    (3, 7, False, "fýlið"),
+    (4, 8, True, "kja"),
+    (5, 8, True, "ú"),
+]
 
 
 def _engine_position(layout: List[Tuple[int, int, bool, str]], rack: str) -> Any:
@@ -117,6 +124,7 @@ def _engine_position(layout: List[Tuple[int, int, bool, str]], rack: str) -> Any
         (L_LAYOUT, "aaði?nn"),
         (L_LAYOUT, "eeirr?s"),
         (L_LAYOUT, "??anrst"),
+        (KUD_LAYOUT, "nhðnéux"),
     ],
 )
 def test_best_moves_equivalence(
@@ -177,6 +185,142 @@ def test_engine_blank_placements_and_no_duplicates() -> None:
         if isinstance(m, Move)
     )
     assert max(covers.values()) == 1
+
+
+def test_engine_single_tile_move_direction() -> None:
+    """A single tile that forms words both across and down is reported
+    once, along the longer word (across if equally long), as GoSkrafl
+    reports it. Runs without the moves service."""
+    from skraflplayer import AutoPlayer
+
+    state = _engine_position(KUD_LAYOUT, "nhðnéux")
+    summaries = [m.summary(state) for m, _ in AutoPlayer(0, state).generate_best_moves(0)]
+    assert ("9E", "kúð", 15) in summaries
+    assert ("G8", "ið", 15) not in summaries
+
+
+def _best_moves(rack: str) -> List[Any]:
+    """The in-process engine's moves on the L position, best first"""
+    from skraflplayer import AutoPlayer
+
+    return AutoPlayer(0, _engine_position(L_LAYOUT, rack)).generate_best_moves(0)
+
+
+class _FakeSidecar:
+    """Stands in for best_moves_from_service() in the robot tests: answers
+    with a given reply, by default the in-process engine's own move list
+    for the rack (computed up front), cut at the requested limit, and
+    counts the calls"""
+
+    def __init__(self, rack: str, reply: Any = "engine") -> None:
+        self.calls = 0
+        if reply == "engine":
+            state = _engine_position(L_LAYOUT, rack)
+            reply = [m.summary(state) for m, _ in _best_moves(rack)]
+        self.reply = reply
+
+    def __call__(self, *, locale: str, board_type: str, board: List[str], rack: str, limit: int) -> Any:
+        self.calls += 1
+        if self.reply is None or not limit:
+            return self.reply
+        return self.reply[:limit]
+
+
+def _robot_with_sidecar(
+    monkeypatch: pytest.MonkeyPatch, fake: _FakeSidecar, level: int, rack: str
+) -> Tuple[Any, Any, List[int]]:
+    """Create a robot of the given level on the L position, with the moves
+    sidecar enabled and answered by the fake. Returns the robot, its state
+    and a one-element list counting in-process candidate generations."""
+    import skraflplayer
+    from autoplayers import autoplayer_create
+
+    monkeypatch.setattr(skraflplayer, "MOVES_SIDECAR", True)
+    monkeypatch.setattr(skraflplayer, "best_moves_from_service", fake)
+    generated = [0]
+    original = skraflplayer.AutoPlayer._generate_candidates
+
+    def counting(self: Any) -> None:
+        generated[0] += 1
+        original(self)
+
+    monkeypatch.setattr(skraflplayer.AutoPlayer, "_generate_candidates", counting)
+    state = _engine_position(L_LAYOUT, rack)
+    return autoplayer_create(state, level), state, generated
+
+
+def test_robot_takes_candidates_from_sidecar(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With a sidecar, the strongest robot plays the best move from the
+    sidecar's list, without generating moves in-process"""
+    from autoplayers import TOP_SCORE
+
+    fake = _FakeSidecar("aaði?nn")
+    best_score = _best_moves("aaði?nn")[0].score
+    robot, state, generated = _robot_with_sidecar(monkeypatch, fake, TOP_SCORE, "aaði?nn")
+    move = robot.generate_move()
+    assert fake.calls == 1 and generated[0] == 0
+    assert state.score(move) == best_score
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        None,  # The sidecar did not answer
+        [("11E", "n?aðrana", 41)],  # A score that disagrees with ours
+        [("Z99", "xyz", 5)],  # An unusable coordinate
+    ],
+)
+def test_robot_falls_back_to_python(monkeypatch: pytest.MonkeyPatch, reply: Any) -> None:
+    """If the sidecar fails, or its moves or scores don't check out,
+    the robot generates its moves in-process"""
+    from autoplayers import TOP_SCORE
+
+    fake = _FakeSidecar("aaði?nn", reply)
+    best_score = _best_moves("aaði?nn")[0].score
+    robot, state, generated = _robot_with_sidecar(monkeypatch, fake, TOP_SCORE, "aaði?nn")
+    move = robot.generate_move()
+    assert fake.calls == 1 and generated[0] == 1
+    assert state.score(move) == best_score
+
+
+def test_robot_needs_all_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A robot with its own vocabulary that finds too few playable moves
+    in the sidecar's truncated list generates all moves in-process"""
+    import skraflplayer
+    from autoplayers import ADAPTIVE
+
+    monkeypatch.setattr(skraflplayer, "SIDECAR_CANDIDATE_LIMIT", 5)
+    fake = _FakeSidecar("aaði?nn")
+    robot, _, generated = _robot_with_sidecar(monkeypatch, fake, ADAPTIVE, "aaði?nn")
+    robot.generate_move()
+    assert fake.calls == 1 and generated[0] == 1
+
+
+def test_robot_without_sidecar_on_first_move(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The first move (empty board) is always generated in-process"""
+    import skraflplayer
+    from autoplayers import TOP_SCORE, autoplayer_create
+
+    fake = _FakeSidecar("aaðinnr")
+    monkeypatch.setattr(skraflplayer, "MOVES_SIDECAR", True)
+    monkeypatch.setattr(skraflplayer, "best_moves_from_service", fake)
+    robot = autoplayer_create(_engine_position([], "aaðinnr"), TOP_SCORE)
+    robot.generate_move()
+    assert fake.calls == 0
+
+
+def test_robot_with_real_sidecar(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The robot path against the real moves service: the strongest robot's
+    move with two blanks scores the same as the in-process engine's best"""
+    import skraflplayer
+    from autoplayers import TOP_SCORE, autoplayer_create
+    from skraflplayer import AutoPlayer
+
+    monkeypatch.setattr(skraflplayer, "MOVES_SIDECAR", True)
+    state = _engine_position(L_LAYOUT, "??anrst")
+    move = autoplayer_create(state, TOP_SCORE).generate_move()
+    best = AutoPlayer(0, _engine_position(L_LAYOUT, "??anrst")).generate_best_moves(1)[0]
+    assert state.score(move) == best.score
 
 
 def test_moves_invalid_board(client: CustomClient, u1: str) -> None:
