@@ -576,6 +576,11 @@ class Migrator:
     def _known_user(self, uid: Optional[str]) -> bool:
         return uid is not None and uid in self.user_ids
 
+    def _missing_user(self, uid: Optional[str]) -> bool:
+        """True if uid refers to a user (not the robot, which is None)
+        whose user entity does not exist"""
+        return uid is not None and uid not in self.user_ids
+
     def tf_UserModel(self, e: Any) -> Optional[Row]:
         from psycopg2.extras import Json
 
@@ -615,11 +620,14 @@ class Migrator:
         # (or a robot-vs-robot game) and could make the robot move in it.
         # The app never deletes users, so such games only exist where a user
         # was removed by hand; skip them, and log their ids.
-        if (p0 is not None and not self._known_user(p0)) or (
-            p1 is not None and not self._known_user(p1)
-        ):
+        if self._missing_user(p0) or self._missing_user(p1):
             self.bump("games.orphan_player_skipped")
             log.warning("GameModel %s skipped: a player's user entity is missing", e.key.id())
+            return None
+        # The app never creates a game without a human player
+        if p0 is None and p1 is None:
+            self.bump("games.no_human_player_skipped")
+            log.warning("GameModel %s skipped: both players are the robot", e.key.id())
             return None
         if e.rack0 is None or e.rack1 is None:
             self.bump("games.null_rack_coerced")

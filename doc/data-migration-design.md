@@ -183,7 +183,8 @@ plan, all in the writer/bookkeeping layer:
   (nullable FKs), each counted and reported. Games are the exception:
   their player FKs are nullable, but a NULL player means the robot, so a
   game with a missing player is skipped (id logged) rather than turned
-  into a robot game. Zombies are additionally
+  into a robot game, and so is a game with no human player at all.
+  Zombies are additionally
   filtered against existing game ids in PG. Kinds where the source may
   contain duplicates on the PG key (favorites, blocks, zombies) use
   `ON CONFLICT DO NOTHING`; verification checks existence only for
