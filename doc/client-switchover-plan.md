@@ -324,7 +324,7 @@ appspot.com URLs until they are updated or abandoned. Therefore:
   end, switching the proxies off). Prioritise getting 1.4.8 into users'
   hands, because every install after it is drainable.
 - Decommissioning order at the end: GAE moves service → GAE default service
-  (the same milestone as Phase F in `migration-strategy.md`).
+  (the cleanup step in `migration-strategy.md`, "After netskrafl").
 
 ## Operating recipe
 

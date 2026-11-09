@@ -1,8 +1,9 @@
 # Data Migration Design: Datastore → PostgreSQL
 
-*Written 2026-08-14. Design for `scripts/migrate_to_postgres.py` (Phase D
-steps 2–3 of `migration-strategy.md`). Supersedes the sketch in
-`postgresql-plan.md` where they differ.*
+*Written 2026-08-14, updated 2026-11-09 after the netskrafl rehearsal.
+Design, implementation notes and rehearsal results for
+`scripts/migrate_to_postgres.py`; `migration-strategy.md` has the overall
+plan. Supersedes the sketch in `postgresql-plan.md` where they differ.*
 
 ## Decisions already made
 
@@ -12,11 +13,10 @@ steps 2–3 of `migration-strategy.md`). Supersedes the sketch in
   this box against the real netskrafl Datastore (us-central):
   ~295 entities/s single-stream (Datastore caps responses at 300
   entities), **~2,140 entities/s with 8 key-range shards** (near-linear),
-  i.e. **≈2 h for all 17.6M netskrafl entities** — an overestimate, since
-  it weighs everything at GameModel size. Fallback if a full rehearsal
-  disappoints: run the same script unchanged on a GCE VM in us-central
-  (read-local, write to ams3). Full-run cost ≈ $10–20 (egress is
-  gzip-compressed JSON, plus ~$11 of entity reads).
+  for reading alone. Decoding turned out to be the real bound: the full
+  netskrafl bulk copy took 238 minutes (see the rehearsal below), which is
+  fine for a copy that runs a day or two before the switch. Full-run cost
+  ≈ $10–20 (egress is gzip-compressed JSON, plus ~$11 of entity reads).
 - **Do not use the gRPC client library for bulk reads.** On this box it
   was ~3× slower single-stream and did not scale with parallel workers at
   all (cf. the analogous gRPC note in `src/secret_manager.py`). REST via
@@ -31,7 +31,7 @@ steps 2–3 of `migration-strategy.md`). Supersedes the sketch in
 
 | Project | Location | Entities | Entity bytes | Heavy kinds |
 |---|---|---|---|---|
-| netskrafl | us-central | 17.6M | ~40 GB | GameModel 10.28M (~3.7 KB avg), StatsModel 3.5M, ChatModel 3.6M |
+| netskrafl | us-central | 17.7M | ~40 GB | GameModel 10.41M (~3.7 KB avg), ChatModel 3.66M, StatsModel 3.56M, UserModel 52k; stats as of 2026-11-01 |
 | explo-dev | europe-west | 19k | 59 MB | — |
 | explo-live | europe-west | 2.41M | ~13.3 GB | GameModel 1.46M (~7.2 KB avg), StatsModel 625k, ChatModel 230k, UserModel 36k (~22 KB avg, image blobs); stats as of 2026-09-09 |
 
@@ -65,9 +65,8 @@ reasons decoding must go through the NDB model layer (below).
    yields real NDB model instances via the exact deserialization code the
    production app uses — legacy `LocalStructuredProperty` blobs,
    compressed properties, tz handling and all — without the gRPC
-   transport. **Spike required** (first implementation task): validate
-   this on a handful of real GameModel entities, including games with
-   long move lists and both very old (2015-era) and recent games.
+   transport. Validated by the decode spike (below) and, at full scale,
+   by the decode sweeps of the rehearsals.
 3. **Transformer** — per-kind pure functions: NDB model instance → row
    dict for the corresponding `src/db/postgresql/models.py` table.
    Explicit invariants:
@@ -79,15 +78,12 @@ reasons decoding must go through the NDB model layer (below).
      reuse or import that conversion, do not duplicate it).
    - Unset/None optionals stay NULL (no default-filling beyond what the
      PG schema itself declares).
-4. **Writer** — psycopg3 against `DATABASE_URL`:
-   - **Bulk mode:** `COPY` into the target tables, in FK order
-     (`users` → `elo_ratings`/`games`/`favorites`/… → `chats` → the rest),
-     after `TRUNCATE ... CASCADE` of the target set. Fastest path, no
-     conflict handling needed.
-   - **Delta mode:** batched `INSERT ... ON CONFLICT (id) DO UPDATE`
-     (~1,000 rows/statement). Idempotent by construction.
-   - Schema is owned by Alembic: the tool **refuses to run** unless
-     `alembic_version` in the target DB equals the repo's head revision.
+4. **Writer** — psycopg2 against `DATABASE_URL`, batched
+   `INSERT ... ON CONFLICT` upserts in FK order (`users` first) for bulk
+   and delta alike, so every run is idempotent; `--truncate` empties the
+   target tables first for a clean-slate bulk copy. Schema is owned by
+   Alembic: the tool **refuses to run** unless `alembic_version` in the
+   target database equals the repo's head revision.
 
 ## Two-phase migration
 
@@ -109,15 +105,13 @@ Take `T0` with generous overlap (e.g. re-run the delta with
 
 ## Checkpointing and resume
 
-A JSON state file per run (`--state <file>`): for each (kind, shard) —
-last committed cursor, entity count, byte count, done flag. The writer
-commits per batch; the cursor is persisted only after its batch commits,
-so resume (`--resume`) re-reads at most one in-flight batch (bulk COPY
-restarts the interrupted shard's table segment via upsert catch-up, or
-simply re-runs that shard in delta mode). Ctrl-C-safe by design: every
-run is resumable and every mode is idempotent or restartable.
+Checkpoints live in a `_migration_state` table in the target database:
+for each (kind, shard), the last committed cursor and the row count,
+updated in the same transaction as each batch. `--resume` continues from
+there and re-reads at most the batch that was in flight. Ctrl-C (SIGINT)
+is safe: every run is resumable and every mode is idempotent.
 
-## Verification (Phase D step 3)
+## Verification
 
 Layered, cheapest first:
 
@@ -138,27 +132,26 @@ Layered, cheapest first:
 ## CLI
 
 ```
-venv/bin/python scripts/migrate_to_postgres.py \
+venv/bin/python -W ignore scripts/migrate_to_postgres.py \
     --project netskrafl \
     --credentials credentials/netskrafl/service-account.json \
     --database-url postgresql://... \
-    --state migration-state.json \
-    [--kinds GameModel,UserModel,...]   # default: all
-    [--shards 8]                        # heavy kinds only
-    [--mode bulk|delta]                 # default bulk; delta implies upsert
-    [--since 2026-09-01T00:00:00Z]      # delta lower bound
-    [--resume]
-    [--verify 200]
-    [--dry-run]                         # read+decode+transform, no writes
+    [--mode bulk|delta]                 # default bulk
+    [--truncate]                        # bulk: empty the target tables first
+    [--since 2026-09-01T00:00:00Z]      # delta: lower bound (T0 minus overlap)
+    [--kinds GameModel UserModel ...]   # default: all
+    [--shards 8]                        # parallel shards for the heavy kinds
+    [--resume] [--run-id ID]            # continue from the checkpoints
+    [--verify 200]                      # spot-check N rows per kind
+    [--dry-run]                         # read, decode, transform; no writes
 ```
 
-Environment: needs only the service-account file and the PG URL — no
-Flask app, no Redis, no `PROJECT_ID` config machinery. Import surface is
-`skrafldb_ndb` model classes (+ `google.cloud.ndb` for decoding),
-`src/db/postgresql/models.py`, and the move-dict conversion from
-`skrafldb_pg` — nothing that touches caches or live services.
-**Housekeeping:** add `scripts/` to `.dockerignore` and `.gcloudignore`
-(like `utils/`); the migrator never ships in the image.
+At the end of a bulk run the migrator prints the T0 to use for the next
+delta pass.
+
+The migrator never ships in the image (`scripts/` is excluded from the
+Docker and App Engine builds). Its environment needs are in the
+implementation notes below.
 
 ## Implementation notes (2026-08-14, deviations from the design above)
 
@@ -240,24 +233,48 @@ plan, all in the writer/bookkeeping layer:
   per game on 3.11–3.13 and 11 ms on 3.14 (all with the upb protobuf
   core; the JSON layer is pure Python). The migrator stays on the GAE
   runtime version (3.11) with the pinned google-cloud-ndb anyway.
-- `scripts/decode_sweep.py` implements verification step 4b below and
-  replaces the ad-hoc sweep used for explo-dev. At ~600 games/s per
+- `scripts/decode_sweep.py` loads every migrated user and game through
+  the app's own loaders (`User.load_if_exists`, `Game.load`) and reports
+  any row that fails, on a copy of the database. At ~600 games/s per
   process, netskrafl's 10.4M games would take ~5 hours in one process,
   so `--jobs N` runs N hash-partitioned shards in parallel (`--shard I/N`
   runs one of them).
 
-## Rehearsal sequence (Phase D steps 4–5)
+## Implementation notes (2026-11, from the netskrafl rehearsal)
 
-1. ✅ **explo-dev — DONE 2026-08-14** into the `explo_dev` database
-   (ICU `und`) on the staging cluster: 19k entities, bulk in 0.7 min
-   over 4 shards, `--verify 50` clean on all 19 tables, delta pass
-   exercised (filters + replace kinds) in 0.3 min. Orphan/dedup counts
-   all explained by explo-dev test-data leftovers. Remaining from this
-   step: point the DO staging app at the result
-   (`DATABASE_BACKEND=postgresql`) and click around.
-2. ✅ **explo-live — DONE 2026-09-10** into a new `explo_live` database
-   (ICU `und`, owner `netskrafl_app`, Alembic head) on the staging
-   cluster, from the dev box:
+- **Games with a missing player are skipped**, not repaired: a NULL
+  player means the robot, so nulling a player whose user entity no
+  longer exists turned a game into a robot game (three such games, all
+  unfinished robot games whose human user had been deleted by hand). Games
+  with no human player at all are skipped too. Both are counted and
+  their ids logged.
+- **Production safety during the bulk copy**: the copy ran at night, at
+  low CPU priority in its own process group, next to a watchdog that
+  compared App Engine production every two minutes with a baseline taken
+  just before the start (5xx responses, application errors, median
+  latency) and would have stopped the copy with SIGINT, which leaves it
+  resumable. It never fired: Datastore reads at this rate did not affect
+  production at all.
+- **What the delta pass spends its time on** (7.5 min in all): the full
+  users re-read (2 min for 52k users), games since T0 (under 2 min), and
+  the wipe-and-reload of the small kinds (about 4 min, mostly challenges,
+  promos and favorites at 30–50k rows each).
+- **Verification on a copy**: the API tests and the replay harness write
+  to the database, so they run on a local `pg_dump`/`pg_restore` copy,
+  never on the migrated target. The API tests do not stub out Firebase
+  either: run them with a development project's configuration, so test
+  games do not send notifications to a production Realtime Database.
+
+## Rehearsals
+
+1. ✅ **explo-dev — 2026-08-14**, into the `explo_dev` database on the
+   staging cluster: 19k entities, bulk in 0.7 min over 4 shards,
+   `--verify 50` clean on all 19 tables, delta pass exercised (filters +
+   replace kinds) in 0.3 min. Orphan/dedup counts all explained by
+   explo-dev test-data leftovers. The staging app has served this
+   database since 2026-08-18.
+2. ✅ **explo-live — 2026-09-10**, into a new `explo_live` database
+   (ICU `und`, Alembic head) on the staging cluster, from the dev box:
    - **Bulk:** 2.41M entities. Users 35,870 in 3.5 min (single stream,
      ~22 KB each); games 1,461,702 in ~41 min once the worker-process
      fix was in (~600/s over 8 shards; the thread version managed ~40/s);
@@ -284,10 +301,29 @@ plan, all in the writer/bookkeeping layer:
      time.
    - Kinds present in explo-live but not migrated on purpose:
      `AdminUser` (2 entities, unused by the app).
-3. netskrafl (17.6M) — **resize the staging PG cluster first** (the
-   initial `db-s-1vcpu-2gb`/30 GB is too small for ~40 GB of entity
-   data); measure wall-clock for the bulk pass and, separately, a delta
-   pass — the delta number bounds the production freeze window.
+3. ✅ **netskrafl — 2026-11-07 (bulk) and 2026-11-09 (delta and
+   verification)**, into the netskrafl production cluster:
+   - **Bulk** (`--truncate --shards 8 --verify 200`), started 01:30 UTC:
+     **238 minutes**. Users 52,060 in 2 min; games 10,424,753 in
+     200 min (~54k per minute over 8 shards); stats 3,561,643 in 12 min;
+     chats 3,666,260 in 20 min; every small kind within a minute or two.
+     `--verify 200`: 0 mismatches. Repairs: 3 games with a missing player
+     (since skipped, see the notes above), and duplicate favorites and
+     blocks collapsed. Target size 24 GB (the Datastore holds ~40 GB of
+     entity data). Production was unaffected throughout: no 5xx
+     responses, no errors, median latency at its baseline.
+   - **Delta** (`--since` T0 minus 2 days, i.e. a 4.5-day window):
+     **7.5 minutes**, with games 9,584 rows, stats 2,347, chats 1,167,
+     and every small kind reloaded; `--verify 100` clean. This bounds the
+     write freeze at cutover at about 8 minutes.
+   - **Verification** on a local copy (dump 13 min, 9.3 GB; restore 25
+     min): `tests/api_e2e` 125 passed (`E2E_KEEP_TABLES=1`); replay
+     harness 95 of 95 (10 fixtures that failed only because the
+     vocabulary had changed since the games were played were removed);
+     decode sweep with `--jobs 6`, about 100 minutes: all 52,249 users
+     and 10,428,780 games load through the app's loaders, none bad.
+   - Kinds not migrated on purpose: `ChannelModel` (4,062 entities,
+     unused since 2017).
 
 ## Decode spike — ✅ PASSED (2026-08-14)
 
@@ -319,13 +355,10 @@ Findings that adjust the design:
   irrelevant to sharding (UserModel is a single-stream kind) but worth
   knowing when reading checkpoint files.
 
-The spike scripts become the seed of the migrator's decoder unit test.
-
 ## Open items
 
-1. **Numeric-ID shard sampling**: confirm StatsModel/ChatModel auto-IDs
-   are scattered enough for uniform range splits (else fall back to more
-   shards or `__scatter__`-style splitting).
-2. ~~explo-live stats~~ — done, see the data shape table.
-3. **Memory:** streaming end-to-end (batch in, batch out); no kind is
-   ever held fully in memory.
+None for the migrator itself. The numeric-ID range splits for StatsModel
+and ChatModel proved even enough (3.6M stats rows and 3.7M chats in 12
+and 20 minutes over 8 shards), and the copy streams batch by batch, well
+within the development box's memory. The final runs at cutover follow the
+sequence in `migration-strategy.md`.
