@@ -73,6 +73,8 @@ from __future__ import annotations
 
 from typing import (
     Any,
+    FrozenSet,
+    Iterator,
     NamedTuple,
     Optional,
     List,
@@ -84,6 +86,7 @@ from typing import (
 
 import random
 from enum import Enum
+from itertools import combinations, product
 
 from dawgdictionary import PackedDawgDictionary
 from wordbase import Wordbase
@@ -515,6 +518,28 @@ class Match(Enum):
     RACK_TILE = 2
 
 
+def _blank_placements(
+    new_tiles: List[Tuple[int, int, int, str]], rack: str
+) -> Iterator[FrozenSet[int]]:
+    """Yield every distinct choice of which new tiles of a move are
+    blanks, as sets of positions within the matched word. When the rack
+    has fewer real tiles of a letter than the move lays down, blanks make
+    up the difference, and each choice of squares for them is a distinct
+    move, generally with a distinct score. A blank is never used for a
+    letter while a real tile of that letter is left over."""
+    by_letter: Dict[str, List[int]] = {}
+    for i, _, _, letter in new_tiles:
+        by_letter.setdefault(letter, []).append(i)
+    # For each letter that needs blanks: every choice of its squares for them
+    choices: List[List[Tuple[int, ...]]] = []
+    for letter, positions in by_letter.items():
+        num_blanks = len(positions) - rack.count(letter)
+        if num_blanks > 0:
+            choices.append(list(combinations(positions, num_blanks)))
+    for combination in product(*choices):
+        yield frozenset(i for group in combination for i in group)
+
+
 class ExtendRightNavigator(Navigator):
 
     """A navigation class to be used with DawgDictionary.navigate()
@@ -601,49 +626,46 @@ class ExtendRightNavigator(Navigator):
     def accept(self, matched: str, final: bool) -> None:
         """Called to inform the navigator of a match
         and whether it is a final word"""
-        # pylint: disable=bad-continuation
-        if (
+        if not (
             final
             and len(matched) > 1
             and (self._index >= BOARD_SIZE or self._axis.is_empty(self._index))
         ):
-
-            # Solution found - make a Move object for it
-            # and add it to the AutoPlayer's list
-            ix = self._index - len(matched)  # The word's starting index within the axis
-            row, col = self._axis.coordinate_of(ix)
-            xd, yd = self._axis.coordinate_step()
-            move = Move(matched, row, col, self._axis.is_horizontal())
-            # Fetch the rack as it was at the beginning of move generation
-            autoplayer = self._axis.autoplayer
-            rack = autoplayer.rack()
-            tiles = ""
-            for c in matched:
-                if self._axis.is_empty(ix):
-                    # Empty square that is being covered by this move
-                    # Find out whether it is a blank or normal letter tile
-                    if c in rack:
-                        rack = rack.replace(c, "", 1)
-                        tile = c
-                        tiles += c
-                    else:
-                        # Must be a wildcard match
-                        rack = rack.replace("?", "", 1)
-                        tile = "?"
-                        tiles += tile + c
-                    # assert row in range(BOARD_SIZE)
-                    # assert col in range(BOARD_SIZE)
-                    # Add this cover to the Move object
-                    move.add_validated_cover(Cover(row, col, tile, c))
+            return
+        # Solution found: collect the tiles that it lays down, as
+        # (position in matched, row, col, letter) tuples
+        axis = self._axis
+        ix = self._index - len(matched)  # The word's starting index within the axis
+        new_tiles: List[Tuple[int, int, int, str]] = []
+        for i, c in enumerate(matched):
+            if axis.is_empty(ix + i):
+                row, col = axis.coordinate_of(ix + i)
+                new_tiles.append((i, row, col, c))
+        if len(new_tiles) == 1 and axis.is_vertical():
+            # A single tile that also touches a tile to its left or right
+            # forms words in both directions, so the horizontal axis finds
+            # the very same move: leave it to that axis to avoid a duplicate
+            _, row, col, _ = new_tiles[0]
+            board = axis.autoplayer.board()
+            if (col > 0 and board.is_covered(row, col - 1)) or (
+                col < BOARD_SIZE - 1 and board.is_covered(row, col + 1)
+            ):
+                return
+        # Add a move for every distinct placement of blank tiles
+        row, col = axis.coordinate_of(ix)
+        horizontal = axis.is_horizontal()
+        autoplayer = axis.autoplayer
+        for blanks in _blank_placements(new_tiles, autoplayer.rack()):
+            move = Move(matched, row, col, horizontal)
+            tiles = list(matched)
+            for i, r, c, letter in new_tiles:
+                if i in blanks:
+                    tiles[i] = "?" + letter
+                    move.add_validated_cover(Cover(r, c, "?", letter))
                 else:
-                    tiles += c
-                ix += 1
-                row += xd
-                col += yd
+                    move.add_validated_cover(Cover(r, c, letter, letter))
             # Note the tiles played in the move
-            move.set_tiles(tiles)
-            # Check that we've picked off the correct number of tiles
-            # assert len(rack) == len(self._rack)
+            move.set_tiles("".join(tiles))
             autoplayer.add_candidate(move)
 
     def pop_edge(self):

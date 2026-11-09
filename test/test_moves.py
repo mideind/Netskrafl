@@ -11,7 +11,11 @@
 
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
+
+from collections import Counter
+
+import pytest
 
 from utils import CustomClient, login_user
 
@@ -69,19 +73,22 @@ def test_board_row_strings() -> None:
     assert rows[7][8] == "Ú"
 
 
-def test_best_moves_equivalence() -> None:
-    """The in-process Python engine and the moves service must generate
-    the same move set, with the same scores, for the same position.
+# Board positions for the engine tests, as (row, col, horizontal, word)
+# placements: a single word through the center, and an L shape in which
+# single tiles can touch tiles both across and down
+LINE_LAYOUT: List[Tuple[int, int, bool, str]] = [(7, 5, True, "hestur")]
+L_LAYOUT: List[Tuple[int, int, bool, str]] = [
+    (7, 5, True, "hestur"),
+    (7, 7, False, "stór"),
+    (10, 8, True, "ós"),
+]
 
-    Note: the position must not be an empty board - empty-board first
-    moves have a horizontal/vertical mirror symmetry, and the two engines
-    (nondeterministically, in the Go case) differ in which orientation
-    they report for each placement. On a non-empty board every placement
-    is unique and the move sets must match exactly."""
+
+def _engine_position(layout: List[Tuple[int, int, bool, str]], rack: str) -> Any:
+    """Return an is_IS State with the given words on the board
+    (all real tiles) and the given rack for player 0"""
     from skraflmechanics import State
-    from skraflplayer import AutoPlayer
     from languages import tileset_for_locale, set_locale
-    from movesservice import best_moves_from_service
 
     locale = "is_IS"
     set_locale(locale)
@@ -91,32 +98,84 @@ def test_best_moves_equivalence() -> None:
         locale=locale,
         board_type="standard",
     )
-    # Place "hún" horizontally through the center square,
-    # with the ú being a blank tile
     board = state.board()
-    for col, (tile, letter) in enumerate(
-        [("h", "h"), ("?", "ú"), ("n", "n")], start=6
-    ):
-        board.set_tile(7, col, tile)
-        board.set_letter(7, col, letter)
-    rack = "aðeins"
+    for row, col, horizontal, word in layout:
+        for k, letter in enumerate(word):
+            r, c = (row, col + k) if horizontal else (row + k, col)
+            board.set_tile(r, c, letter)
+            board.set_letter(r, c, letter)
     state.set_rack(0, rack)
+    return state
 
+
+@pytest.mark.parametrize(
+    "layout,rack",
+    [
+        (LINE_LAYOUT, "aðeinst"),
+        (LINE_LAYOUT, "aðeins?"),
+        (L_LAYOUT, "aðeinst"),
+        (L_LAYOUT, "aaði?nn"),
+        (L_LAYOUT, "eeirr?s"),
+    ],
+)
+def test_best_moves_equivalence(
+    layout: List[Tuple[int, int, bool, str]], rack: str
+) -> None:
+    """The in-process Python engine and the moves service must generate
+    the same moves, with the same scores, for the same position: the
+    same multiset, so that a move generated twice by one engine fails
+    the test too. The racks with a blank exercise every placement of
+    the blank; the L-shaped layout has single-tile moves that form
+    words both across and down.
+
+    Note: the position must not be an empty board - empty-board first
+    moves have a horizontal/vertical mirror symmetry, and the two engines
+    (nondeterministically, in the Go case) differ in which orientation
+    they report for each placement. On a non-empty board every placement
+    is unique and the move lists must match exactly."""
+    from skraflplayer import AutoPlayer
+    from movesservice import best_moves_from_service
+
+    state = _engine_position(layout, rack)
     # All moves from the Python engine (n=0 means no limit)
     apl = AutoPlayer(0, state)
-    python_moves = {m.summary(state) for m, _ in apl.generate_best_moves(0)}
+    python_moves = Counter(m.summary(state) for m, _ in apl.generate_best_moves(0))
 
     # All moves from the moves service (limit=0 means no limit)
     service_moves = best_moves_from_service(
-        locale=locale,
+        locale="is_IS",
         board_type="standard",
-        board=board.row_strings(),
+        board=state.board().row_strings(),
         rack=rack,
         limit=0,
     )
     assert service_moves is not None
     assert len(python_moves) > 0
-    assert python_moves == set(service_moves)
+    assert python_moves == Counter(tuple(m) for m in service_moves)
+
+
+def test_engine_blank_placements_and_no_duplicates() -> None:
+    """The Python engine generates a move for every placement of a blank,
+    and each single-tile move only once. Runs without the moves service."""
+    from skraflmechanics import Move
+    from skraflplayer import AutoPlayer
+
+    state = _engine_position(L_LAYOUT, "aaði?nn")
+    moves = [m for m, _ in AutoPlayer(0, state).generate_best_moves(0)]
+    assert all(isinstance(m, Move) for m in moves)
+    summaries = {m.summary(state) for m in moves}
+    # 'naðrana' needs three a's and the rack has two, so the blank stands
+    # for one of them. Each choice is a distinct move: the engine once
+    # generated only the last one, which scores the least
+    for placement, score in (("n?aðrana", 40), ("naðr?ana", 40), ("naðran?a", 38)):
+        assert ("11E", placement, score) in summaries
+    # No two moves lay down the same tiles on the same squares
+    covers = Counter(
+        frozenset((c.row, c.col, c.tile, c.letter) for c in m.covers())
+        for m in moves
+        if isinstance(m, Move)
+    )
+    assert max(covers.values()) == 1
 
 
 def test_moves_invalid_board(client: CustomClient, u1: str) -> None:
