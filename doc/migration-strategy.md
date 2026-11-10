@@ -1,6 +1,6 @@
 # Migration Strategy: GAE + NDB → DO Containers + PostgreSQL
 
-*Status as of 2026-11-09. The history of the earlier phases (containerization,
+*Status as of 2026-11-10. The history of the earlier phases (containerization,
 the PostgreSQL backend, the parity audit, the blind-spot review) is in the
 git history of this file; only the decisions and notes that still matter are
 kept here. Related documents: `data-migration-design.md` (the Datastore →
@@ -90,12 +90,15 @@ through the app's own loaders without a single failure. Details in
   riddles straight into the Datastore. The current stock lasts until
   mid-January 2027; before that, generation must target PostgreSQL (or an
   importer must carry riddles over).
-- **The robot engine.** On DO, robots take their candidate moves from the
-  sidecar (about 0.1 s per move even with two blanks on the rack), with the
-  in-process Python engine as the fallback; on App Engine they keep using
-  the Python engine, where a rack with two blanks takes a few seconds. The
-  change, which also brings the Python engine in line with GoSkrafl, is in
-  review.
+- **The robot engine (done, 2026-11-10).** On DO, robots take their
+  candidate moves from the sidecar (about 0.1 s per move even with two
+  blanks on the rack), with the in-process Python engine as the fallback;
+  on App Engine they keep using the Python engine, where a rack with two
+  blanks takes a few seconds. The Python engine now produces the same moves
+  as GoSkrafl, and every move request carries the game's tile set. Deployed
+  to both App Engine production apps and the DO staging app; all GoSkrafl
+  instances (the App Engine `moves` services and the sidecar) run the same
+  commit.
 - **Other hostnames.** Besides the main backend hostname, which is the one
   that flips, App Engine still answers on its own default hostnames (cron,
   a few legacy logins, an uptime check). Those need a redirect or retirement
@@ -178,14 +181,8 @@ through the app's own loaders without a single failure. Details in
 
 ## Open items
 
-1. **GoSkrafl doesn't know a game's tile set.** It assumes the default
-   for the locale and board type, so its scores are wrong for games with
-   the old Icelandic bag and for English on the standard board. Robots
-   detect this and fall back to the Python engine, but `/bestmoves` on DO
-   shows GoSkrafl's scores as they are. The fix is to pass the tile set
-   in the moves request.
-2. **Riddle generation into PostgreSQL** (deadline: mid-January 2027).
-3. **Locale-strict collation** (deferred, see above).
-4. **A score-bounded search** (generating only moves that can reach the top
+1. **Riddle generation into PostgreSQL** (deadline: mid-January 2027).
+2. **Locale-strict collation** (deferred, see above).
+3. **A score-bounded search** (generating only moves that can reach the top
    of the candidate list) would speed up robots without a sidecar. Not
    planned while the sidecar covers DO.
