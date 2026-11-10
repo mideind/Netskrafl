@@ -16,7 +16,7 @@
 #
 # See doc/migration-strategy.md for the cutover plan that this app is part of.
 
-name: REPLACE_ME_app_name
+name: replace-me-app-name
 region: ams
 
 # No custom domain while the app is being prepared: it is reached at its
