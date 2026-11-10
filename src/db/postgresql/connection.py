@@ -52,6 +52,13 @@ def create_db_engine(
         pool_timeout=pool_timeout if pool_timeout is not None else config.pool_timeout,
         pool_recycle=pool_recycle if pool_recycle is not None else config.pool_recycle,
         echo=echo if echo is not None else config.echo_sql,
+        # Test each pooled connection with a lightweight ping when it is
+        # checked out, and replace it transparently if the server has gone
+        # away in the meantime. A managed database closes all connections
+        # when it moves to another node (maintenance, failover) or restarts;
+        # without the ping, the first request that draws such a stale
+        # connection from the pool fails with an OperationalError.
+        pool_pre_ping=True,
         # Ensure all connections use UTC timezone
         connect_args={
             "options": "-c timezone=utc"
