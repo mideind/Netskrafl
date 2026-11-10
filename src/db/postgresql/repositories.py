@@ -24,8 +24,8 @@ from typing import (
 from datetime import datetime, timezone
 import uuid
 
-from sqlalchemy import select, delete, and_, or_, func, desc, asc
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy import Select, select, delete, and_, or_, func, desc, asc, union_all
+from sqlalchemy.orm import InstrumentedAttribute, Session, aliased
 
 from config import DEFAULT_LOCALE
 
@@ -406,29 +406,78 @@ class GameRepository:
         self._session.execute(stmt)
         self._session.flush()
 
+    @staticmethod
+    def _newest_games_stmt(user_id: str, *, over: bool, max_len: int) -> Select[Tuple[Game]]:
+        """Return a statement that selects the max_len most recently moved
+        games of a user, finished or live, newest first.
+
+        The obvious form, 'player0_id = :u OR player1_id = :u ORDER BY
+        ts_last_move DESC LIMIT :n', cannot be served by the per-player
+        indexes (player, over, ts_last_move): PostgreSQL either collects and
+        sorts all of the user's games, or walks the global (over,
+        ts_last_move) index backwards until it has found enough of them.
+        With 10 million games that took around two seconds for users with
+        tens of thousands of games. Instead, each player column gets its own
+        ordered and limited branch, an index range scan that stops after
+        max_len rows, and the two are merged. The NDB backend issues the
+        same two queries and merges them in Python.
+
+        Games without a last-move timestamp are left out. These are games
+        from before the property existed (2014-15) that have not been
+        touched since; every game the application creates has the timestamp
+        set. On Datastore an entity lacks the property entirely in that case
+        and is thus absent from the index that these (ordered) queries use,
+        so they have never been listed there. In PostgreSQL they would
+        otherwise come first, as NULLs do in descending order."""
+
+        def branch(player_col: InstrumentedAttribute[Optional[str]]) -> Select[Tuple[Game]]:
+            return (
+                select(Game)
+                .where(
+                    and_(
+                        player_col == user_id,
+                        Game.over == over,
+                        Game.ts_last_move.is_not(None),
+                    )
+                )
+                .order_by(desc(Game.ts_last_move))
+                .limit(max_len)
+            )
+
+        both = union_all(branch(Game.player0_id), branch(Game.player1_id)).subquery()
+        game = aliased(Game, both)
+        return select(game).order_by(desc(game.ts_last_move)).limit(max_len)
+
     def list_finished_games(
         self, user_id: str, versus: Optional[str] = None, max_len: int = 10
     ) -> List[FinishedGameInfo]:
-        """List finished games for a user."""
-        stmt = (
-            select(Game)
-            .where(
-                and_(
-                    Game.over == True,  # noqa: E712
-                    or_(Game.player0_id == user_id, Game.player1_id == user_id),
-                )
-            )
-            .order_by(desc(Game.ts_last_move))
-            .limit(max_len)
-        )
-
+        """List finished games for a user, newest first."""
         if versus:
-            stmt = stmt.where(
-                or_(
-                    and_(Game.player0_id == user_id, Game.player1_id == versus),
-                    and_(Game.player1_id == user_id, Game.player0_id == versus),
+            # Games against a particular opponent: the two single-column
+            # player indexes, combined, narrow this down to a small set
+            stmt = (
+                select(Game)
+                .where(
+                    and_(
+                        Game.over == True,  # noqa: E712
+                        Game.ts_last_move.is_not(None),
+                        or_(
+                            and_(
+                                Game.player0_id == user_id,
+                                Game.player1_id == versus,
+                            ),
+                            and_(
+                                Game.player1_id == user_id,
+                                Game.player0_id == versus,
+                            ),
+                        ),
+                    )
                 )
+                .order_by(desc(Game.ts_last_move))
+                .limit(max_len)
             )
+        else:
+            stmt = self._newest_games_stmt(user_id, over=True, max_len=max_len)
 
         results = []
         for game in self._session.execute(stmt).scalars():
@@ -475,18 +524,8 @@ class GameRepository:
     def iter_live_games(
         self, user_id: str, max_len: int = 10
     ) -> Iterator[LiveGameInfo]:
-        """Iterate over live (active) games for a user."""
-        stmt = (
-            select(Game)
-            .where(
-                and_(
-                    Game.over == False,  # noqa: E712
-                    or_(Game.player0_id == user_id, Game.player1_id == user_id),
-                )
-            )
-            .order_by(desc(Game.ts_last_move))
-            .limit(max_len)
-        )
+        """Iterate over live (active) games for a user, newest first."""
+        stmt = self._newest_games_stmt(user_id, over=False, max_len=max_len)
 
         for game in self._session.execute(stmt).scalars():
             # Determine opponent and whose turn, orienting scores to the
@@ -518,11 +557,14 @@ class GameRepository:
     def count_live_games(self, user_id: str, max_count: int = 0) -> int:
         """Return the number of live (active) games for a user.
         If max_count > 0, stop counting once that threshold is reached."""
+        # Games without a last-move timestamp are not counted, as they are
+        # not listed either: see _newest_games_stmt()
         base = (
             select(Game.id)
             .where(
                 and_(
                     Game.over == False,  # noqa: E712
+                    Game.ts_last_move.is_not(None),
                     or_(Game.player0_id == user_id, Game.player1_id == user_id),
                 )
             )
@@ -720,9 +762,15 @@ class StatsRepository:
 
     def newest_for_user(self, user_id: str) -> Optional[Stats]:
         """Get the most recent stats for a user."""
+        # The robot_level condition is always true for a user's rows; it is
+        # there, as in the NDB query, to make the statement match the
+        # (user_id, robot_level, timestamp) index. Without it, PostgreSQL
+        # walks the timestamp index backwards looking for the user, which
+        # for a user without any stats rows means reading the whole table
+        # (over 10 seconds with 3.5 million rows).
         stmt = (
             select(Stats)
-            .where(Stats.user_id == user_id)
+            .where(and_(Stats.user_id == user_id, Stats.robot_level == 0))
             .order_by(desc(Stats.timestamp))
             .limit(1)
         )
