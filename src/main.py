@@ -78,6 +78,7 @@ from basics import (
 from skrafluser import log_fields
 from authmanager import auth_manager
 from cors import init_cors
+from maintenance import MAINTENANCE_KEY, init_maintenance
 from firebase import init_firebase_app, connect_blueprint
 from wordbase import Wordbase
 from api import api_blueprint
@@ -154,6 +155,13 @@ if not running_local and not ON_GAE:
 
 # Initialize Cross-Origin Resource Sharing (CORS)
 init_cors(app)
+
+# Maintenance mode: if the MAINTENANCE environment variable is set, every
+# request except health checks is answered with HTTP 503 (see maintenance.py).
+# Must come after init_cors(), so that CORS preflights are answered first.
+init_maintenance(app)
+if app.config[MAINTENANCE_KEY]:
+    logging.warning(f"{PROJECT_ID} server is in MAINTENANCE mode: all requests get HTTP 503")
 
 # Flask configuration
 # Make sure that the Flask session cookie is secure (i.e. only used
