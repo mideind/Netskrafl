@@ -16,7 +16,7 @@
 #
 # See doc/migration-strategy.md for the cutover plan that this app is part of.
 
-name: netskrafl-prod
+name: REPLACE_ME_app_name
 region: ams
 
 # No custom domain while the app is being prepared: it is reached at its
@@ -100,8 +100,8 @@ services:
         scope: RUN_AND_BUILD_TIME
         value: netskrafl
 
-      # The release name, e.g. n20261112: cache-busts the static files and
-      # names the git tag of the release.
+      # The release name (same scheme as the App Engine version names):
+      # cache-busts the static files and names the git tag of the release.
       - key: APP_VERSION
         scope: RUN_AND_BUILD_TIME
         value: REPLACE_ME_release_name
@@ -186,6 +186,6 @@ databases:
   - name: pg
     engine: PG
     cluster_name: REPLACE_ME_production_cluster_name
-    db_name: netskrafl
-    db_user: netskrafl_app
+    db_name: REPLACE_ME_database_name
+    db_user: REPLACE_ME_database_user
     production: true
