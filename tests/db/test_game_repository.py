@@ -313,6 +313,9 @@ class TestFinishedGames:
                     rack1="",
                     to_move=0,
                     robot_level=0,
+                    # Set by the application whenever a game is created or
+                    # moved in; games without it are not listed
+                    ts_last_move=datetime.now(timezone.utc),
                     human_elo0_adj=0,
                     human_elo1_adj=0,
                     manual_elo0_adj=0,
@@ -463,6 +466,9 @@ class TestLiveGames:
                     rack1="BCDFG",
                     robot_level=game_data.get("robot_level", 0),
                     tile_count=86,
+                    # Set by the application whenever a game is created or
+                    # moved in; games without it are not listed
+                    ts_last_move=datetime.now(timezone.utc),
                     **{k: v for k, v in game_data.items() if k != "robot_level"},
                 )
 
@@ -530,6 +536,162 @@ class TestLiveGames:
         assert backend.games.count_live_games("live-user-2", max_count=1) == 1
         assert backend.games.count_live_games("no-such-user") == 0
         assert backend.games.count_live_games("") == 0
+
+
+class TestGameListsAcrossPlayerColumns:
+    """The game lists are assembled from one query per player column
+    (see GameRepository._newest_games_stmt in the PostgreSQL backend, and
+    the pair of queries in the NDB backend). These tests make sure that the
+    merged result is the newest games overall, whichever side the user
+    plays on, and that games without a last-move timestamp are left out."""
+
+    USER = "merge-list-user"
+    OPP = "merge-list-opp"
+    BASE = datetime(2025, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+    def _setup(self, backend: "DatabaseBackendProtocol") -> None:
+        for user_id in (self.USER, self.OPP):
+            if backend.users.get_by_id(user_id) is None:
+                backend.users.create(
+                    user_id=user_id,
+                    account="test:" + user_id,
+                    email=None,
+                    nickname=user_id,
+                    locale="is_IS",
+                )
+        backend.games.delete_for_user(self.USER)
+
+    def _cleanup(self, backend: "DatabaseBackendProtocol") -> None:
+        backend.games.delete_for_user(self.USER)
+        for user_id in (self.USER, self.OPP):
+            backend.users.delete(user_id)
+
+    def _create_games(
+        self, backend: "DatabaseBackendProtocol", *, over: bool, count: int
+    ) -> list[str]:
+        """Create games an hour apart, oldest first, with the user
+        alternating between the first and the second player; in every
+        game the user's own score is 100 + i and the opponent's is i"""
+        ids: list[str] = []
+        for i in range(count):
+            user_first = i % 2 == 0
+            game_id = f"merge-list-{'fin' if over else 'live'}-{i}"
+            backend.games.create(
+                id=game_id,
+                player0_id=self.USER if user_first else self.OPP,
+                player1_id=self.OPP if user_first else self.USER,
+                locale="is_IS",
+                rack0="",
+                rack1="",
+                score0=100 + i if user_first else i,
+                score1=i if user_first else 100 + i,
+                to_move=0,
+                robot_level=0,
+                over=over,
+                timestamp=self.BASE,
+                ts_last_move=self.BASE.replace(hour=13 + i),
+            )
+            ids.append(game_id)
+        return ids
+
+    def test_finished_games_are_the_newest_from_both_columns(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """The newest finished games are returned in order, taken from
+        both player columns, and oriented to the querying user."""
+        self._setup(backend)
+        try:
+            ids = self._create_games(backend, over=True, count=6)
+            games = backend.games.list_finished_games(self.USER, max_len=4)
+            assert [g.uuid for g in games] == list(reversed(ids))[0:4]
+            # The user's own score comes first, whichever side they were on
+            assert [(g.sc0, g.sc1) for g in games] == [
+                (105, 5), (104, 4), (103, 3), (102, 2)
+            ]
+            assert all(g.opp == self.OPP for g in games)
+            # A limit larger than the number of games returns them all, once
+            games = backend.games.list_finished_games(self.USER, max_len=50)
+            assert [g.uuid for g in games] == list(reversed(ids))
+            # The opponent sees the same games from the other side
+            games = backend.games.list_finished_games(self.OPP, max_len=2)
+            assert [(g.uuid, g.sc0, g.sc1) for g in games] == [
+                (ids[5], 5, 105), (ids[4], 4, 104)
+            ]
+        finally:
+            self._cleanup(backend)
+
+    def test_live_games_come_from_both_columns(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """All live games are listed and counted, whichever side the user
+        plays on. (The order is not compared here: the NDB backend
+        interleaves its two result lists, and the caller sorts anyway.)"""
+        self._setup(backend)
+        try:
+            ids = self._create_games(backend, over=False, count=5)
+            live = list(backend.games.iter_live_games(self.USER, max_len=50))
+            assert sorted(g.uuid for g in live) == sorted(ids)
+            assert all(g.sc0 == g.sc1 + 100 for g in live)
+            assert backend.games.count_live_games(self.USER) == 5
+            assert backend.games.count_live_games(self.USER, max_count=3) == 3
+            assert len(list(backend.games.iter_live_games(self.USER, max_len=3))) == 3
+        finally:
+            self._cleanup(backend)
+
+    def test_live_games_newest_first_postgresql(
+        self, pg_backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """PostgreSQL: a limited live game list holds the most recently
+        moved games, newest first."""
+        self._setup(pg_backend)
+        try:
+            ids = self._create_games(pg_backend, over=False, count=5)
+            live = list(pg_backend.games.iter_live_games(self.USER, max_len=3))
+            assert [g.uuid for g in live] == list(reversed(ids))[0:3]
+        finally:
+            self._cleanup(pg_backend)
+
+    def test_games_without_last_move_timestamp_are_left_out_postgresql(
+        self, pg_backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """PostgreSQL: games that have no last-move timestamp (migrated
+        games from 2014-15, which Datastore's ordered queries never
+        returned) are neither listed first, as NULLs sort in descending
+        order, nor listed or counted at all."""
+        self._setup(pg_backend)
+        try:
+            fin_ids = self._create_games(pg_backend, over=True, count=2)
+            live_ids = self._create_games(pg_backend, over=False, count=2)
+            for i, over in enumerate((True, True, False, False)):
+                user_first = i % 2 == 0
+                pg_backend.games.create(
+                    id=f"merge-list-old-{i}",
+                    player0_id=self.USER if user_first else self.OPP,
+                    player1_id=self.OPP if user_first else self.USER,
+                    locale="is_IS",
+                    rack0="",
+                    rack1="",
+                    score0=0,
+                    score1=0,
+                    to_move=0,
+                    robot_level=0,
+                    over=over,
+                    timestamp=self.BASE.replace(year=2014),
+                    ts_last_move=None,
+                )
+            games = pg_backend.games.list_finished_games(self.USER, max_len=50)
+            assert [g.uuid for g in games] == list(reversed(fin_ids))
+            games = pg_backend.games.list_finished_games(
+                self.USER, versus=self.OPP, max_len=50
+            )
+            assert [g.uuid for g in games] == list(reversed(fin_ids))
+            live = list(pg_backend.games.iter_live_games(self.USER, max_len=50))
+            assert [g.uuid for g in live] == list(reversed(live_ids))
+            assert pg_backend.games.count_live_games(self.USER) == 2
+            # The games still exist and can be fetched by id
+            assert pg_backend.games.get_by_id("merge-list-old-0") is not None
+        finally:
+            self._cleanup(pg_backend)
 
 
 class TestDeleteForUser:
@@ -1161,7 +1323,9 @@ class TestGameComparison:
         # Generate fresh game IDs and track them for filtering
         finished_game_ids: set[str] = set()
 
-        # Create multiple finished games
+        # Create multiple finished games. The last-move timestamp is set, as
+        # the application always does: games without it are not listed.
+        now = datetime.now(timezone.utc)
         for i in range(3):
             game_id = fresh_id()
             finished_game_ids.add(game_id)
@@ -1183,6 +1347,7 @@ class TestGameComparison:
                 human_elo1_adj=0,
                 manual_elo0_adj=0,
                 manual_elo1_adj=0,
+                ts_last_move=now,
             )
             pg.games.create(
                 id=game_id,
@@ -1202,6 +1367,7 @@ class TestGameComparison:
                 human_elo1_adj=0,
                 manual_elo0_adj=0,
                 manual_elo1_adj=0,
+                ts_last_move=now,
             )
 
         def compare_finished_lists(list1, list2):
@@ -1277,6 +1443,9 @@ class TestGameComparison:
             },
         ]
 
+        # The last-move timestamp is set, as the application always does:
+        # games without it are not listed
+        now = datetime.now(timezone.utc)
         for game_data in live_games:
             ndb.games.create(
                 locale="is_IS",
@@ -1284,6 +1453,7 @@ class TestGameComparison:
                 rack1="BCDFG",
                 over=False,
                 tile_count=86,
+                ts_last_move=now,
                 **game_data,
             )
             pg.games.create(
@@ -1292,6 +1462,7 @@ class TestGameComparison:
                 rack1="BCDFG",
                 over=False,
                 tile_count=86,
+                ts_last_move=now,
                 **game_data,
             )
 

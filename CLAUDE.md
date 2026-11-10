@@ -155,6 +155,14 @@ multiple languages through separate DAWG files and tile sets.
   request returns, and a client reacting to an early notification reads the old
   state (the 2026-09-11 stale-game-list bug in the Explo app)
 - Elo rating system tracks player performance
+- Maintenance mode: with the `MAINTENANCE` environment variable set, the server
+  answers every request except the health endpoints with HTTP 503
+  (`src/maintenance.py`). A version built that way and deployed without traffic
+  is how the backend is frozen (by routing traffic to it) during a data migration
+- Game list queries on PostgreSQL (`GameRepository._newest_games_stmt`) use one
+  ordered, limited branch per player column, merged; an `OR` across the two
+  player columns cannot use the per-player indexes and took seconds on the
+  production-size database. Check new hot queries with `EXPLAIN` at that size
 - Google App Engine deployment across three projects: netskrafl, explo-live and
   explo-dev (the explo-dev GAE default service was retired on 2026-10-15: its cron
   jobs are gone and the version, which App Engine cannot stop under automatic

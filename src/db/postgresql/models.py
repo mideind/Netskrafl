@@ -406,7 +406,15 @@ class Stats(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
 
-    # User (nullable for robot stats)
+    # Whose statistics a row holds is given by user_id and robot_level together:
+    # - A human player's row has user_id set, and robot_level is always 0.
+    #   The row covers all of the player's games, against humans and robots
+    #   alike; the human-only and manual-only figures are separate columns
+    #   (human_elo, human_games, manual_elo, ...), not separate rows.
+    # - A robot's row has user_id NULL, and robot_level tells the robots
+    #   apart. Note that 0 is a valid robot level (the strongest robot), so
+    #   robot_level == 0 alone does NOT mean "human": the test for that is
+    #   user_id IS NOT NULL.
     user_id: Mapped[Optional[str]] = mapped_column(
         String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )

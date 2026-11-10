@@ -61,6 +61,9 @@ class TestGameDisplayParity:
             to_move=0,
             robot_level=0,
             over=True,
+            # Set by the application whenever a game is created or moved in;
+            # games without it are not listed (see _newest_games_stmt)
+            ts_last_move=datetime.now(timezone.utc),
         )
 
         # Querying as player1: sc0 must be player1's OWN score (20)
@@ -232,6 +235,9 @@ class TestCompareHarness:
                 to_move=0,
                 robot_level=0,
                 over=True,
+                # Set by the application whenever a game is created or moved in;
+                # games without it are not listed (see _newest_games_stmt)
+                ts_last_move=datetime.now(timezone.utc),
             )
 
         def summary(be: Any) -> Any:
