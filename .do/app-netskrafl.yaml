@@ -174,8 +174,14 @@ services:
         value: ${pg.DATABASE_URL}
 
 # The production PostgreSQL cluster holds the database that the migrator
-# fills (scripts/migrate_to_postgres.py). Attaching it also adds this app to
-# the cluster's trusted sources.
+# fills (scripts/migrate_to_postgres.py). Attaching it here provides the
+# ${pg.DATABASE_URL} binding, but does NOT add the app to the cluster's
+# trusted sources: until that is done, the container cannot connect, the
+# entrypoint's Alembic step fails and so does the deployment. Right after
+# creating the app:
+#
+#   doctl databases firewalls append <CLUSTER_ID> --rule app:<APP_ID>
+#   doctl apps create-deployment <APP_ID>
 databases:
   - name: pg
     engine: PG
