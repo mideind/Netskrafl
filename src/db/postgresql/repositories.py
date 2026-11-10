@@ -761,13 +761,17 @@ class StatsRepository:
         )
 
     def newest_for_user(self, user_id: str) -> Optional[Stats]:
-        """Get the most recent stats for a user."""
-        # The robot_level condition is always true for a user's rows; it is
-        # there, as in the NDB query, to make the statement match the
-        # (user_id, robot_level, timestamp) index. Without it, PostgreSQL
-        # walks the timestamp index backwards looking for the user, which
-        # for a user without any stats rows means reading the whole table
-        # (over 10 seconds with 3.5 million rows).
+        """Get the most recent stats row of a (human) user."""
+        # The user_id condition alone selects the right rows: robots' rows
+        # have no user_id, and a user's rows always have robot_level 0 (see
+        # the Stats model). The robot_level condition thus filters nothing
+        # out, and in particular it does not tell human games from robot
+        # games. It is there, as in the NDB query, only to make the statement
+        # match the (user_id, robot_level, timestamp) index, so that the
+        # newest row is found directly. Without it, PostgreSQL walks the
+        # timestamp index backwards looking for the user, which for a user
+        # without any stats rows means reading the whole table (over 10
+        # seconds with 3.5 million rows).
         stmt = (
             select(Stats)
             .where(and_(Stats.user_id == user_id, Stats.robot_level == 0))
@@ -819,12 +823,16 @@ class StatsRepository:
         ]
 
     def last_for_user(self, user_id: str, days: int) -> List[Stats]:
-        """Get the newest `days` human (robot_level == 0) stats rows for a
-        user, newest first. Matches NDB StatsModel.last_for_user, where `days`
-        is a ROW COUNT limit (not a calendar window) and robot stats are
-        excluded."""
+        """Get the newest `days` stats rows of a (human) user, newest first.
+        As in NDB StatsModel.last_for_user, `days` limits the NUMBER OF ROWS
+        returned; it is not a calendar window. There is at most one row per
+        user per day, but only for days when the user finished a game."""
         if not user_id or days <= 0:
             return []
+        # As in newest_for_user(), the user_id condition alone selects the
+        # user's rows (robots' rows have no user_id), and the robot_level
+        # condition, always true for them, is there to match the
+        # (user_id, robot_level, timestamp) index
         stmt = (
             select(Stats)
             .where(
