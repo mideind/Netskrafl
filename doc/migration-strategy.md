@@ -110,7 +110,10 @@ through the app's own loaders without a single failure. Details in
 
 1. **Fresh bulk copy** (`--truncate`) a day or two before the switch, at
    night, with the same watchdog. Record its T0.
-2. **Write freeze** on App Engine, then a **delta pass** with
+2. **Write freeze** on App Engine: all traffic is routed to a version built
+   with the `MAINTENANCE` environment variable set, which answers every
+   request with HTTP 503 (`src/maintenance.py`; the web client treats that
+   as "server unreachable" and offers a retry). Then a **delta pass** with
    `--since` T0 minus 2 days (the nightly stats job writes Elo results into
    games without moving `ts_last_move`, so a generous overlap is needed;
    upserts make it harmless). About 8 minutes, as rehearsed.

@@ -42,6 +42,11 @@ env_variables:
   # Realtime Database instance in europe-west1 (doc/rtdb-eu-move.md).
   # Overrides FIREBASE_DB_URL in the client secret.
   FIREBASE_DB_URL: https://netskrafl-eu.europe-west1.firebasedatabase.app
+  # Maintenance mode: uncomment to build a version that answers every
+  # request with HTTP 503 (see src/maintenance.py). Deploy it with
+  # --no-promote; routing traffic to it freezes the backend, and routing
+  # traffic back unfreezes it.
+  # MAINTENANCE: "true"
 
 inbound_services:
 - warmup
