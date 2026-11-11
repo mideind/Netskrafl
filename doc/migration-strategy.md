@@ -68,17 +68,24 @@ through the app's own loaders without a single failure. Details in
 
 ### 1. A production-shaped netskrafl app on DO
 
+The reference spec is `.do/app-netskrafl.yaml` (placeholders only).
+
 - `PROJECT_ID=netskrafl`, `DATABASE_BACKEND=postgresql` against the production
   cluster (the app is added to the cluster's trusted sources), the production
   Valkey database for netskrafl, the GoSkrafl sidecar on
   (`MOVES_SIDECAR_PORT`), secrets as encrypted environment variables
   (`SECRETS_PROVIDER=env`, values equal to the current ones so that sessions
   and tokens survive the switch).
-- An instance with at least 2 GB of RAM (App Engine runs 2 GB with three
-  gunicorn workers); size it from a load test.
-- **Scheduled jobs off** until the cutover: App Engine cron still runs the
-  same jobs against Datastore, and running them twice would be wrong after
-  the switch and pointless before it.
+- **One instance**, sized generously at first (App Engine serves production
+  with two 2 GB instances that use about 300 MB each) and lowered once
+  metrics are in. The app cannot scale out as it is: supercronic runs in
+  every container, so two instances would run every scheduled job twice.
+- **Scheduled jobs off** until the cutover (`CRON_SECRET` unset): App Engine
+  cron still runs the same jobs against Datastore. A stats run on DO for a
+  day that App Engine also processes would leave two sets of stats rows for
+  that day once the delta pass copies App Engine's over.
+- **No custom domain** until the cutover; the app is reached at its default
+  hostname.
 - Test against the rehearsal copy with **test accounts only**: Málstaður
   login, the legacy Google login, game play against humans and robots, Gáta
   dagsins. The app shares the live Firebase Realtime Database with
@@ -108,17 +115,41 @@ through the app's own loaders without a single failure. Details in
 
 ### 3. The switch
 
-1. **Fresh bulk copy** (`--truncate`) a day or two before the switch, at
-   night, with the same watchdog. Record its T0.
+1. **The copy.** The rehearsal copy is the starting point: nothing has
+   written to it since its delta pass, and a delta pass sees every change
+   made on App Engine (games are only written when created or moved in,
+   which moves `ts_last_move`, and by the nightly stats job; chats and stats
+   rows are never edited; users and the small kinds are re-read in full).
+   So anything written through the DO app before the switch stays in the
+   production data: test with the team's own accounts only. A catch-up
+   delta pass the day before keeps the final one short. (The alternative, a
+   fresh `--truncate` bulk copy a day or two before the switch, costs a
+   night and wipes any test residue.)
 2. **Write freeze** on App Engine: all traffic is routed to a version built
    with the `MAINTENANCE` environment variable set, which answers every
    request with HTTP 503 (`src/maintenance.py`; the web client treats that
    as "server unreachable" and offers a retry). Then a **delta pass** with
-   `--since` T0 minus 2 days (the nightly stats job writes Elo results into
+   `--since` the start of the previous pass minus 2 days (the nightly stats job writes Elo results into
    games without moving `ts_last_move`, so a generous overlap is needed;
    upserts make it harmless). About 8 minutes, as rehearsed.
-3. **Flip the backend hostname** to the DO app and enable its scheduled
-   jobs; remove the jobs from App Engine cron.
+   Run this delta pass without the watchdog: it stops the migrator when
+   App Engine returns errors, which is all App Engine does while frozen.
+   Afterwards, compare row counts per table with Datastore.
+3. **Flip the backend hostname.** The order matters, because App Platform
+   can only obtain the certificate for the hostname once its DNS record
+   points at the app, and clients get a TLS error until it has one:
+   - point the DNS record at the DO app right after the freeze (lower its
+     TTL to 60 seconds some days ahead), so the change propagates while the
+     delta pass runs;
+   - when the data is copied and checked (through the app's default
+     hostname), enable the scheduled jobs, flush the cache and add the
+     hostname to the app as its domain; the certificate follows within
+     minutes;
+   - remove the jobs from App Engine cron.
+
+   Until the certificate is issued no user can have reached the new
+   backend, so everything up to that point can be abandoned without loss:
+   point the DNS record back and route traffic back to the serving version.
 4. **Monitor**, with App Engine and the Datastore kept intact (read-only)
    for a rollback window of about 30 days. A rollback after real writes on
    PostgreSQL loses those writes, which is why the verification gate before
