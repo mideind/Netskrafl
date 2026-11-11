@@ -1,0 +1,191 @@
+# Digital Ocean App Platform spec for the Netskrafl production backend.
+#
+# Reference copy with placeholders, like app.yaml next to it (the staging
+# app), which explains each setting at length; only the differences are
+# commented here. The same rules apply:
+#
+# - Never commit real values. Everything marked REPLACE_ME is entered when the
+#   app is created; values of `type: SECRET` are stored encrypted and read back
+#   as opaque `EV[1:...]` ciphertext that is bound to the one app.
+# - Never apply this file to the live app: it would overwrite the secrets with
+#   the placeholders. Change the live app by round-tripping its own spec:
+#
+#     doctl apps spec get <APP_ID> > live-spec.yaml
+#     # edit, leaving every EV[1:...] value untouched
+#     doctl apps update <APP_ID> --spec live-spec.yaml
+#
+# See doc/migration-strategy.md for the cutover plan that this app is part of.
+
+name: replace-me-app-name
+region: ams
+
+# No custom domain while the app is being prepared: it is reached at its
+# default hostname only. The public backend hostname is added at the cutover,
+# AFTER its DNS record has been pointed at this app. App Platform can only
+# obtain the certificate once the record points here, and a domain that is
+# added too early fails its first validation and is retried slowly.
+# domains:
+# - domain: REPLACE_ME_public_backend_hostname
+#   type: PRIMARY
+
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
+
+ingress:
+  rules:
+    - component:
+        name: netskrafl
+      match:
+        path:
+          prefix: /
+
+services:
+  - name: netskrafl
+
+    dockerfile_path: /Dockerfile
+    source_dir: /
+
+    github:
+      repo: mideind/Netskrafl
+      # A dedicated branch, so that an ordinary push to master cannot
+      # redeploy production. Like do-deploy it is a merge-commit branch:
+      # merge master into it to release, and tag the release.
+      branch: do-netskrafl
+      deploy_on_push: true
+
+    http_port: 8080
+
+    # One instance only: supercronic runs in every container (two instances
+    # would run every scheduled job twice) and the entrypoint runs Alembic at
+    # every start. Scale by instance size, not count. App Engine served
+    # production with two 2 GB instances at about 300 MB each; the size
+    # below is generous on purpose and can be lowered once metrics are in.
+    instance_count: 1
+    instance_size_slug: apps-d-2vcpu-4gb
+
+    health_check:
+      http_path: /health/ready
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 3
+
+    alerts:
+      - rule: CPU_UTILIZATION
+        operator: GREATER_THAN
+        value: 80
+        window: FIVE_MINUTES
+      - rule: MEM_UTILIZATION
+        operator: GREATER_THAN
+        value: 80
+        window: FIVE_MINUTES
+      - rule: RESTART_COUNT
+        operator: GREATER_THAN
+        value: 2
+        window: FIVE_MINUTES
+
+    # Runtime logs are kept only briefly by the platform: forward them.
+    # log_destinations:
+    #   - name: REPLACE_ME
+    #     datadog:
+    #       endpoint: REPLACE_ME
+    #       api_key: REPLACE_ME
+
+    envs:
+      # PROJECT_ID=netskrafl selects the Netskrafl configuration: Icelandic
+      # only, the legacy web UI next to the embedded client, and the rating
+      # tables (so no SINGLE_PAGE and no ENABLE_RATINGS here).
+      - key: PROJECT_ID
+        scope: RUN_AND_BUILD_TIME
+        value: netskrafl
+
+      # The release name (same scheme as the App Engine version names):
+      # cache-busts the static files and names the git tag of the release.
+      - key: APP_VERSION
+        scope: RUN_AND_BUILD_TIME
+        value: REPLACE_ME_release_name
+
+      # A key of the netskrafl project's service account, minted for this
+      # app alone so that it can be revoked on its own. Used by the Firebase
+      # Admin SDK.
+      - key: GOOGLE_CREDENTIALS_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_service_account_json
+
+      # The production Valkey cluster, with the logical database assigned to
+      # Netskrafl as a /N suffix (see app.yaml for the tenant assignment).
+      - key: REDIS_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_rediss_url_with_db_number
+
+      # The three application secrets must be byte-identical to the ones the
+      # App Engine app uses: sessions, the login tokens exchanged with the
+      # host site and the bearer tokens held by open browser tabs are all
+      # signed with them, and must stay valid across the cutover.
+      - key: SECRETS_PROVIDER
+        scope: RUN_TIME
+        value: env
+
+      - key: SECRET_KEY_BIN_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_64_raw_bytes
+
+      - key: MOVES_AUTH_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_moves_auth_key
+
+      - key: CLIENT_SECRET_NETSKRAFL_BASE64
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME_base64_client_secret_json
+
+      # Set explicitly, as app-netskrafl.yaml does: this overrides the
+      # FIREBASE_DB_URL inside the client secret, so the app cannot end up on
+      # another Realtime Database instance than App Engine is using.
+      - key: FIREBASE_DB_URL
+        scope: RUN_TIME
+        value: REPLACE_ME_realtime_database_url
+
+      # NOT set before the cutover. Without it supercronic does not start, so
+      # no scheduled job runs: until then App Engine runs the nightly jobs on
+      # Datastore, and a stats run here as well would leave a second set of
+      # rows for the same day once the last changes are copied over. Added at
+      # the cutover (which restarts the app; /cacheflush needs it too).
+      # - key: CRON_SECRET
+      #   scope: RUN_TIME
+      #   type: SECRET
+      #   value: REPLACE_ME_random_string
+
+      - key: MOVES_SIDECAR_PORT
+        scope: RUN_TIME
+        value: "8090"
+
+      - key: DATABASE_BACKEND
+        scope: RUN_AND_BUILD_TIME
+        value: postgresql
+
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${pg.DATABASE_URL}
+
+# The production PostgreSQL cluster holds the database that the migrator
+# fills (scripts/migrate_to_postgres.py). Attaching it here provides the
+# ${pg.DATABASE_URL} binding, but does NOT add the app to the cluster's
+# trusted sources: until that is done, the container cannot connect, the
+# entrypoint's Alembic step fails and so does the deployment. Right after
+# creating the app:
+#
+#   doctl databases firewalls append <CLUSTER_ID> --rule app:<APP_ID>
+#   doctl apps create-deployment <APP_ID>
+databases:
+  - name: pg
+    engine: PG
+    cluster_name: REPLACE_ME_production_cluster_name
+    db_name: REPLACE_ME_database_name
+    db_user: REPLACE_ME_database_user
+    production: true
