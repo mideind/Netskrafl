@@ -21,9 +21,11 @@ region: ams
 
 # No custom domain while the app is being prepared: it is reached at its
 # default hostname only. The public backend hostname is added at the cutover,
-# AFTER its DNS record has been pointed at this app. App Platform can only
-# obtain the certificate once the record points here, and a domain that is
-# added too early fails its first validation and is retried slowly.
+# after the final data copy and a few minutes BEFORE its DNS record is
+# pointed at this app (see doc/migration-strategy.md, "The switch"): the app
+# then answers as soon as the record changes. Added after the record has
+# changed, App Platform answers 404 for the hostname in the meantime. The
+# certificate is issued about a minute after the record points here.
 # domains:
 # - domain: REPLACE_ME_public_backend_hostname
 #   type: PRIMARY
@@ -154,8 +156,10 @@ services:
       # NOT set before the cutover. Without it supercronic does not start, so
       # no scheduled job runs: until then App Engine runs the nightly jobs on
       # Datastore, and a stats run here as well would leave a second set of
-      # rows for the same day once the last changes are copied over. Added at
-      # the cutover (which restarts the app; /cacheflush needs it too).
+      # rows for the same day once the last changes are copied over. Added on
+      # the night of the cutover, after App Engine's nightly jobs have run and
+      # before the write freeze (setting it restarts the app; /cacheflush
+      # needs it too).
       # - key: CRON_SECRET
       #   scope: RUN_TIME
       #   type: SECRET
