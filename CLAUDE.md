@@ -170,6 +170,12 @@ multiple languages through separate DAWG files and tile sets.
   container, and the explo-dev `moves` service still serves Netskrafl production
   and Málstaður). The former netskrafl `demo` service was deleted on
   2026-09-08 for lack of traffic; `app-demo.yaml` remains in case it is ever needed
+- Netskrafl's backend moved to the Digital Ocean container and PostgreSQL on
+  2026-11-13. What is left on App Engine in the netskrafl project is
+  `appspot-redirect/`, a dependency-free app that redirects browsers opening the
+  old App Engine address to Netskrafl's home within Málstaður and answers 503 to
+  everything else (`./deploy-netskrafl.sh redirect <version>`, then route the
+  traffic to that version). It stays until the App Engine project is closed
 - Every production release (netskrafl or explo-live) gets a git tag with the same
   name as its App Engine version (e.g. `n20261106`), on the deployed commit, pushed
   to GitHub once the version has all the traffic. The `/deploy` skill does this as
@@ -205,10 +211,11 @@ improvement; parts of the app also sort client-side via `Alphabet` in
   every 2 minutes). `cron.yaml` is deployed separately from the app
   (`./deploy-<target>.sh cron`), so deploy it only once a version that serves
   every listed URL has all the traffic. It is deployed on
-  netskrafl and explo-live, where the jobs run via
-  legacy App Engine cron, always targeting the promoted version. explo-dev has
-  an empty cron configuration (since 2026-10-15): its jobs run in the DO
-  container's supercronic, and `deploy-explo.sh cron` refuses to redeploy them. No per-version
+  explo-live, where the jobs run via
+  legacy App Engine cron, always targeting the promoted version. explo-dev
+  (since 2026-10-15) and netskrafl (since 2026-11-13) have an empty cron
+  configuration: their jobs run in the DO containers' supercronic, and
+  `deploy-explo.sh cron` and `deploy-netskrafl.sh cron` refuse to redeploy them. No per-version
   scheduler updates are needed after deploys. (Consolidated 2026-08-07; before
   that, netskrafl triggered `/connect/update` via a version-pinned Cloud
   Scheduler job that had to be re-pinned after every promotion.)
