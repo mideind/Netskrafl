@@ -98,3 +98,6 @@ migrations/
 
 # Data migration tooling - runs outside the image
 scripts/
+
+# The redirect app for the retired App Engine deployment (deployed on its own)
+appspot-redirect/

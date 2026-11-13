@@ -1,0 +1,2 @@
+# The redirect app needs nothing beyond the Python standard library.
+# App Engine supplies the gunicorn that serves it.
