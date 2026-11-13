@@ -490,6 +490,15 @@ class FirebaseMock:
 
         self._monkeypatch.setattr("firebase.send_message", mock_send_message)
         self._monkeypatch.setattr("firebase.push_to_user", mock_push_to_user)
+        # The fire-and-forget variants start a thread in the real module.
+        # Here they record the call right away, so that a test can look at
+        # the captured notifications as soon as the request has returned.
+        self._monkeypatch.setattr(
+            "firebase.send_message_in_background", mock_send_message
+        )
+        self._monkeypatch.setattr(
+            "firebase.push_to_user_in_background", mock_push_to_user
+        )
 
     def clear(self) -> None:
         """Clear all captured messages."""
