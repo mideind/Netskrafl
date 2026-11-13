@@ -176,10 +176,19 @@ multiple languages through separate DAWG files and tile sets.
   old App Engine address to Netskrafl's home within Málstaður and answers 503 to
   everything else (`./deploy-netskrafl.sh redirect <version>`, then route the
   traffic to that version). It stays until the App Engine project is closed
-- Every production release (netskrafl or explo-live) gets a git tag with the same
-  name as its App Engine version (e.g. `n20261106`), on the deployed commit, pushed
-  to GitHub once the version has all the traffic. The `/deploy` skill does this as
-  its last step; tag by hand after any deploy made outside it
+- Every production release (netskrafl or explo-live) gets a git tag named
+  `nYYYYMMDD` or `eYYYYMMDD` (plus a letter for further releases on the same day),
+  on the deployed commit, pushed to GitHub once the release serves all users. On
+  App Engine (explo-live) the tag equals the App Engine version name; in the
+  container (netskrafl) it equals the `APP_VERSION` label in the app's spec. The
+  `/deploy` skill does this as its last step; tag by hand after any deploy made
+  outside it
+- Deploying differs per platform, and the `/deploy` skill covers both: a netskrafl
+  release is a push to the `do-netskrafl` branch, with no gradual rollout (the new
+  container gets all the traffic once it passes its health check), so the skill
+  also describes what to do when a release goes wrong, including rollback to the
+  previous deployment. A release that contains a schema migration cannot be rolled
+  back that way and must be fixed forward
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
   current status are tracked in `doc/migration-strategy.md`
