@@ -79,6 +79,13 @@ _CONNECTED_EXPIRY = 2 * 60  # 2 minutes
 # that are older than the following constant indicates
 _PUSH_NOTIFICATION_CUTOFF = 14  # Days
 
+# How long to wait for Firebase to answer an HTTP request, in seconds.
+# A round trip normally takes 40-100 ms and the slowest regular operations
+# a few seconds, while the SDK's own default is two minutes: long enough
+# for a stuck call to hold up a worker thread and the user behind it.
+# The SDK retries a failed call once, so the worst case is twice this.
+_HTTP_TIMEOUT = 10
+
 _firebase_app: Optional[App] = None
 _firebase_app_lock = threading.Lock()
 
@@ -94,7 +101,11 @@ def init_firebase_app():
     with _firebase_app_lock:
         if _firebase_app is None:
             _firebase_app = initialize_app(
-                options=dict(projectId=PROJECT_ID, databaseURL=FIREBASE_DB_URL)
+                options=dict(
+                    projectId=PROJECT_ID,
+                    databaseURL=FIREBASE_DB_URL,
+                    httpTimeout=_HTTP_TIMEOUT,
+                )
             )
 
 
