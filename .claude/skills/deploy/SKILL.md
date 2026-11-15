@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: Deploy a new version of this project's backend. Netskrafl production and the Explo dev backend run as containers on Digital Ocean App Platform (deploy by pushing to a deploy branch, verify, roll back if needed); explo-live still runs on App Engine (gradual canary rollout). Use when the user asks to deploy, ship, release, promote or roll back a build. Defaults to netskrafl.
+description: Deploy a new version of this project's backend. Netskrafl production and the Explo dev backend run as containers on Digital Ocean App Platform (deploy by pushing to a deploy branch, verify, roll back if needed; a Netskrafl release goes to the staging app first, then to production); explo-live still runs on App Engine (gradual canary rollout). Use when the user asks to deploy, ship, release, promote or roll back a build. Defaults to netskrafl.
 user-invocable: true
 allowed-tools:
   - Read
@@ -23,7 +23,7 @@ The three backends run on two platforms, and a release works differently on each
 
 | Target             | Platform                    | A release is                                           | Release name / tag |
 |--------------------|-----------------------------|--------------------------------------------------------|--------------------|
-| `netskrafl` (default) | Digital Ocean App Platform, PostgreSQL | a push to the branch `do-netskrafl`        | `nYYYYMMDD[a-z]`   |
+| `netskrafl` (default) | Digital Ocean App Platform, PostgreSQL | the staging app first (as for `explo-dev`), then a push to the branch `do-netskrafl` | `nYYYYMMDD[a-z]`   |
 | `explo-dev`        | Digital Ocean App Platform, PostgreSQL (the staging app) | a merge of master into the branch `do-deploy`, pushed | not tagged |
 | `explo-live`       | Google App Engine, Datastore | an App Engine version, given traffic in stages        | `eYYYYMMDD[a-z]`   |
 
@@ -34,6 +34,13 @@ old versions unless the user asks.
 
 `$ARGUMENTS` may contain a target (default `netskrafl`) and an explicit release
 name (e.g. `n20261116b`). If no name is given, compute it (step A1 / B1).
+
+**A `netskrafl` release goes to the staging app first, by default**: the same
+commit is deployed to `explo-dev`, is seen to run well there, and only then goes
+to production (step A3). Straight to production, without staging, happens only
+when the user asks for exactly that, in words ("straight to production", "skip
+staging"). Do not propose it, and do not read it into a request: that a fix is
+urgent is not by itself such a request.
 
 Follow **Part A** for `netskrafl` and `explo-dev`, **Part B** for `explo-live`.
 
@@ -82,20 +89,53 @@ rollback target: record it before deploying.
 
 ## A2. Look at what the release changes
 
-Check each of these and tell the user what you found, before asking to deploy:
+Check each of these and tell the user what you found, before asking to deploy.
+For a `netskrafl` release, `DEPLOYED` is production's commit; run the
+deployment-in-progress check for the staging app as well:
 
 | Check | Command | Why it matters |
 |---|---|---|
-| Schema migrations | `git diff --stat $DEPLOYED..$COMMIT -- migrations/` | **A release with a migration cannot be rolled back** by redeploying the old version: the old container does not know the new schema revision and fails to start. The migration must also work with the *old* code, which keeps serving while the new container starts. Say so explicitly and ask whether to go to the staging app first. |
-| Container build | `git diff --stat $DEPLOYED..$COMMIT -- Dockerfile docker-entrypoint.sh crontab requirements*.txt .dockerignore` | App Platform builds with kaniko, which differs from a local `docker build` (see `CLAUDE.md`). Build changes should have gone through the staging app. |
+| Schema migrations | `git diff --stat $DEPLOYED..$COMMIT -- migrations/` | **A release with a migration cannot be rolled back** by redeploying the old version: the old container does not know the new schema revision and fails to start. The migration must also work with the *old* code, which keeps serving while the new container starts. Say so explicitly; such a release stops for a second "yes" after staging (step A3). |
+| Container build | `git diff --stat $DEPLOYED..$COMMIT -- Dockerfile docker-entrypoint.sh crontab requirements*.txt .dockerignore` | App Platform builds with kaniko, which differs from a local `docker build` (see `CLAUDE.md`). The staging step is what proves a build change. |
 | Deployment in progress | `doctl apps list-deployments "$APP"` | Starting a deployment while another is in progress cancels the first. Wait for it. |
 | Time of day | `date -u` | Do not deploy between 02:55 and 04:30 UTC: the nightly jobs run then, and the deploy would stop one halfway. Prefer a quiet time of day for anything risky. |
-| Staging | `git log --oneline -1 origin/do-deploy` | For netskrafl: has this code been on the staging app? It runs the same container with the Explo configuration, so it proves the build, the start-up and the migrations, but not Netskrafl-specific behaviour. Recommend staging first for migrations, build changes and large releases. |
+| Staging | `git merge-base --is-ancestor $COMMIT $STAGING_DEPLOYED && echo yes` (`STAGING_DEPLOYED`: the staging app's `DEPLOYED`, found with `BRANCH=do-deploy`) | For netskrafl: is the staging app already running this commit? If so, step A3 only has to verify it, not deploy it. The staging app runs the same container with the Explo configuration, so it proves the build, the start-up, the migrations and all shared code, but not Netskrafl-specific behaviour. |
 
-**Then tell the user the target, the release name, the commit and the findings
-above, and get an explicit "yes".**
+**Then tell the user the target, the release name, the commit, the findings above
+and the route (staging first and then production, or straight to production
+because the user asked for that), and get an explicit "yes".** For a `netskrafl`
+release that "yes" covers both steps: the staging deploy and, if everything on
+staging is clean, the production deploy. Say so when asking.
 
-## A3. Deploy
+## A3. Staging first (netskrafl)
+
+Skip this step for the target `explo-dev` (its own deploy is step A4), and when
+the user asked for a release straight to production.
+
+1. Unless the staging app already runs `COMMIT` (the check in A2), deploy it
+   there as described for `explo-dev` in A4.
+2. Watch the deployment as in A5 and verify it as in A6, steps 1 to 3, with the
+   staging app's `APP`, `COMPONENT` and `HOST`. The serving commit is a merge
+   commit of `do-deploy`; it must contain `COMMIT` (`git merge-base
+   --is-ancestor`). Five minutes of clean log are enough here, with at least two
+   runs of the scheduled jobs in them. If the change can be exercised with the
+   Explo configuration (an API call, a job), do that too.
+3. Tell the user what staging showed. Then:
+   - **Everything clean**: go on to A4 for production, under the "yes" from A2.
+   - **Anything abnormal** (a failed build, a health check that did not pass,
+     errors, 5xx answers, restarts, slow answers, a failed job): stop. Production
+     has not been touched. Report it, fix on master, and start again from A1.
+     Treat a bad staging deployment as in "When a container deploy goes wrong":
+     the Explo dev app has users too.
+   - **The release has a schema migration**: stop even when everything is clean,
+     report, and get a second "yes" before production. The step after this one
+     cannot be undone.
+
+Do not let much time pass between the two steps, and check before A4 that
+`origin/master` has not moved past `COMMIT`: production gets `COMMIT`, the commit
+that staging ran, not whatever is newest.
+
+## A4. Deploy
 
 `netskrafl` — `do-netskrafl` only ever points at a commit of master, so the push
 is a fast-forward (never force it):
@@ -115,15 +155,20 @@ doctl apps spec get "$APP" --format json > "$SPEC"      # $SPEC: a file in a pri
 doctl apps update "$APP" --spec "$SPEC" && rm "$SPEC"
 ```
 
+The live spec holds the log service's API key in plain text (the platform
+encrypts the `SECRET` environment variables, but not the key of a log
+destination). Never print a live spec or leave a copy of one behind.
+
 The spec update cancels the build that the push started and starts a new one
 from the same commit with the new label, so users see one switch, not two.
-Step A5 checks that the commit serving in the end is indeed `COMMIT`.
+Step A6 checks that the commit serving in the end is indeed `COMMIT`.
 
-`explo-dev` — `do-deploy` is a merge-commit branch: check it out, `git merge
-origin/master`, push it, and return to the previous branch. It has no version
-label.
+`explo-dev` (and the staging step of a `netskrafl` release) — `do-deploy` is a
+merge-commit branch: check it out, bring it up to date with `origin/do-deploy`,
+`git merge $COMMIT`, push it, and return to the previous branch. It has no
+version label.
 
-## A4. Watch the build and the switch
+## A5. Watch the build and the switch
 
 ```bash
 doctl apps list-deployments "$APP" --format ID,Cause,Progress,Phase,Updated | head -4
@@ -146,7 +191,7 @@ requests:
 curl -s -o /dev/null -m 10 -w "%{http_code} %{time_total}\n" "https://$HOST/health/ready"
 ```
 
-## A5. Verify the new version
+## A6. Verify the new version
 
 1. It is the right code and it is active:
    ```bash
@@ -155,25 +200,40 @@ curl -s -o /dev/null -m 10 -w "%{http_code} %{time_total}\n" "https://$HOST/heal
    The commit must equal `COMMIT`.
 2. It answers: `/health/ready` gives 200; an API call without a login (for
    instance `POST /gamelist`) gives 401, not 5xx.
-3. Watch the log for at least 10 minutes, longer for a risky release. Report what
-   each check shows; empty output means clean:
+3. Watch the log for at least 10 minutes, longer for a risky release. The
+   container writes one JSON entry per line (see `doc/logging.md`); `doctl`
+   puts the component name and a timestamp in front of each. Report what each
+   check shows; empty output means clean:
    ```bash
-   doctl apps logs "$APP" "$COMPONENT" --type run --tail 3000 > "$LOG"
-   grep -E "ERROR|WARNING|CRITICAL|Traceback" "$LOG"          # application problems
-   grep -E '" 5[0-9]{2} ' "$LOG"                              # failed requests
-   grep -c 'job succeeded' "$LOG"; grep 'job failed' "$LOG"   # scheduled jobs (every 2 minutes)
-   grep -E "Booting worker|Starting gunicorn" "$LOG"          # more than one start = restarts
+   doctl apps logs "$APP" "$COMPONENT" --type run --tail 3000 \
+     | sed 's/^[^{]*//' | jq -c -R 'fromjson? // empty' > "$LOG"    # the JSON entries only
+   # application problems (supercronic's entries have "level" instead of "status")
+   jq -r 'select((.status // .level) | IN("warning","error","critical","fatal"))
+          | "\(.timestamp // .time) \(.status // .level) \(.message // .msg)"' "$LOG"
+   # failed requests
+   jq -r 'select(.event == "request" and .http.status_code >= 500) | .message' "$LOG"
+   # the scheduler (a job every 2 minutes), and what the jobs reported
+   jq -r 'select(.msg == "job succeeded" or .msg == "job failed") | .msg' "$LOG" | sort | uniq -c
+   jq -r 'select(.event == "job") | "\(.timestamp) \(.message)"' "$LOG"
+   # more than one start of the server, or a worker timeout = restarts
+   jq -r 'select(.logger.name == "gunicorn" and (.message | test("Starting gunicorn|Booting worker|WORKER TIMEOUT")))
+          | "\(.timestamp) \(.message)"' "$LOG"
+   # response times of the requests, in milliseconds
+   jq -s '[.[] | select(.event == "request") | .duration_ms] | sort
+          | {n: length, p50: .[length * 0.5 | floor], p99: .[length * 0.99 | floor], max: .[-1]}' "$LOG"
    ```
-   The access log ends each request with its duration in microseconds; compare
-   the slow tail with what is normal (median API call around 30 ms, nearly all
-   under 300 ms).
+   Compare the response times with what is normal (median API call around
+   30 ms, nearly all under 300 ms). Lines that are not JSON (the entrypoint's
+   start-up messages, the moves sidecar) are left out by the first command; read
+   the raw log if a start-up problem is suspected. A release that is older than
+   the JSON log format writes text: use `grep` on the raw log for it.
 4. Ask the user to try the change itself, and one ordinary thing: log in, open a
    game, make a move.
 
 If anything looks abnormal, **stop and go to "When a container deploy goes
 wrong"** rather than waiting for it to clear up.
 
-## A6. Finish
+## A7. Finish
 
 - **Tag the release** (netskrafl only), on the commit that is serving:
   ```bash
@@ -182,8 +242,22 @@ wrong"** rather than waiting for it to clear up.
   ```
   This is part of the deploy the user approved. Do not tag a release that was
   rolled back. Never move or delete an existing release tag.
+- **Publish a GitHub release** for the tag, with release notes:
+  ```bash
+  gh release create <NAME> --verify-tag --title "Version <NAME>" --notes-file "$NOTES"
+  ```
+  Write the notes for someone who was not there: a heading that names the main
+  changes, then one short section per change that users or operators can notice
+  (what was wrong or missing, what changed), with the pull request numbers, and
+  smaller things in a list at the end. Cover everything since the previous
+  release tag (`git log --merges <previous tag>..<NAME>`), and say so if some of
+  it went live earlier without a tag. See an earlier release for the form
+  (`gh release list`, `gh release view`). The repository is public: no
+  hostnames, deployment names, accounts or other operational details.
 - Report: release name, commit, when the switch happened, whether any probe
-  failed during it, and what the log checks showed.
+  failed during it, and what the log checks showed. For a `netskrafl` release,
+  also what the staging step showed, or that staging was skipped at the user's
+  request.
 
 ## When a container deploy goes wrong
 
@@ -217,7 +291,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
   -d "$ROLLBACK" "$API/rollback"
 ```
 
-Then watch it as in A4 and verify as in A5 (the serving commit is `DEPLOYED`
+Then watch it as in A5 and verify as in A6 (the serving commit is `DEPLOYED`
 again). What to know:
 
 - **A rollback restores the earlier deployment's spec too**, not only its code:
@@ -366,6 +440,9 @@ For each stage in **10% → 25% → 50% → 100%**:
   This is part of the deploy the user approved; no separate confirmation is
   needed. If the rollout is abandoned or rolled back before 100%, do not tag.
   Never move or delete an existing release tag.
+- **Publish a GitHub release** for the tag, with release notes, as described in
+  step A7 (`gh release create <VERSION> --verify-tag --title "Version <VERSION>"
+  --notes-file "$NOTES"`).
 - **Do not delete or stop old versions** — leave them for rollback. Mention to
   the user that older versions remain and can be cleaned up later.
 - Report the final state: `gcloud app versions list --project=explo-live --service=default --format="table(version.id, traffic_split, version.servingStatus)"`.
@@ -391,7 +468,9 @@ needed on rollback.
 - On App Engine, `gcloud app deploy --no-promote` is safe (no traffic); the
   **traffic stages** are the sensitive steps. On the container targets, the
   **push to the deploy branch** is the sensitive step: gate it on explicit user
-  confirmation.
+  confirmation. Production (`do-netskrafl`) is pushed only after the same commit
+  has run well on the staging app, unless the user asked for a release straight
+  to production.
 - If `gcloud` is not authenticated for the target project, use the project's
   service-account key: `CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=<credentials file>`.
 - The `doctl` commands for reading (`list`, `get`, `logs`, `spec get`) are

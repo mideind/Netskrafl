@@ -87,11 +87,18 @@ services:
         value: 2
         window: FIVE_MINUTES
 
-    # Runtime logs are kept only briefly by the platform: forward them.
+    # Runtime logs are kept only briefly by the platform (about two hours
+    # at busy times, and a container's log is gone once it is replaced):
+    # forward them. The container writes one JSON entry per line, which the
+    # log service indexes as it is (see doc/logging.md). The endpoint is the
+    # log intake of the service's EU site. The API key is a secret of the
+    # log service's organization, and unlike the SECRET values below the
+    # platform does NOT encrypt it: the live spec holds it in plain text.
+    # Treat every copy of a live spec as a secret (see doc/logging.md).
     # log_destinations:
-    #   - name: REPLACE_ME
+    #   - name: datadog
     #     datadog:
-    #       endpoint: REPLACE_ME
+    #       endpoint: https://http-intake.logs.datadoghq.eu
     #       api_key: REPLACE_ME
 
     envs:

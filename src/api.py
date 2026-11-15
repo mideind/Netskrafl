@@ -83,7 +83,7 @@ from languages import (
 )
 from wordbase import Wordbase
 from skraflmechanics import BOARD_SIZE, Rack
-from skrafluser import User
+from skrafluser import User, log_paywall
 from skraflgame import BestMoveList, Game
 from skrafldb import (
     ChatModel,
@@ -1217,6 +1217,7 @@ def bestmoves_api() -> ResponseType:
         # or the request is coming from a mobile client
         # (where the paywall gating is reliably performed in the UI)
         # or we're on a development server
+        log_paywall(user, "best_moves")
         return jsonify(result=Error.USER_MUST_BE_FRIEND)
 
     rq = RequestData(request)
@@ -1533,6 +1534,7 @@ def initgame_api() -> ResponseType:
     # Enforce game count limit for non-paying users
     if not user.has_paid():
         if GameModel.count_live_games(uid, max_count=MAX_FREE_GAMES) >= MAX_FREE_GAMES:
+            log_paywall(user, "game_limit_reached")
             return jsonify(ok=False, err="game_limit_reached")
 
     if NETSKRAFL:
@@ -1557,6 +1559,7 @@ def initgame_api() -> ResponseType:
         robot_level = apl.level
         # Check whether this robot requires a subscription
         if apl.premium and not user.has_paid():
+            log_paywall(user, "premium_required")
             return jsonify(ok=False, err="premium_required")
         # The game is always in the user's locale
         prefs = PrefsDict(newbag=True, locale=user.locale)

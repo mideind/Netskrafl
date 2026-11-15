@@ -46,6 +46,7 @@ import os
 import time
 import gc
 
+from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime, timedelta
 from threading import Thread
 
@@ -53,6 +54,7 @@ from flask import request, Blueprint
 from flask.wrappers import Request
 
 from config import running_local, ResponseType, DEFAULT_ELO, RATINGS_ENABLED, PROJECT_ID
+from applog import log_fields, log_job
 from cache import memcache
 from skrafldb import (
     Context,
@@ -161,13 +163,14 @@ def _write_stats(timestamp: datetime, urecs: Dict[str, StatsModel]) -> None:
         put_multi(um_list)
 
 
-def _run_stats(from_time: datetime, to_time: datetime) -> bool:
-    """Runs a process to update user statistics and Elo ratings"""
+def _run_stats(from_time: datetime, to_time: datetime) -> Optional[Tuple[int, int]]:
+    """Runs a process to update user statistics and Elo ratings. Returns
+    the number of games and of users processed, or None if it failed."""
     logging.info("Generating stats from {0} to {1}".format(from_time, to_time))
 
     if from_time >= to_time:
         # Null time range
-        return False
+        return None
 
     # Collect any stray garbage before we start
     gc.collect()
@@ -367,7 +370,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
                 from_time, to_time, cnt, len(users), ex
             )
         )
-        return False
+        return None
 
     # Completed without incident
     logging.info(
@@ -376,7 +379,7 @@ def _run_stats(from_time: datetime, to_time: datetime) -> bool:
         )
     )
     _write_stats(to_time, users)
-    return True
+    return cnt, len(users)
 
 
 def _table_to_json(table: StatsResults) -> str:
@@ -439,8 +442,61 @@ def _stats_dict(
     )
 
 
+@dataclass
+class RatingsTableInfo:
+    """What a run of the ratings task found for one table, for the log.
+    The figures show that the table is what it should be: full (rows equals
+    max_rows unless there are fewer players than that) and complete (the
+    weakest candidate is at or below the cutoff, so nobody outside the
+    candidates could belong in the table)."""
+
+    kind: str
+    # The number of rows in the table, and the number it should have
+    rows: int = 0
+    max_rows: int = MAX_RATINGS
+    # Robots among the rows
+    robots: int = 0
+    # The highest and the lowest Elo rating in the table
+    elo_top: int = 0
+    elo_cutoff: int = 0
+    # The number of candidates considered: the users with the highest
+    # current Elo, the robots and the players of yesterday's table
+    candidates: int = 0
+    # The lowest snapshot Elo among the highest-Elo users considered
+    weakest_candidate: int = 0
+    # True if every user was a candidate (a small database)
+    all_users: bool = False
+
+    @property
+    def full(self) -> bool:
+        return self.rows >= self.max_rows or self.all_users
+
+    @property
+    def complete(self) -> bool:
+        return self.all_users or self.weakest_candidate <= self.elo_cutoff
+
+    @property
+    def ok(self) -> bool:
+        return self.full and self.complete
+
+    def summary(self) -> str:
+        s = (
+            f"Ratings table '{self.kind}': {self.rows} of {self.max_rows} rows, "
+            f"Elo {self.elo_top} to {self.elo_cutoff}, "
+            f"{self.candidates} candidates, weakest {self.weakest_candidate}"
+        )
+        if not self.full:
+            s += "; NOT FULL"
+        if not self.complete:
+            s += "; POSSIBLY INCOMPLETE (no candidate below the cutoff)"
+        return s
+
+
 def _current_ratings_table(
-    kind: str, sticky_keys: Iterable[str], max_len: int = MAX_RATINGS
+    kind: str,
+    sticky_keys: Iterable[str],
+    max_len: int = MAX_RATINGS,
+    info: Optional[RatingsTableInfo] = None,
 ) -> StatsResults:
     """Compute the current top-Elo ratings table of the given kind.
     Candidates are the users with the highest current Elo ratings (as
@@ -462,8 +518,11 @@ def _current_ratings_table(
             key_set.add(k)
             candidates.append((user_id, robot_level))
 
-    for uid in UserModel.list_top_elo(kind, max_len + RATINGS_OVERSAMPLE):
+    top_users = UserModel.list_top_elo(kind, max_len + RATINGS_OVERSAMPLE)
+    for uid in top_users:
         add_candidate(uid, 0)
+    # The highest-Elo users come first among the candidates
+    num_top = len(candidates)
     if kind == "all":
         # The 'all' table includes robot players
         for level in ROBOT_LEVELS:
@@ -476,6 +535,7 @@ def _current_ratings_table(
         _stats_dict(sm, user_id, robot_level, kind)
         for (user_id, robot_level), sm in zip(candidates, sms)
     ]
+    weakest = min((d["elo"] for d in table[:num_top]), default=0)
     # Drop robot entries for levels that have no games recorded
     table = [d for d in table if d["user"] is not None or d["games"] > 0]
     # Sort in descending order by Elo, rank and truncate
@@ -483,11 +543,21 @@ def _current_ratings_table(
     del table[max_len:]
     for ix, d in enumerate(table):
         d["rank"] = ix + 1
+    if info is not None:
+        info.rows = len(table)
+        info.max_rows = max_len
+        info.robots = sum(1 for d in table if d["user"] is None)
+        info.elo_top = table[0]["elo"] if table else 0
+        info.elo_cutoff = table[-1]["elo"] if table else 0
+        info.candidates = len(candidates)
+        info.weakest_candidate = weakest
+        info.all_users = len(top_users) < max_len + RATINGS_OVERSAMPLE
     return table
 
 
-def _create_ratings() -> None:
-    """Create the Top 100 ratings tables"""
+def _create_ratings() -> List[RatingsTableInfo]:
+    """Create the Top 100 ratings tables. Returns what was found
+    for each table, for the log."""
     logging.info("Starting _create_ratings")
 
     timestamp = datetime.now(UTC)
@@ -535,6 +605,7 @@ def _create_ratings() -> None:
 
     t0 = time.time()
     rlist: List[RatingModel] = []
+    infos: List[RatingsTableInfo] = []
 
     for kind in RATING_KINDS:
 
@@ -546,7 +617,16 @@ def _create_ratings() -> None:
         # Compute the current table; users in the most recent archived
         # table are included as candidates ("sticky") so that they are
         # re-evaluated even if their current Elo rating has dropped
-        table = _current_ratings_table(kind, t_yesterday.keys())
+        info = RatingsTableInfo(kind)
+        infos.append(info)
+        table = _current_ratings_table(kind, t_yesterday.keys(), info=info)
+        logging.log(
+            logging.INFO if info.ok else logging.WARNING,
+            info.summary(),
+            extra=log_fields(
+                "ratings_table", full=info.full, complete=info.complete, **asdict(info)
+            ),
+        )
 
         # Archive today's table (before augmenting it) so that future
         # runs can use it for their historical comparisons
@@ -573,6 +653,7 @@ def _create_ratings() -> None:
 
     t1 = time.time()
     logging.info("Finishing _create_ratings in {0:.1f} seconds".format(t1 - t0))
+    return infos
 
 
 def _backfill_ratings_for_date(d: date) -> None:
@@ -649,13 +730,15 @@ def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
 
     def _deferred_stats() -> bool:
         success = False
+        counts: Optional[Tuple[int, int]] = None
         t0 = time.time()
         error = "Gave up after two retries"
         try:
             # Try up to two times to execute _run_stats()
             attempts = 0
             while attempts < 2:
-                if _run_stats(from_time, to_time):
+                counts = _run_stats(from_time, to_time)
+                if counts is not None:
                     # Success: we're done
                     success = True
                     break
@@ -682,6 +765,20 @@ def deferred_stats(from_time: datetime, to_time: datetime, wait: bool) -> bool:
                 )
             )
             CompletionModel.add_failure("stats", from_time, to_time, error)
+        period = f"{from_time:%Y-%m-%d}"
+        games, users = counts or (0, 0)
+        log_job(
+            "stats",
+            success,
+            t1 - t0,
+            f"{games} games and {users} users, played on {period}"
+            if success
+            else f"{error}, for games played on {period}",
+            period=period,
+            games=games if success else None,
+            users=users if success else None,
+            error=None if success else error,
+        )
         return success
 
     if wait:
@@ -703,11 +800,12 @@ def deferred_ratings(wait: bool) -> bool:
         t0 = time.time()
 
         try:
-            _create_ratings()
+            infos = _create_ratings()
         except Exception as ex:
             logging.error("Exception in deferred_ratings: {0!r}".format(ex))
             now = datetime.now(UTC)
             CompletionModel.add_failure("ratings", now, now, str(ex))
+            log_job("ratings", False, time.time() - t0, str(ex), error=str(ex))
             return False
 
         t1 = time.time()
@@ -719,6 +817,20 @@ def deferred_ratings(wait: bool) -> bool:
         logging.info("Ratings calculation finished in {0:.2f} seconds".format(t1 - t0))
         now = datetime.now(UTC)
         CompletionModel.add_completion("ratings", now, now)
+        # The tables were written, so the job succeeded; a table that is
+        # not full or possibly incomplete is pointed out here and was
+        # logged as a warning above
+        log_job(
+            "ratings",
+            True,
+            t1 - t0,
+            ", ".join(
+                f"{i.kind} {i.rows}/{i.max_rows}" + ("" if i.ok else " (CHECK)")
+                for i in infos
+            ),
+            tables_ok=all(i.ok for i in infos),
+            rows={i.kind: i.rows for i in infos},
+        )
 
         return True
 

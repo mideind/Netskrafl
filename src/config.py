@@ -44,6 +44,7 @@ from logging.config import dictConfig
 
 # Import authmanager first to ensure credentials are set up
 # before any Google Cloud libraries are imported (via secret_manager)
+from applog import configure_container_logging
 from authmanager import running_local
 from secret_manager import SecretProvider, get_secret_provider
 
@@ -78,12 +79,8 @@ if not running_local and not ON_GAE:
     # replaces any handler set up that way by the modules imported above.
     # (Local development is configured below; on App Engine, main.py hands
     # logging over to google.cloud.logging, which clears these handlers.)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        force=True,
-    )
+    # The entries are written as JSON, one per line (see applog.py).
+    configure_container_logging()
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 

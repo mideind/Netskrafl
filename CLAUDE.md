@@ -155,6 +155,13 @@ multiple languages through separate DAWG files and tile sets.
   request returns, and a client reacting to an early notification reads the old
   state (the 2026-09-11 stale-game-list bug in the Explo app)
 - Elo rating system tracks player performance
+- Logging in the container is structured: one JSON entry per line, one entry
+  per request with the user's id, and entries for refusals, logins and the
+  results of scheduled jobs (`src/applog.py`; the entries, their fields and
+  the forwarding to the log service are described in `doc/logging.md`). Attach
+  fields to a log call with `log_fields()`, and end a scheduled job with
+  `log_job()`. An API refusal is answered with HTTP 200, so it is only visible
+  in the log if it is noted there
 - Maintenance mode: with the `MAINTENANCE` environment variable set, the server
   answers every request except the health endpoints with HTTP 503
   (`src/maintenance.py`). A version built that way and deployed without traffic
@@ -181,14 +188,18 @@ multiple languages through separate DAWG files and tile sets.
   on the deployed commit, pushed to GitHub once the release serves all users. On
   App Engine (explo-live) the tag equals the App Engine version name; in the
   container (netskrafl) it equals the `APP_VERSION` label in the app's spec. The
-  `/deploy` skill does this as its last step; tag by hand after any deploy made
-  outside it
+  tag is also published as a GitHub release ("Version <tag>") with release notes
+  that cover everything since the previous release tag. The `/deploy` skill does
+  both as its last step; tag and publish by hand after any deploy made outside it
 - Deploying differs per platform, and the `/deploy` skill covers both: a netskrafl
-  release is a push to the `do-netskrafl` branch, with no gradual rollout (the new
-  container gets all the traffic once it passes its health check), so the skill
-  also describes what to do when a release goes wrong, including rollback to the
-  previous deployment. A release that contains a schema migration cannot be rolled
-  back that way and must be fixed forward
+  release goes to the staging app first (the `do-deploy` branch, i.e. the Explo dev
+  backend) and, once it is seen to run well there, to production by a push to the
+  `do-netskrafl` branch; straight to production only when that is asked for
+  explicitly. There is no gradual rollout (the new container gets all the traffic
+  once it passes its health check), so the skill also describes what to do when a
+  release goes wrong, including rollback to the previous deployment. A release
+  that contains a schema migration cannot be rolled back that way and must be
+  fixed forward
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
   current status are tracked in `doc/migration-strategy.md`

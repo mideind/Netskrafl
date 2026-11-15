@@ -16,7 +16,8 @@ fi
 # Start supercronic in the background if CRON_SECRET is set and supercronic is installed
 if [ -n "$CRON_SECRET" ] && command -v supercronic >/dev/null 2>&1; then
     echo "Starting supercronic scheduler..."
-    supercronic /app/crontab &
+    # -json: log in JSON, like the application does (see src/applog.py)
+    supercronic -json /app/crontab &
 elif [ -n "$CRON_SECRET" ]; then
     echo "Warning: CRON_SECRET set but supercronic not installed, skipping cron scheduler"
 else
@@ -45,7 +46,10 @@ else
 fi
 
 # Start gunicorn in the foreground
-# Settings match app-netskrafl.yaml: 3 workers, 6 threads each, gthread worker class
+# Settings match app-netskrafl.yaml: 3 workers, 6 threads each, gthread worker class.
+# There is no access log: the application logs each request itself, with the
+# user id and the client address (RequestLogMiddleware in src/applog.py).
+# gunicorn's own entries are written as JSON by the logger class.
 exec gunicorn \
     --bind "0.0.0.0:${PORT:-8080}" \
     --workers 3 \
@@ -53,8 +57,7 @@ exec gunicorn \
     --worker-class gthread \
     --keep-alive 10 \
     --timeout 30 \
-    --access-logfile - \
-    --access-logformat '%(h)s %(t)s "%(r)s" %(s)s %(b)s %(D)sμs' \
+    --logger-class gunicorn_logger.JsonLogger \
     --error-logfile - \
     --capture-output \
     main:app
