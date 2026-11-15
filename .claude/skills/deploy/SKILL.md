@@ -223,6 +223,18 @@ wrong"** rather than waiting for it to clear up.
   ```
   This is part of the deploy the user approved. Do not tag a release that was
   rolled back. Never move or delete an existing release tag.
+- **Publish a GitHub release** for the tag, with release notes:
+  ```bash
+  gh release create <NAME> --verify-tag --title "Version <NAME>" --notes-file "$NOTES"
+  ```
+  Write the notes for someone who was not there: a heading that names the main
+  changes, then one short section per change that users or operators can notice
+  (what was wrong or missing, what changed), with the pull request numbers, and
+  smaller things in a list at the end. Cover everything since the previous
+  release tag (`git log --merges <previous tag>..<NAME>`), and say so if some of
+  it went live earlier without a tag. See an earlier release for the form
+  (`gh release list`, `gh release view`). The repository is public: no
+  hostnames, deployment names, accounts or other operational details.
 - Report: release name, commit, when the switch happened, whether any probe
   failed during it, and what the log checks showed. For a `netskrafl` release,
   also what the staging step showed, or that staging was skipped at the user's
@@ -409,6 +421,9 @@ For each stage in **10% → 25% → 50% → 100%**:
   This is part of the deploy the user approved; no separate confirmation is
   needed. If the rollout is abandoned or rolled back before 100%, do not tag.
   Never move or delete an existing release tag.
+- **Publish a GitHub release** for the tag, with release notes, as described in
+  step A7 (`gh release create <VERSION> --verify-tag --title "Version <VERSION>"
+  --notes-file "$NOTES"`).
 - **Do not delete or stop old versions** — leave them for rollback. Mention to
   the user that older versions remain and can be cleaned up later.
 - Report the final state: `gcloud app versions list --project=explo-live --service=default --format="table(version.id, traffic_split, version.servingStatus)"`.
