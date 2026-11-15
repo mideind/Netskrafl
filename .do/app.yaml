@@ -82,6 +82,17 @@ services:
       timeout_seconds: 10
       failure_threshold: 3
 
+    # Runtime logs are kept only briefly by the platform: forward them to
+    # the log service (its EU site). The container writes one JSON entry
+    # per line; see doc/logging.md. The API key is a secret, stored
+    # encrypted in the live spec. Try changes to logging here first: the
+    # entries of this app are tagged with its own service name (PROJECT_ID).
+    # log_destinations:
+    #   - name: datadog
+    #     datadog:
+    #       endpoint: https://http-intake.logs.datadoghq.eu
+    #       api_key: REPLACE_ME
+
     envs:
       # --- Application identity -------------------------------------------
       # Point deployment tests at explo-dev, NOT the netskrafl production

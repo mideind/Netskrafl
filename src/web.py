@@ -78,7 +78,14 @@ from logic import UserForm, promo_to_show_to_user
 from skrafldb import PrefsDict, ZombieModel, on_commit
 from skraflgame import Game, BingoList
 from autoplayers import COMMON, autoplayer_create
-from skrafluser import User, UserLoginDict, log_fields, verify_malstadur_token
+from applog import note_request
+from skrafluser import (
+    User,
+    UserLoginDict,
+    log_fields,
+    log_paywall,
+    verify_malstadur_token,
+)
 import firebase
 import billing
 from cache import memcache
@@ -734,6 +741,7 @@ def review() -> ResponseType:
 
     if not user.has_paid():
         # Only paying users can see game reviews
+        log_paywall(user, "review")
         return redirect(url_for("web.friend", action=1))
 
     game = None
@@ -922,17 +930,29 @@ def login_malstadur() -> ResponseType:
             ),
         )
         token = ""
+    # The log entry says what the host's token claimed (plan) and what the
+    # user ended up with (friend, has_paid), so that a subscription that
+    # does not take effect can be seen here
+    prefs = uld.get("prefs") or {}
+    token_plan = "friend" if is_friend else "none"
+    friend = bool(prefs.get("friend", False))
+    has_paid = bool(prefs.get("haspaid", False))
     logging.info(
         f"Málstaður login: user {userid} logged in"
-        f"{' (new user)' if uld['new'] else ''}",
+        f"{' (new user)' if uld['new'] else ''}"
+        f", token plan {token_plan}, has paid {has_paid}",
         extra=log_fields(
             "malstadur_login",
             outcome="success",
             user_id=userid,
             new_user=uld["new"],
             firebase_token=bool(token),
+            token_plan=token_plan,
+            friend=friend,
+            has_paid=has_paid,
         ),
     )
+    note_request(user_id=userid)
     if not bearer_auth:
         # Legacy client: set a session cookie for backwards compatibility.
         # Note that this may not work for cross-origin requests due to

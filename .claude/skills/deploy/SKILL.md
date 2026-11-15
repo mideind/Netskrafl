@@ -196,18 +196,33 @@ curl -s -o /dev/null -m 10 -w "%{http_code} %{time_total}\n" "https://$HOST/heal
    The commit must equal `COMMIT`.
 2. It answers: `/health/ready` gives 200; an API call without a login (for
    instance `POST /gamelist`) gives 401, not 5xx.
-3. Watch the log for at least 10 minutes, longer for a risky release. Report what
-   each check shows; empty output means clean:
+3. Watch the log for at least 10 minutes, longer for a risky release. The
+   container writes one JSON entry per line (see `doc/logging.md`); `doctl`
+   puts the component name and a timestamp in front of each. Report what each
+   check shows; empty output means clean:
    ```bash
-   doctl apps logs "$APP" "$COMPONENT" --type run --tail 3000 > "$LOG"
-   grep -E "ERROR|WARNING|CRITICAL|Traceback" "$LOG"          # application problems
-   grep -E '" 5[0-9]{2} ' "$LOG"                              # failed requests
-   grep -c 'job succeeded' "$LOG"; grep 'job failed' "$LOG"   # scheduled jobs (every 2 minutes)
-   grep -E "Booting worker|Starting gunicorn" "$LOG"          # more than one start = restarts
+   doctl apps logs "$APP" "$COMPONENT" --type run --tail 3000 \
+     | sed 's/^[^{]*//' | jq -c -R 'fromjson? // empty' > "$LOG"    # the JSON entries only
+   # application problems (supercronic's entries have "level" instead of "status")
+   jq -r 'select((.status // .level) | IN("warning","error","critical","fatal"))
+          | "\(.timestamp // .time) \(.status // .level) \(.message // .msg)"' "$LOG"
+   # failed requests
+   jq -r 'select(.event == "request" and .http.status_code >= 500) | .message' "$LOG"
+   # the scheduler (a job every 2 minutes), and what the jobs reported
+   jq -r 'select(.msg == "job succeeded" or .msg == "job failed") | .msg' "$LOG" | sort | uniq -c
+   jq -r 'select(.event == "job") | "\(.timestamp) \(.message)"' "$LOG"
+   # more than one start of the server, or a worker timeout = restarts
+   jq -r 'select(.logger.name == "gunicorn" and (.message | test("Starting gunicorn|Booting worker|WORKER TIMEOUT")))
+          | "\(.timestamp) \(.message)"' "$LOG"
+   # response times of the requests, in milliseconds
+   jq -s '[.[] | select(.event == "request") | .duration_ms] | sort
+          | {n: length, p50: .[length * 0.5 | floor], p99: .[length * 0.99 | floor], max: .[-1]}' "$LOG"
    ```
-   The access log ends each request with its duration in microseconds; compare
-   the slow tail with what is normal (median API call around 30 ms, nearly all
-   under 300 ms).
+   Compare the response times with what is normal (median API call around
+   30 ms, nearly all under 300 ms). Lines that are not JSON (the entrypoint's
+   start-up messages, the moves sidecar) are left out by the first command; read
+   the raw log if a start-up problem is suspected. A release that is older than
+   the JSON log format writes text: use `grep` on the raw log for it.
 4. Ask the user to try the change itself, and one ordinary thing: log in, open a
    game, make a move.
 

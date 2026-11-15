@@ -75,7 +75,7 @@ from basics import (
     check_port_available,
     current_user_id,
 )
-from skrafluser import log_fields
+from applog import RequestLogMiddleware, log_fields, note_api_outcome, note_request
 from authmanager import auth_manager
 from cors import init_cors
 from maintenance import MAINTENANCE_KEY, init_maintenance
@@ -152,6 +152,11 @@ if not running_local and not ON_GAE:
     app.wsgi_app = ProxyFix(  # type: ignore[assignment]
         app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
     )
+    # Log each request as one structured entry (see applog.py). This is the
+    # outermost layer, so that the logged duration includes the database
+    # commit at the end of the request. It replaces the web server's access
+    # log; App Engine logs requests itself.
+    app.wsgi_app = RequestLogMiddleware(app.wsgi_app)  # type: ignore[assignment]
 
 # Initialize Cross-Origin Resource Sharing (CORS)
 init_cors(app)
@@ -226,6 +231,10 @@ def before_request():
 @app.after_request
 def after_request(response: Response) -> Response:
     """Post-request processing"""
+    # Tell the request log who the user is, and whether the request was
+    # refused (both do nothing unless requests are being logged)
+    note_request(user_id=current_user_id())
+    note_api_outcome(response)
     if running_local:
         # Note: request_start may not be set if a before_request handler
         # (e.g., CORS preflight) returned a response early

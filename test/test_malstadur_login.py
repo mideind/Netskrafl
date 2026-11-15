@@ -92,6 +92,9 @@ def test_successful_login_is_logged_with_the_user_id(
             user_id=USER_ID,
             new_user=False,
             firebase_token=True,
+            token_plan="friend",
+            friend=False,
+            has_paid=False,
         )
     ]
 
