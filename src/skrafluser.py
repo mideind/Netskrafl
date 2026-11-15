@@ -230,6 +230,14 @@ NICKNAME_STRIP = re.compile(r"[\W_]+", re.UNICODE)
 set_online_status_for_summaries = functools.partial(set_online_status, "uid")
 
 
+def prefs_copy(prefs: Optional[PrefsDict]) -> PrefsDict:
+    """Return a copy of the preferences of a user entity. Preferences must
+    never be changed inside the dict that the entity holds: on PostgreSQL
+    such a change is not noticed and is thus not saved. Change a copy
+    instead and assign it back to the entity."""
+    return cast(PrefsDict, dict(prefs or {}))
+
+
 def make_login_dict(
     user_id: str,
     nickname: str,
@@ -522,7 +530,7 @@ class User:
         self._inactive = um.inactive
         self._locale = um.locale or DEFAULT_LOCALE
         self._plan = um.plan
-        self._preferences = um.prefs or {}
+        self._preferences = prefs_copy(um.prefs)
         self._ready = True if um.ready is None else um.ready
         self._ready_timed = True if um.ready_timed is None else um.ready_timed
         self._chat_disabled = False if um.chat_disabled is None else um.chat_disabled
@@ -557,7 +565,7 @@ class User:
             um.inactive = self._inactive
             um.locale = self._locale or DEFAULT_LOCALE
             um.plan = self._plan
-            um.prefs = self._preferences
+            um.prefs = prefs_copy(self._preferences)
             um.ready = self._ready
             um.ready_timed = self._ready_timed
             um.chat_disabled = self._chat_disabled
@@ -1355,7 +1363,9 @@ class User:
             full_name = um.prefs.get("full_name", "") if um.prefs else ""
             if name and not full_name:
                 # Use the opportunity to update the name, if not already set
-                um.prefs["full_name"] = name
+                prefs = prefs_copy(um.prefs)
+                prefs["full_name"] = name
+                um.prefs = prefs
             # Note the login timestamp
             um.last_login = datetime.now(UTC)
             # If the account was disabled, enable it again
@@ -1387,7 +1397,9 @@ class User:
             full_name = um.prefs.get("full_name", "") if um.prefs else ""
             if name and not full_name:
                 # Use the opportunity to update the name, if not already set
-                um.prefs["full_name"] = name
+                prefs = prefs_copy(um.prefs)
+                prefs["full_name"] = name
+                um.prefs = prefs
             # Note the last login
             um.last_login = datetime.now(UTC)
             # If the account was disabled, enable it again
@@ -1439,11 +1451,15 @@ class User:
             um.last_login = datetime.now(UTC)
             # For now, a user is a friend if he has either a friend status from
             # the legacy Netskrafl/SalesCloud setup, or a subscription from Málstaður
-            is_legacy_friend = um.prefs.get("friend", False) or um.plan == "friend"
-            legacy_haspaid = um.prefs.get("haspaid", False)
+            prefs = prefs_copy(um.prefs)
+            is_legacy_friend = prefs.get("friend", False) or um.plan == "friend"
+            legacy_haspaid = prefs.get("haspaid", False)
             um.plan = "friend" if is_friend or is_legacy_friend else ""
-            um.prefs["friend"] = is_friend or is_legacy_friend
-            um.prefs["haspaid"] = is_friend or legacy_haspaid
+            prefs["friend"] = is_friend or is_legacy_friend
+            prefs["haspaid"] = is_friend or legacy_haspaid
+            # Assign the changed copy: a change made inside um.prefs
+            # itself would not be saved on PostgreSQL
+            um.prefs = prefs
             um.put()
             all_prefs = PrefsDict(
                 ready=um.ready or False,
