@@ -210,7 +210,13 @@ the service check the monitor definitions without creating anything, and with
 environment). Thresholds are changed
 in that file, not in the service's UI, so that they are not lost. The
 ratings job only runs for Netskrafl: for an Explo backend, give
-`--jobs stats,cleanup`, or its absence is reported every day.
+`--jobs stats,cleanup`, or its absence is reported every day. `--no-monitors`
+creates the metrics only, for a backend whose alerts should not reach anyone.
+
+The monitors that expect a nightly job to report once a day alert from the
+moment they are created until the job has run. They carry the tag
+`nightly-job:<service>`: create a downtime on that tag, ending after the next
+night's jobs, before creating them.
 
 Lines that are not JSON also reach the log service, as plain messages: the
 entrypoint's start-up lines, the output of the schema migration, and the
