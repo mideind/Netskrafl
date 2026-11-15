@@ -181,8 +181,9 @@ multiple languages through separate DAWG files and tile sets.
   on the deployed commit, pushed to GitHub once the release serves all users. On
   App Engine (explo-live) the tag equals the App Engine version name; in the
   container (netskrafl) it equals the `APP_VERSION` label in the app's spec. The
-  `/deploy` skill does this as its last step; tag by hand after any deploy made
-  outside it
+  tag is also published as a GitHub release ("Version <tag>") with release notes
+  that cover everything since the previous release tag. The `/deploy` skill does
+  both as its last step; tag and publish by hand after any deploy made outside it
 - Deploying differs per platform, and the `/deploy` skill covers both: a netskrafl
   release goes to the staging app first (the `do-deploy` branch, i.e. the Explo dev
   backend) and, once it is seen to run well there, to production by a push to the
