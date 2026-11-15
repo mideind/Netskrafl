@@ -81,7 +81,7 @@ POST /initgame 200 23 ms user 0a1b2c refused: premium_required
 | `network.client.ip` | The client's address, from the header that the platform's proxy sets |
 | `duration` (nanoseconds), `duration_ms` | Time in the application, including the database commit |
 | `request_id` | Also sent to the client in the `X-Request-Id` header |
-| `api.ok`, `api.err`, `api.result`, `api.status` | Present if the answer was a refusal: `ok: false`, a nonzero result code, or a login status of `invalid` or `expired` |
+| `api.ok`, `api.err`, `api.result`, `api.reason`, `api.status` | Present if the answer was a refusal: `ok: false` with its `err`; a result code other than a legal move or a move that ends the game, with its name as `reason` (`LOGIN_REQUIRED`, `WORD_NOT_IN_DICTIONARY`, ...); or a login status of `invalid` or `expired` |
 
 Not logged, unless they fail: CORS preflights (`OPTIONS`), the platform's
 health probes (`/health/`) and static files. A request answered with 5xx is
