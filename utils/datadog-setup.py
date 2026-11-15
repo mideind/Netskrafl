@@ -20,11 +20,14 @@
 
     Usage, from the repository root:
         venv/bin/python utils/datadog-setup.py --service SERVICE --notify HANDLE
-            [--site datadoghq.eu] [--jobs stats,ratings,cleanup] [--apply]
+            [--site datadoghq.eu] [--jobs stats,ratings,cleanup]
+            [--validate | --apply]
 
-    Without --apply, the program only prints what it would send. With it,
-    the API key and the application key of the Datadog organization are
-    read from the environment variables DD_API_KEY and DD_APP_KEY.
+    Without --apply, the program only prints what it would send. With
+    --validate, it asks the service to check each monitor definition,
+    without creating anything. --validate and --apply read the API key and
+    the application key of the Datadog organization from the environment
+    variables DD_API_KEY and DD_APP_KEY.
 
     The program can be run again after a change: metrics are found by their
     name and monitors by their title, and are updated in place.
@@ -264,6 +267,14 @@ class Api:
         self.call("PATCH", f"{path}/{name}", {"data": {"type": "logs_metrics", "attributes": update}})
         return "updated"
 
+    def validate_monitor(self, monitor: Dict[str, Any]) -> str:
+        """Have the service check a monitor definition; nothing is created"""
+        try:
+            self.call("POST", "/api/v1/monitor/validate", monitor)
+        except RuntimeError as e:
+            return f"INVALID: {e}"
+        return "valid"
+
     def put_monitor(self, monitor: Dict[str, Any]) -> str:
         found: Any = self.call("GET", "/api/v1/monitor", params={"name": monitor["name"]})
         same = [f for f in found or [] if f.get("name") == monitor["name"]]
@@ -293,6 +304,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "only runs for Netskrafl: give 'stats,cleanup' for an Explo backend",
     )
     parser.add_argument(
+        "--validate", action="store_true",
+        help="Have the service check the monitor definitions; nothing is created",
+    )
+    parser.add_argument(
         "--apply", action="store_true", help="Send the definitions (default: only print them)"
     )
     args = parser.parse_args(argv)
@@ -300,7 +315,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     all_metrics = metrics(args.service)
     jobs = [j.strip() for j in args.jobs.split(",") if j.strip()]
     all_monitors = monitors(args.service, args.notify, jobs)
-    if not args.apply:
+    if not args.apply and not args.validate:
         print(json.dumps({"metrics": all_metrics, "monitors": all_monitors}, indent=2))
         print(
             f"\nDry run: {len(all_metrics)} metrics and {len(all_monitors)} monitors "
@@ -315,6 +330,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("DD_API_KEY and DD_APP_KEY must be set in the environment", file=sys.stderr)
         return 2
     api = Api(args.site, api_key, app_key)
+    if args.validate:
+        results = [(m["name"], api.validate_monitor(m)) for m in all_monitors]
+        for name, verdict in results:
+            print(f"monitor {name}: {verdict}")
+        return 0 if all(v == "valid" for _, v in results) else 1
     for metric in all_metrics:
         print(f"metric {metric['id']}: {api.put_metric(metric)}")
     for monitor in all_monitors:

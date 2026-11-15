@@ -174,6 +174,13 @@ is named in the app's spec (`log_destinations`, see the reference specs in
 same site that Málstaður uses; the API key is entered into the live spec. No
 agent runs in the container.
 
+The platform's forwarder tags each line with the name of the app as its
+`source`. A JSON entry's own `service` (the deployment's `PROJECT_ID`) takes
+precedence over the service name that the forwarder gives, so the staging
+and the production app, whose component has the same name, are told apart by
+`service`. Lines that are not JSON get the component's name as their service
+and can only be told apart by `source`.
+
 The platform does not encrypt that API key: unlike the environment variables
 of type `SECRET`, it comes back in plain text whenever the spec is read. So
 every copy of a live spec is a secret. Keep one only in a private temporary
@@ -197,8 +204,10 @@ starts a new deployment. Do it on the staging app first.
   rating table that is not full or may be incomplete; a subscriber refused at
   the paywall; a worker timeout; restarting workers; slow requests.
 
-Run it without `--apply` to see the definitions, and with it (and the
-organization's keys in the environment) to send them. Thresholds are changed
+Run it without `--apply` to see the definitions, with `--validate` to have
+the service check the monitor definitions without creating anything, and with
+`--apply` to send them (the last two need the organization's keys in the
+environment). Thresholds are changed
 in that file, not in the service's UI, so that they are not lost. The
 ratings job only runs for Netskrafl: for an Explo backend, give
 `--jobs stats,cleanup`, or its absence is reported every day.
