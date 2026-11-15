@@ -155,6 +155,13 @@ multiple languages through separate DAWG files and tile sets.
   request returns, and a client reacting to an early notification reads the old
   state (the 2026-09-11 stale-game-list bug in the Explo app)
 - Elo rating system tracks player performance
+- Logging in the container is structured: one JSON entry per line, one entry
+  per request with the user's id, and entries for refusals, logins and the
+  results of scheduled jobs (`src/applog.py`; the entries, their fields and
+  the forwarding to the log service are described in `doc/logging.md`). Attach
+  fields to a log call with `log_fields()`, and end a scheduled job with
+  `log_job()`. An API refusal is answered with HTTP 200, so it is only visible
+  in the log if it is noted there
 - Maintenance mode: with the `MAINTENANCE` environment variable set, the server
   answers every request except the health endpoints with HTTP 503
   (`src/maintenance.py`). A version built that way and deployed without traffic

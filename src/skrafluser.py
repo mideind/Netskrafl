@@ -44,6 +44,10 @@ import jwt
 
 from flask.helpers import url_for
 
+# log_fields is defined in applog; it is imported here for the modules
+# that have always imported it from this one
+from applog import log_fields as log_fields
+
 from config import (
     ANONYMOUS_PREFIX,
     TOKEN_SECRET,
@@ -348,16 +352,30 @@ def _decode_claims(
     return cast(JWTClaims, payload)
 
 
-def log_fields(event: str, **fields: Any) -> Dict[str, Any]:
-    """Return an 'extra' argument for a logging call that attaches structured
-    fields to the log entry. On GAE, Cloud Logging stores the entry as a
-    jsonPayload with these fields plus 'message', so that one user's entries
-    can be found with a filter such as jsonPayload.user_id="...". Elsewhere
-    (container, local) the fields are ignored, so the message text should
-    still carry the essential information. Empty fields are left out."""
-    json_fields: Dict[str, Any] = {"event": event}
-    json_fields.update((k, v) for k, v in fields.items() if v not in (None, ""))
-    return {"json_fields": json_fields}
+def log_paywall(user: User, reason: str) -> None:
+    """Log that a user was refused something that requires a subscription,
+    with the user's subscription state as the server sees it. A user whose
+    plan says subscriber but who has not paid should not exist: that state
+    is logged as a warning."""
+    plan = user.plan()
+    friend = user.friend()
+    has_paid = user.has_paid()
+    inconsistent = bool(plan) and not has_paid
+    logging.log(
+        logging.WARNING if inconsistent else logging.INFO,
+        f"Paywall: {reason} for user {user.id()} "
+        f"(plan '{plan}', friend {friend}, has paid {has_paid})"
+        + (": inconsistent subscription state" if inconsistent else ""),
+        extra=log_fields(
+            "paywall",
+            reason=reason,
+            user_id=user.id(),
+            plan=plan or "none",
+            friend=friend,
+            has_paid=has_paid,
+            inconsistent=inconsistent,
+        ),
+    )
 
 
 def _expiry_of(claims: JWTClaims) -> datetime:

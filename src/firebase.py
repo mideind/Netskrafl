@@ -52,6 +52,7 @@ from config import (
 from languages import SUPPORTED_LOCALES
 from cache import memcache
 import rtdb_cleanup
+from applog import log_job
 
 
 OnlineStatusFunc = Callable[[Iterable[str]], Iterable[bool]]
@@ -473,6 +474,33 @@ def update() -> ResponseType:
     return "Error", 500
 
 
+def _record_cleanup(
+    ok: bool, started: datetime, summary: str, *, own_thread: bool
+) -> None:
+    """Record a run of the cleanup in the database, next to the runs of
+    the stats and ratings tasks, so that it can be seen there whether and
+    when the cleanup ran."""
+    # Deferred import: a module-level import would be circular
+    from skrafldb import Client, CompletionModel
+
+    def record() -> None:
+        now = datetime.now(UTC)
+        if ok:
+            CompletionModel.add_completion("cleanup", started, now)
+        else:
+            CompletionModel.add_failure("cleanup", started, now, summary)
+
+    try:
+        if own_thread:
+            # A thread outside a request needs a database context of its own
+            with Client.get_context():
+                record()
+        else:
+            record()
+    except Exception as e:
+        logging.warning(f"Could not record the cleanup run: {e!r}")
+
+
 @connect.route("/cleanup", methods=["GET", "POST"])
 def cleanup() -> ResponseType:
     """Delete Realtime Database entries that no client will read again
@@ -489,17 +517,41 @@ def cleanup() -> ResponseType:
     dry_run = request.args.get("dry_run", "") in ("1", "true")
 
     def _cleanup() -> bool:
+        t0 = datetime.now(UTC)
         try:
             result = rtdb_cleanup.cleanup(
                 rtdb_cleanup.FirebaseAdminAccess(_firebase_app), dry_run=dry_run
             )
         except Exception as e:
             logging.error(f"Exception [{repr(e)}] raised in firebase.cleanup()")
+            seconds = (datetime.now(UTC) - t0).total_seconds()
+            log_job("cleanup", False, seconds, repr(e), error=repr(e))
+            if not dry_run:
+                _record_cleanup(False, t0, repr(e), own_thread=not wait)
             return False
         if result.ok:
             logging.info(result.summary())
         else:
             logging.error(result.summary())
+        log_job(
+            "cleanup",
+            result.ok,
+            result.elapsed,
+            "; ".join(
+                f"{name}/ {s.deleted} deleted of {s.expired} expired"
+                + (f", error: {s.error}" if s.error else "")
+                for name, s in result.stats.items()
+            )
+            + ("; dry run, nothing deleted" if result.dry_run else "")
+            + ("" if result.complete else "; time budget used up, continues next run"),
+            dry_run=result.dry_run,
+            complete=result.complete,
+            deleted={name: s.deleted for name, s in result.stats.items()},
+            expired={name: s.expired for name, s in result.stats.items()},
+            scanned={name: s.scanned for name, s in result.stats.items()},
+        )
+        if not dry_run:
+            _record_cleanup(result.ok, t0, result.summary(), own_thread=not wait)
         return result.ok
 
     if not wait:
