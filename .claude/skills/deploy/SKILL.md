@@ -155,6 +155,10 @@ doctl apps spec get "$APP" --format json > "$SPEC"      # $SPEC: a file in a pri
 doctl apps update "$APP" --spec "$SPEC" && rm "$SPEC"
 ```
 
+The live spec holds the log service's API key in plain text (the platform
+encrypts the `SECRET` environment variables, but not the key of a log
+destination). Never print a live spec or leave a copy of one behind.
+
 The spec update cancels the build that the push started and starts a new one
 from the same commit with the new label, so users see one switch, not two.
 Step A6 checks that the commit serving in the end is indeed `COMMIT`.

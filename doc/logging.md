@@ -171,8 +171,15 @@ are JSON as well, with `logger.name: gunicorn`.
 App Platform forwards everything a container writes to a log destination that
 is named in the app's spec (`log_destinations`, see the reference specs in
 `.do/`). The destination is the log intake of the log service's EU site, the
-same site that Málstaður uses; the API key is entered into the live spec,
-where it is stored encrypted. No agent runs in the container.
+same site that Málstaður uses; the API key is entered into the live spec. No
+agent runs in the container.
+
+The platform does not encrypt that API key: unlike the environment variables
+of type `SECRET`, it comes back in plain text whenever the spec is read. So
+every copy of a live spec is a secret. Keep one only in a private temporary
+directory while round-tripping, delete it afterwards, and never paste a live
+spec anywhere. The key is one that was made for this purpose alone, so that
+it can be revoked without touching anything else.
 
 Change the live spec by round-tripping it (`doctl apps spec get`, edit,
 `doctl apps update`), never by applying a reference spec. A spec update

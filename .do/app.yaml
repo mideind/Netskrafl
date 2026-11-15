@@ -84,9 +84,11 @@ services:
 
     # Runtime logs are kept only briefly by the platform: forward them to
     # the log service (its EU site). The container writes one JSON entry
-    # per line; see doc/logging.md. The API key is a secret, stored
-    # encrypted in the live spec. Try changes to logging here first: the
-    # entries of this app are tagged with its own service name (PROJECT_ID).
+    # per line; see doc/logging.md. The API key is a secret, and unlike the
+    # SECRET values below the platform does NOT encrypt it: the live spec
+    # holds it in plain text, so treat every copy of a live spec as a
+    # secret. Try changes to logging here first: the entries of this app
+    # are tagged with its own service name (PROJECT_ID).
     # log_destinations:
     #   - name: datadog
     #     datadog:
