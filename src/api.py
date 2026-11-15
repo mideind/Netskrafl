@@ -783,7 +783,11 @@ def challenge_api() -> ResponseType:
             "type": "notify-challenge",
             "uid": uid,
         }
-        on_commit(lambda: firebase.push_to_user(destuser, push_message, push_data))
+        on_commit(
+            lambda: firebase.push_to_user_in_background(
+                destuser, push_message, push_data
+            )
+        )
     elif action == "retract":
         user.retract_challenge(destuser, key=key)
     elif action == "decline":
@@ -800,11 +804,12 @@ def challenge_api() -> ResponseType:
     # The clients react by reloading the challenge list, so the
     # notification is deferred until the change above is committed
     # (immediate on NDB outside a transaction; at request end on
-    # PostgreSQL); see skrafldb.on_commit()
+    # PostgreSQL); see skrafldb.on_commit(). It is sent in the background,
+    # so that this request does not wait for the Firebase round trip
     now = datetime.now(UTC).isoformat()
     msg[f"user/{destuser}/challenge"] = now
     msg[f"user/{uid}/challenge"] = now
-    on_commit(lambda: firebase.send_message(msg))
+    on_commit(lambda: firebase.send_message_in_background(msg))
 
     return jsonify(result=Error.LEGAL)
 
@@ -1619,8 +1624,9 @@ def initgame_api() -> ResponseType:
 
     # The clients react by reloading their game lists, so the
     # notification waits for the new game to be committed;
-    # see skrafldb.on_commit()
-    on_commit(lambda: firebase.send_message(msg))
+    # see skrafldb.on_commit(). It is sent in the background,
+    # so that this request does not wait for the Firebase round trip
+    on_commit(lambda: firebase.send_message_in_background(msg))
 
     # Return the uuid of the new game, and the id of the
     # player whose turn it is

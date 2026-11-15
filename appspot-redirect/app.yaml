@@ -1,0 +1,18 @@
+# App Engine configuration for the redirect app that stands in for the
+# retired Netskrafl backend (see main.py). Deployed as a version of the
+# default service of the netskrafl project.
+#
+# No entrypoint is given: App Engine then serves the WSGI object "app"
+# in main.py with its own gunicorn. The smallest instance class is plenty,
+# and the app scales to zero when nobody asks.
+
+runtime: python311
+instance_class: F1
+
+automatic_scaling:
+  max_instances: 1
+
+handlers:
+- url: /.*
+  script: auto
+  secure: always

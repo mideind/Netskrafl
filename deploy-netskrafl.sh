@@ -24,9 +24,23 @@ function indexes
 
 function cron
 {
-    echo "Cron update starting"
-    gcloud app deploy --project=netskrafl cron.yaml
-    echo "Cron update completed"
+    # Netskrafl's backend runs in the container deployment since 2026-11-13,
+    # and so do its scheduled jobs: App Engine keeps an empty cron configuration
+    echo "Cron update for netskrafl is disabled (the jobs run in the container)"
+}
+
+function redirect # $1=version
+{
+    # The redirect app that stands in for the retired backend on App Engine
+    # (see appspot-redirect/main.py). Like 'default', this only uploads the
+    # version: it gets no traffic until that is routed to it.
+    if [[ $1 == "" ]]; then
+        echo "Version is missing; enter deploy r[edirect] <version>"
+        exit 1
+    fi
+    echo "Redirect app deployment starting, version '$1'"
+    gcloud app deploy --version=$1 --no-promote --project=netskrafl appspot-redirect/app.yaml
+    echo "Redirect app deployment completed"
 }
 
 function default # $1=version
@@ -54,8 +68,11 @@ case $cmd in
     default|d)
         default "$version"
         ;;
+    redirect|r)
+        redirect "$version"
+        ;;
     *)
-        echo "Please enter $0 (stats|indexes|cron|default <version>)"
+        echo "Please enter $0 (stats|indexes|cron|default <version>|redirect <version>)"
         exit 1
         ;;
 esac

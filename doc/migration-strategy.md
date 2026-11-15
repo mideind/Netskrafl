@@ -125,32 +125,60 @@ The reference spec is `.do/app-netskrafl.yaml` (placeholders only).
    delta pass the day before keeps the final one short. (The alternative, a
    fresh `--truncate` bulk copy a day or two before the switch, costs a
    night and wipes any test residue.)
-2. **Write freeze** on App Engine: all traffic is routed to a version built
+2. **Turn on the scheduled jobs on DO** shortly before the freeze, by
+   setting `CRON_SECRET` on the app (the container only starts its
+   scheduler when the variable is set, and `/cacheflush` needs it). This
+   restarts the container, which is why it is done outside the freeze, and
+   it must wait until App Engine's nightly jobs have run for the day: a
+   stats run on DO before the switch would leave two sets of stats rows.
+   The only job that then runs before the opening is the online-users
+   refresh, which reads Firebase and writes to the app's own cache.
+3. **Write freeze** on App Engine: all traffic is routed to a version built
    with the `MAINTENANCE` environment variable set, which answers every
    request with HTTP 503 (`src/maintenance.py`; the web client treats that
-   as "server unreachable" and offers a retry). Then a **delta pass** with
+   as "server unreachable" and offers a retry). The version is deployed
+   ahead of time without traffic, so freezing and unfreezing are traffic
+   switches. Then a **delta pass** with
    `--since` the start of the previous pass minus 2 days (the nightly stats job writes Elo results into
    games without moving `ts_last_move`, so a generous overlap is needed;
    upserts make it harmless). About 8 minutes, as rehearsed.
    Run this delta pass without the watchdog: it stops the migrator when
    App Engine returns errors, which is all App Engine does while frozen.
    Afterwards, compare row counts per table with Datastore.
-3. **Flip the backend hostname.** The order matters, because App Platform
-   can only obtain the certificate for the hostname once its DNS record
-   points at the app, and clients get a TLS error until it has one:
-   - point the DNS record at the DO app right after the freeze (lower its
-     TTL to 60 seconds some days ahead), so the change propagates while the
-     delta pass runs;
-   - when the data is copied and checked (through the app's default
-     hostname), enable the scheduled jobs, flush the cache and add the
-     hostname to the app as its domain; the certificate follows within
-     minutes;
-   - remove the jobs from App Engine cron.
+4. **Add the backend hostname to the DO app** as its domain, flush the
+   cache and test through the app's default hostname. The hostname's DNS
+   record still points at App Engine, so no user reaches the new backend
+   yet, and everyone gets the maintenance answer.
+5. **Change the DNS record** (TTL lowered to 60 seconds some days ahead).
+   This is the opening: clients move over as their cached record expires,
+   and the stragglers keep getting the maintenance answer until then.
+   Afterwards, remove the jobs from App Engine cron.
 
-   Until the certificate is issued no user can have reached the new
-   backend, so everything up to that point can be abandoned without loss:
-   point the DNS record back and route traffic back to the serving version.
-4. **Monitor**, with App Engine and the Datastore kept intact (read-only)
+   Up to the DNS change, everything can be abandoned without loss: route
+   traffic back to the serving version and take the hostname and
+   `CRON_SECRET` out of the app's spec again.
+
+   The order of steps 4 and 5 was settled by a rehearsal with temporary
+   hostnames on the production app (2026-11-11):
+   - There is no certificate gap either way. The edge network in front of
+     App Platform also hosts the DNS zone, and it answers TLS with the
+     zone's wildcard certificate until the app's own certificate for the
+     hostname arrives, about a minute after the DNS record points at the
+     app.
+   - With the hostname in the app's spec first, the app answered 6 seconds
+     after the DNS change, and requests alternated between the old and the
+     new target for the 60 seconds of the TTL. In the opposite order (DNS
+     first), App Platform answers HTTP 404 for the hostname until about 50
+     seconds after it has been added, which the clients do not treat as
+     "server unreachable".
+   - **One spec update at a time.** About a minute after the DNS change,
+     App Platform runs a deployment of its own ("domain ready"). A spec
+     update sent while it (or any other deployment) is in progress cancels
+     it, and the automatic rollback that follows left the routing out of
+     step with the spec in the rehearsal. After every update, wait until
+     the app has no deployment in progress, and after the DNS change until
+     the domain is active and that deployment has finished.
+6. **Monitor**, with App Engine and the Datastore kept intact (read-only)
    for a rollback window of about 30 days. A rollback after real writes on
    PostgreSQL loses those writes, which is why the verification gate before
    the switch matters.
@@ -210,6 +238,11 @@ The reference spec is `.do/app-netskrafl.yaml` (placeholders only).
   branch: merge master into it to deploy. Edit its spec by round-tripping
   `doctl apps spec get` → edit → `doctl apps update`; `.do/app.yaml` is a
   reference copy with placeholders and must never be applied as is.
+- A domain-only spec update deploys in about a minute without a build and
+  without restarting the container; a changed environment variable restarts
+  it. `doctl apps spec validate` rejects a spec fetched from a live app
+  (it does not accept the encrypted values), so such a spec goes straight
+  to `doctl apps update`.
 - Release tags: every production deploy is tagged with its App Engine
   version name (see `CLAUDE.md`); the DO apps should follow the same rule.
 
