@@ -199,14 +199,18 @@ def monitors(service: str, notify: str, jobs: List[str]) -> List[Dict[str, Any]]
     # from the moment they are created until the job has run once: they have
     # a tag of their own (NIGHTLY_TAG), so that they can be muted until then
     # with a downtime on that tag (see doc/logging.md).
+    # The window is longer than the day between two runs: with exactly 24
+    # hours, the previous night's entry leaves the window at the moment the
+    # next one is due, and a run that finishes a few seconds later than the
+    # night before would set off an alert and a recovery.
     for job in jobs:
         monitor = m(
             f"The nightly {job} job did not report success",
             f"@event:job @job:{job} @ok:true",
-            "1d", "<", 1,
+            "26h", "<", 1,
             f"No successful run of the {job} job was logged in the last "
-            "24 hours. Check that the scheduler in the container is "
-            "running and what the job logged.",
+            "26 hours: it is at least two hours overdue. Check that the "
+            "scheduler in the container is running and what the job logged.",
         )
         monitor["tags"].append(f"{NIGHTLY_TAG}:{service}")
         result.append(monitor)

@@ -200,9 +200,9 @@ starts a new deployment. Do it on the staging app first.
   path (served requests only), and paywall refusals by reason. They keep
   aggregates for longer than the entries themselves are kept.
 - **Monitors:** errors in the log; requests answered with 5xx; a scheduled
-  job that failed; a nightly job that did not report success within a day; a
-  rating table that is not full or may be incomplete; a subscriber refused at
-  the paywall; a worker timeout; restarting workers; slow requests.
+  job that failed; a nightly job that is two hours overdue with its report of
+  success; a rating table that is not full or may be incomplete; a subscriber
+  refused at the paywall; a worker timeout; restarting workers; slow requests.
 
 Run it without `--apply` to see the definitions, with `--validate` to have
 the service check the monitor definitions without creating anything, and with
@@ -216,7 +216,9 @@ creates the metrics only, for a backend whose alerts should not reach anyone.
 The monitors that expect a nightly job to report once a day alert from the
 moment they are created until the job has run. They carry the tag
 `nightly-job:<service>`: create a downtime on that tag, ending after the next
-night's jobs, before creating them.
+night's jobs, before creating them. The downtime holds back the alerts, but
+not the recoveries: one "recovered" notification per job arrives when the job
+first reports.
 
 Lines that are not JSON also reach the log service, as plain messages: the
 entrypoint's start-up lines, the output of the schema migration, and the
