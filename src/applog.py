@@ -34,6 +34,7 @@ from __future__ import annotations
 from typing import (
     Any,
     Callable,
+    Collection,
     Dict,
     Iterable,
     List,
@@ -188,11 +189,18 @@ def note_request(**fields: Any) -> None:
         notes.update((k, v) for k, v in fields.items() if v is not None and v != "")
 
 
-def note_api_outcome(response: Response) -> None:
+def note_api_outcome(
+    response: Response,
+    *,
+    ok_results: Collection[int] = (0,),
+    result_name: Optional[Callable[[int], Optional[str]]] = None,
+) -> None:
     """If a JSON response tells the client that the request was refused,
     note the reason in the log entry of the request. The API answers such
-    requests with HTTP 200 and ok=false, a nonzero result code or a status
-    string, so the refusal would otherwise be invisible in the log."""
+    requests with HTTP 200 and ok=false, a result code or a status string,
+    so the refusal would otherwise be invisible in the log. The result
+    codes in ok_results are not refusals (a legal move, a move that ends
+    the game); result_name gives the name of a result code, if it has one."""
     if not has_request_context():
         return
     if request.environ.get(REQUEST_NOTES_KEY) is None:
@@ -212,8 +220,14 @@ def note_api_outcome(response: Response) -> None:
         if isinstance(err, (str, int)) and not isinstance(err, bool):
             api["err"] = err
     result = data.get("result")
-    if isinstance(result, int) and not isinstance(result, bool) and result != 0:
+    if (
+        isinstance(result, int)
+        and not isinstance(result, bool)
+        and result not in ok_results
+    ):
         api["result"] = result
+        if result_name is not None and (name := result_name(result)):
+            api["reason"] = name
     status = data.get("status")
     if status in ("invalid", "expired"):
         api["status"] = status
@@ -332,7 +346,9 @@ class RequestLogMiddleware:
             if user_id:
                 message += f" user {user_id}"
             if api:
-                reason = api.get("err", api.get("result", api.get("status", "")))
+                reason = api.get("err") or api.get("reason") or api.get("status")
+                if reason is None:
+                    reason = api.get("result", "")
                 message += f" refused: {reason}" if reason != "" else " refused"
             level = logging.ERROR if status >= 500 or status == 0 else logging.INFO
             _request_log.log(level, message, extra=log_fields("request", **fields))

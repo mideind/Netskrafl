@@ -36,6 +36,12 @@ class DatabaseConfig:
     # Echo SQL statements (for debugging)
     echo_sql: bool
 
+    # How long a single attempt to open a connection may take, in seconds
+    connect_timeout: int = 5
+    # For how long a failed attempt to open a connection is repeated before
+    # the request fails, in seconds (0: no retries)
+    connect_retry_seconds: float = 10.0
+
     @classmethod
     def from_env(cls) -> DatabaseConfig:
         """Create configuration from environment variables."""
@@ -47,6 +53,10 @@ class DatabaseConfig:
             pool_timeout=int(os.environ.get("DB_POOL_TIMEOUT", "30")),
             pool_recycle=int(os.environ.get("DB_POOL_RECYCLE", "1800")),
             echo_sql=os.environ.get("DB_ECHO_SQL", "").lower() in ("1", "true", "yes"),
+            connect_timeout=int(os.environ.get("DB_CONNECT_TIMEOUT", "5")),
+            connect_retry_seconds=float(
+                os.environ.get("DB_CONNECT_RETRY_SECONDS", "10")
+            ),
         )
 
     def get_database_url(self, default: Optional[str] = None) -> Optional[str]:

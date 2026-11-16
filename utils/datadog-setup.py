@@ -21,7 +21,7 @@
     Usage, from the repository root:
         venv/bin/python utils/datadog-setup.py --service SERVICE --notify HANDLE
             [--site datadoghq.eu] [--jobs stats,ratings,cleanup]
-            [--validate | --apply]
+            [--no-monitors] [--validate | --apply]
 
     Without --apply, the program only prints what it would send. With
     --validate, it asks the service to check each monitor definition,
@@ -44,6 +44,10 @@ import os
 import sys
 
 import requests
+
+
+# Tag key of the monitors that watch for a nightly job's daily report
+NIGHTLY_TAG = "nightly-job"
 
 
 def metric_prefix(service: str) -> str:
@@ -190,19 +194,57 @@ def monitors(service: str, notify: str, jobs: List[str]) -> List[Dict[str, Any]]
             "Workers were started more often than a deploy explains (a "
             "deploy starts three).",
         ),
+        # A start of the server is a deploy, or the platform restarting the
+        # container. The second kind is not recorded anywhere else, and while
+        # the container is away its requests fail without reaching the log.
+        m(
+            "The server was started",
+            '@logger.name:gunicorn "Starting gunicorn"',
+            "5m", ">", 0,
+            "The web server started in a new container. After a deploy this "
+            "is expected. Otherwise the platform restarted the container: "
+            "requests were not served for about half a minute. Look at what "
+            "was logged just before, and at the app's memory graph.",
+        ),
+        # The scheduler in the container makes a request every two minutes,
+        # so silence means that the container, or the forwarding of its
+        # log, is down
+        m(
+            "No requests are being logged",
+            "@event:request",
+            "5m", "<", 1,
+            "No request has been logged for five minutes, not even the "
+            "scheduler's own every two minutes: the container is not "
+            "running, or its log is not reaching the log service.",
+        ),
+        m(
+            "The database cannot be reached",
+            "@event:db_connect @outcome:(down OR retrying)",
+            "5m", ">", 0,
+            "The backend could not open a database connection. 'retrying' "
+            "entries followed by 'recovered' are a short interruption that "
+            "requests waited out; 'down' means that requests are failing.",
+        ),
     ]
-    # Each nightly job must report success once a day
+    # Each nightly job must report success once a day. These monitors alert
+    # from the moment they are created until the job has run once: they have
+    # a tag of their own (NIGHTLY_TAG), so that they can be muted until then
+    # with a downtime on that tag (see doc/logging.md).
+    # The window is longer than the day between two runs: with exactly 24
+    # hours, the previous night's entry leaves the window at the moment the
+    # next one is due, and a run that finishes a few seconds later than the
+    # night before would set off an alert and a recovery.
     for job in jobs:
-        result.append(
-            m(
-                f"The nightly {job} job did not report success",
-                f"@event:job @job:{job} @ok:true",
-                "1d", "<", 1,
-                f"No successful run of the {job} job was logged in the last "
-                "24 hours. Check that the scheduler in the container is "
-                "running and what the job logged.",
-            )
+        monitor = m(
+            f"The nightly {job} job did not report success",
+            f"@event:job @job:{job} @ok:true",
+            "26h", "<", 1,
+            f"No successful run of the {job} job was logged in the last "
+            "26 hours: it is at least two hours overdue. Check that the "
+            "scheduler in the container is running and what the job logged.",
         )
+        monitor["tags"].append(f"{NIGHTLY_TAG}:{service}")
+        result.append(monitor)
     # Latency, from the log-based distribution metric (in nanoseconds)
     result.append(
         {
@@ -304,6 +346,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "only runs for Netskrafl: give 'stats,cleanup' for an Explo backend",
     )
     parser.add_argument(
+        "--no-monitors", action="store_true",
+        help="Only the metrics: for a backend whose alerts nobody should be woken by",
+    )
+    parser.add_argument(
         "--validate", action="store_true",
         help="Have the service check the monitor definitions; nothing is created",
     )
@@ -314,7 +360,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     all_metrics = metrics(args.service)
     jobs = [j.strip() for j in args.jobs.split(",") if j.strip()]
-    all_monitors = monitors(args.service, args.notify, jobs)
+    all_monitors = [] if args.no_monitors else monitors(args.service, args.notify, jobs)
     if not args.apply and not args.validate:
         print(json.dumps({"metrics": all_metrics, "monitors": all_monitors}, indent=2))
         print(

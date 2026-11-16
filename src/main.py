@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from typing import (
     Dict,
+    Optional,
     Union,
     Any,
     cast,
@@ -47,6 +48,7 @@ from flask.json.provider import DefaultJSONProvider
 
 from config import (
     NETSKRAFL,
+    Error,
     FlaskConfig,
     ResponseType,
     DEFAULT_LOCALE,
@@ -222,6 +224,22 @@ def stripwhite(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
+# API result codes that do not mean that a request was refused:
+# GAME_OVER is the answer to a move that ends the game
+_RESULTS_NOT_REFUSALS = frozenset((Error.LEGAL, Error.GAME_OVER))
+
+
+def _result_name(result: int) -> Optional[str]:
+    """Return the name of an API result code, for the request log"""
+    if result < 0:
+        return None
+    try:
+        return Error.errortext(result)
+    except IndexError:
+        # Not one of the Error codes
+        return None
+
+
 @app.before_request
 def before_request():
     if running_local:
@@ -234,7 +252,9 @@ def after_request(response: Response) -> Response:
     # Tell the request log who the user is, and whether the request was
     # refused (both do nothing unless requests are being logged)
     note_request(user_id=current_user_id())
-    note_api_outcome(response)
+    note_api_outcome(
+        response, ok_results=_RESULTS_NOT_REFUSALS, result_name=_result_name
+    )
     if running_local:
         # Note: request_start may not be set if a before_request handler
         # (e.g., CORS preflight) returned a response early

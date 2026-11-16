@@ -81,7 +81,7 @@ POST /initgame 200 23 ms user 0a1b2c refused: premium_required
 | `network.client.ip` | The client's address, from the header that the platform's proxy sets |
 | `duration` (nanoseconds), `duration_ms` | Time in the application, including the database commit |
 | `request_id` | Also sent to the client in the `X-Request-Id` header |
-| `api.ok`, `api.err`, `api.result`, `api.status` | Present if the answer was a refusal: `ok: false`, a nonzero result code, or a login status of `invalid` or `expired` |
+| `api.ok`, `api.err`, `api.result`, `api.reason`, `api.status` | Present if the answer was a refusal: `ok: false` with its `err`; a result code other than a legal move or a move that ends the game, with its name as `reason` (`LOGIN_REQUIRED`, `WORD_NOT_IN_DICTIONARY`, ...); or a login status of `invalid` or `expired` |
 
 Not logged, unless they fail: CORS preflights (`OPTIONS`), the platform's
 health probes (`/health/`) and static files. A request answered with 5xx is
@@ -161,6 +161,16 @@ snapshots: that every row is the player's newest snapshot, and that no player
 whose newest Elo is above the cutoff is missing. It also counts the false
 positives that the former scan had to discard.
 
+### `event: db_connect`: trouble reaching the database
+
+Logged when a database connection could not be opened (see `ConnectRetry` in
+`src/db/postgresql/connection.py`): `outcome` is `retrying` when the first
+attempt fails, `recovered` when a later one succeeds (with the number of
+attempts and the seconds it took), and `down` when the server stayed
+unreachable for the whole retry period, after which requests fail at once
+until it answers again. Nothing is logged for a connection that opens
+normally.
+
 ### gunicorn
 
 The web server's own entries (start-up, a worker booting, `WORKER TIMEOUT`)
@@ -200,9 +210,11 @@ starts a new deployment. Do it on the staging app first.
   path (served requests only), and paywall refusals by reason. They keep
   aggregates for longer than the entries themselves are kept.
 - **Monitors:** errors in the log; requests answered with 5xx; a scheduled
-  job that failed; a nightly job that did not report success within a day; a
-  rating table that is not full or may be incomplete; a subscriber refused at
-  the paywall; a worker timeout; restarting workers; slow requests.
+  job that failed; a nightly job that is two hours overdue with its report of
+  success; a rating table that is not full or may be incomplete; a subscriber
+  refused at the paywall; a worker timeout; restarting workers; slow requests;
+  a start of the server (a deploy, or the platform restarting the container);
+  no requests logged for five minutes; the database not reachable.
 
 Run it without `--apply` to see the definitions, with `--validate` to have
 the service check the monitor definitions without creating anything, and with
@@ -210,7 +222,15 @@ the service check the monitor definitions without creating anything, and with
 environment). Thresholds are changed
 in that file, not in the service's UI, so that they are not lost. The
 ratings job only runs for Netskrafl: for an Explo backend, give
-`--jobs stats,cleanup`, or its absence is reported every day.
+`--jobs stats,cleanup`, or its absence is reported every day. `--no-monitors`
+creates the metrics only, for a backend whose alerts should not reach anyone.
+
+The monitors that expect a nightly job to report once a day alert from the
+moment they are created until the job has run. They carry the tag
+`nightly-job:<service>`: create a downtime on that tag, ending after the next
+night's jobs, before creating them. The downtime holds back the alerts, but
+not the recoveries: one "recovered" notification per job arrives when the job
+first reports.
 
 Lines that are not JSON also reach the log service, as plain messages: the
 entrypoint's start-up lines, the output of the schema migration, and the
