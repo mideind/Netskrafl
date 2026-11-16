@@ -194,6 +194,37 @@ def monitors(service: str, notify: str, jobs: List[str]) -> List[Dict[str, Any]]
             "Workers were started more often than a deploy explains (a "
             "deploy starts three).",
         ),
+        # A start of the server is a deploy, or the platform restarting the
+        # container. The second kind is not recorded anywhere else, and while
+        # the container is away its requests fail without reaching the log.
+        m(
+            "The server was started",
+            '@logger.name:gunicorn "Starting gunicorn"',
+            "5m", ">", 0,
+            "The web server started in a new container. After a deploy this "
+            "is expected. Otherwise the platform restarted the container: "
+            "requests were not served for about half a minute. Look at what "
+            "was logged just before, and at the app's memory graph.",
+        ),
+        # The scheduler in the container makes a request every two minutes,
+        # so silence means that the container, or the forwarding of its
+        # log, is down
+        m(
+            "No requests are being logged",
+            "@event:request",
+            "5m", "<", 1,
+            "No request has been logged for five minutes, not even the "
+            "scheduler's own every two minutes: the container is not "
+            "running, or its log is not reaching the log service.",
+        ),
+        m(
+            "The database cannot be reached",
+            "@event:db_connect @outcome:(down OR retrying)",
+            "5m", ">", 0,
+            "The backend could not open a database connection. 'retrying' "
+            "entries followed by 'recovered' are a short interruption that "
+            "requests waited out; 'down' means that requests are failing.",
+        ),
     ]
     # Each nightly job must report success once a day. These monitors alert
     # from the moment they are created until the job has run once: they have
