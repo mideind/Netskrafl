@@ -161,6 +161,16 @@ snapshots: that every row is the player's newest snapshot, and that no player
 whose newest Elo is above the cutoff is missing. It also counts the false
 positives that the former scan had to discard.
 
+### `event: db_connect`: trouble reaching the database
+
+Logged when a database connection could not be opened (see `ConnectRetry` in
+`src/db/postgresql/connection.py`): `outcome` is `retrying` when the first
+attempt fails, `recovered` when a later one succeeds (with the number of
+attempts and the seconds it took), and `down` when the server stayed
+unreachable for the whole retry period, after which requests fail at once
+until it answers again. Nothing is logged for a connection that opens
+normally.
+
 ### gunicorn
 
 The web server's own entries (start-up, a worker booting, `WORKER TIMEOUT`)
@@ -202,7 +212,9 @@ starts a new deployment. Do it on the staging app first.
 - **Monitors:** errors in the log; requests answered with 5xx; a scheduled
   job that failed; a nightly job that is two hours overdue with its report of
   success; a rating table that is not full or may be incomplete; a subscriber
-  refused at the paywall; a worker timeout; restarting workers; slow requests.
+  refused at the paywall; a worker timeout; restarting workers; slow requests;
+  a start of the server (a deploy, or the platform restarting the container);
+  no requests logged for five minutes; the database not reachable.
 
 Run it without `--apply` to see the definitions, with `--validate` to have
 the service check the monitor definitions without creating anything, and with
