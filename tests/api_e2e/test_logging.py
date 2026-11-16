@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from flask import Flask
+from flask import Flask, jsonify
 from flask.testing import FlaskClient
 
 from tests.api_e2e.conftest import AuthHelper
@@ -395,6 +395,55 @@ class TestApplicationRequestLog:
         assert login["has_paid"] is True
         entry = request_entry(caplog, "/login_malstadur")
         assert entry["usr"] == {"id": data["user_id"]}
+
+    def test_result_codes(
+        self,
+        client: FlaskClient,
+        request_log: None,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A result code that is a refusal is named in the request's entry;
+        a move that ends the game (GAME_OVER) is not a refusal."""
+        from applog import note_api_outcome
+        from config import Error
+        from main import _RESULTS_NOT_REFUSALS, _result_name, app  # pyright: ignore[reportPrivateUsage]
+
+        # An API call without a login is refused with LOGIN_REQUIRED
+        client.post("/gamelist", json={})
+        entry = request_entry(caplog, "/gamelist")
+        assert entry["api"] == {"result": Error.LOGIN_REQUIRED, "reason": "LOGIN_REQUIRED"}
+        [record] = [r for r in records(caplog, "request") if "/gamelist" in r.getMessage()]
+        assert record.getMessage().endswith("refused: LOGIN_REQUIRED")
+
+        assert Error.GAME_OVER in _RESULTS_NOT_REFUSALS
+        assert Error.LEGAL in _RESULTS_NOT_REFUSALS
+        assert _result_name(Error.WORD_NOT_IN_DICTIONARY) == "WORD_NOT_IN_DICTIONARY"
+        assert _result_name(Error.GAME_OVER) == "GAME_OVER"
+        # Not result codes of the API
+        assert _result_name(57) is None
+        assert _result_name(-1) is None
+
+        # What the hook notes for each kind of answer
+        def noted(result: int) -> Dict[str, Any]:
+            from applog import REQUEST_NOTES_KEY
+
+            notes: Dict[str, Any] = {}
+            with app.test_request_context(
+                "/submitmove", method="POST", environ_base={REQUEST_NOTES_KEY: notes}
+            ):
+                note_api_outcome(
+                    jsonify(result=result),
+                    ok_results=_RESULTS_NOT_REFUSALS,
+                    result_name=_result_name,
+                )
+            return notes
+
+        assert noted(Error.LEGAL) == {}
+        assert noted(Error.GAME_OVER) == {}
+        assert noted(Error.WORD_NOT_IN_DICTIONARY) == {
+            "api": {"result": 7, "reason": "WORD_NOT_IN_DICTIONARY"}
+        }
+        assert noted(57) == {"api": {"result": 57}}
 
     def test_refused_login(
         self,
