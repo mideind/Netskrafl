@@ -22,12 +22,14 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     LargeBinary,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
+    column_property,
     mapped_column,
     relationship,
 )
@@ -77,7 +79,23 @@ class User(Base):
     # These fields are never NULL - empty string is used instead (matching NDB behavior)
     email: Mapped[str] = mapped_column(String(256), nullable=False, default="", index=True)
     image: Mapped[str] = mapped_column(String(512), nullable=False, default="")
-    image_blob: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    # The user's picture (base64-encoded), if the user has uploaded one.
+    # Pictures are a few hundred kilobytes each, and nearly all code that
+    # loads a user has no use for the picture itself: the column is
+    # therefore deferred, i.e. read from the database only when the
+    # attribute is accessed (which the image endpoints do, via get_image()).
+    # A list of a hundred users would otherwise drag megabytes along.
+    image_blob: Mapped[Optional[bytes]] = mapped_column(
+        LargeBinary, nullable=True, deferred=True
+    )
+    # Whether the user has a picture: computed by the database from the
+    # stored length, which does not require reading the picture. Use this
+    # instead of testing image_blob, which would load it. As with any
+    # column_property, the value is expired when the user is flushed and
+    # then read again on next access, so it follows changes to image_blob.
+    has_image_blob: Mapped[bool] = column_property(
+        func.coalesce(func.octet_length(image_blob), 0) > 0
+    )
     account: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
     plan: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 

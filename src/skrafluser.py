@@ -561,7 +561,7 @@ class User:
         self._best_word_score = um.best_word_score
         self._best_word_game = um.best_word_game
         self._image = um.image or ""
-        self._has_image_blob = bool(um.image_blob)
+        self._has_image_blob = um.has_image_blob
         self._timestamp = um.timestamp
         self._location = um.location or ""
         self._human_games = um.games or 0
