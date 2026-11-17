@@ -1,0 +1,30 @@
+# App Engine configuration for the forwarding app that stands in for a
+# backend that has moved to the container deployment (see main.go).
+# Deployed as a version of the default service, without traffic; the
+# switch-over routes the traffic to it.
+#
+# FORWARD_TO is the origin of the backend (https://host, nothing more). It
+# is not kept here: the 'forward' command of the deploy scripts takes it
+# from the environment and writes it into a copy of this file.
+#
+# One small instance is kept running, so that no request has to wait for an
+# instance to start, and more are added under load. The app holds no state,
+# so any number of instances may serve at once.
+
+runtime: go125
+instance_class: F1
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 3
+
+inbound_services:
+- warmup
+
+env_variables:
+  FORWARD_TO: "REPLACE_ME_backend_origin"
+
+handlers:
+- url: /.*
+  script: auto
+  secure: always

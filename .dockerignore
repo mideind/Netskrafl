@@ -58,6 +58,7 @@ Favicon.psd
 !docker-entrypoint.sh
 deploy-*.sh
 appspot-redirect/
+appspot-forward/
 run-*.sh
 setup-*.sh
 

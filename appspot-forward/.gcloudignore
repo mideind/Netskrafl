@@ -1,0 +1,4 @@
+# Files that are not part of the deployed app
+.gcloudignore
+*_test.go
+app.yaml
