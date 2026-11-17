@@ -680,6 +680,12 @@ class UserModel(Model["UserModel"]):
             image = ""
         return image, self.image_blob
 
+    @property
+    def has_image_blob(self) -> bool:
+        """True if the user has a stored picture. (On PostgreSQL, this is
+        answered without reading the picture; here the entity has it.)"""
+        return bool(self.image_blob)
+
     def set_image(self, image: str, image_blob: Optional[bytes]) -> None:
         """Set image data about the user, consisting of
         a string and a BLOB (bytes)"""
