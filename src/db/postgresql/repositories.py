@@ -203,7 +203,9 @@ class UserRepository:
             raise TypeError("Expected User model from PostgreSQL backend")
 
         for key, value in kwargs.items():
-            if hasattr(user, key):
+            # Ask the class, not the instance: asking the instance would
+            # read a deferred column (the picture) just to overwrite it
+            if hasattr(User, key):
                 setattr(user, key, value)
             else:
                 raise AttributeError(f"User has no attribute '{key}'")
@@ -256,7 +258,7 @@ class UserRepository:
                 human_elo=u.human_elo,
                 manual_elo=u.manual_elo,
                 image=u.image,
-                has_image_blob=u.image_blob is not None,
+                has_image_blob=u.has_image_blob,
             )
 
         def build_stmt(col: Any):

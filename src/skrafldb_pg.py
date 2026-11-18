@@ -813,8 +813,20 @@ class UserModel:
             for e in entities
         ]
 
+    @property
+    def has_image_blob(self) -> bool:
+        """True if the user has a stored picture. This is answered without
+        reading the picture itself, which is only loaded by get_image()."""
+        if "image_blob" in self._attrs:
+            # Set on this object and not yet saved
+            return bool(self._attrs["image_blob"])
+        if self._entity is not None:
+            return bool(getattr(self._entity, "has_image_blob", False))
+        return False
+
     def get_image(self) -> Tuple[str, Optional[bytes]]:
-        """Get image data for the user."""
+        """Get image data for the user. This reads the user's picture from
+        the database, if there is one (the column is loaded on demand)."""
         img = self.image
         if img and img.startswith("/image?"):
             img = ""
