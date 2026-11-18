@@ -101,3 +101,4 @@ scripts/
 
 # The redirect app for the retired App Engine deployment (deployed on its own)
 appspot-redirect/
+appspot-forward/
