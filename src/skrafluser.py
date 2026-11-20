@@ -1173,8 +1173,8 @@ class User:
 
     def issue_challenge(self, destuser_id: str, prefs: Optional[PrefsDict]) -> bool:
         """Issue a challenge to the destuser. A user can have one challenge
-        of each type (a game without a clock, or with a clock of a given
-        duration) pending to another user: a further challenge of a type
+        of each type (the same duration, word check, fair play setting and
+        locale) pending to another user: a further challenge of a type
         that is already pending is not issued, and False is returned."""
         sid = self.id()
         assert sid is not None

@@ -82,15 +82,27 @@ class PrefsDict(TypedDict, total=False):
     fanfare: bool
 
 
-def challenge_duration(prefs: Optional[Mapping[str, object]]) -> int:
-    """The duration of the game that a challenge with the given preferences
-    is for, in minutes per player; 0 means a game without a clock. This is
-    what the type of a challenge is taken to be: a user can have one
-    challenge of each type pending to another user, not more."""
+# The type of a challenge: (duration, manual, fairplay, locale)
+ChallengeType = Tuple[int, bool, bool, str]
+
+
+def challenge_type(prefs: Optional[Mapping[str, object]]) -> ChallengeType:
+    """The type of a challenge with the given preferences, i.e. what kind
+    of game it is for: the duration (minutes per player, 0 for a game
+    without a clock), whether the word check is manual, whether it is a
+    fair play game, and the locale. A user can have one challenge of each
+    type pending to another user, not more: two of the same type are the
+    same offer made twice."""
     if not prefs:
-        return 0
+        return (0, False, False, "")
     duration = prefs.get("duration")
-    return duration if isinstance(duration, int) else 0
+    locale = prefs.get("locale")
+    return (
+        duration if isinstance(duration, int) else 0,
+        bool(prefs.get("manual")),
+        bool(prefs.get("fairplay")),
+        locale if isinstance(locale, str) else "",
+    )
 
 
 @dataclass
@@ -1049,7 +1061,7 @@ class ChallengeRepositoryProtocol(Protocol):
         self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
     ) -> bool:
         """Add a challenge, unless the source user already has a challenge
-        of the same type (see challenge_duration()) pending to the
+        of the same type (see challenge_type()) pending to the
         destination user. Returns True if the challenge was added."""
         ...
 

@@ -348,7 +348,8 @@ class TestChallengeDeleteForUser:
 
 class TestUniqueChallenge:
     """A user can have one challenge of each type pending to another user.
-    The type is the duration of the game: no clock, or a clock of N minutes."""
+    The type is what kind of game the challenge is for: the duration (no
+    clock, or a clock of N minutes), the word check, fair play, the locale."""
 
     USERS = [
         ("chal-uniq-a", "test:chaluniqa", "ChalUniqA"),
@@ -412,33 +413,45 @@ class TestUniqueChallenge:
             )
         assert self._durations(backend, a, b) == [0, 3, 10, 25]
 
-    def test_other_preferences_do_not_make_a_type(
+    def test_each_option_makes_a_type(
         self, backend: "DatabaseBackendProtocol"
     ) -> None:
-        """Only the duration tells challenges apart."""
+        """The word check, fair play and the locale tell challenges apart,
+        as the duration does: challenges that differ in any of them are
+        distinct offers. Each combination is added once."""
         a, b = "chal-uniq-a", "chal-uniq-b"
-        assert backend.challenges.add_unique_relation(
-            a, b, {"duration": 10, "fairplay": False, "locale": "is_IS"}
-        )
-        for prefs in (
-            PrefsDict(duration=10, fairplay=True, locale="is_IS"),
-            PrefsDict(duration=10, manual=True, locale="is_IS"),
+        distinct = [
+            PrefsDict(duration=10, locale="is_IS"),
+            PrefsDict(duration=10, locale="is_IS", manual=True),
+            PrefsDict(duration=10, locale="is_IS", fairplay=True),
+            PrefsDict(duration=10, locale="is_IS", manual=True, fairplay=True),
             PrefsDict(duration=10, locale="en_US"),
-        ):
+            PrefsDict(duration=0, locale="is_IS", manual=True),
+        ]
+        for prefs in distinct:
+            assert backend.challenges.add_unique_relation(a, b, prefs)
+        for prefs in distinct:
             assert not backend.challenges.add_unique_relation(a, b, prefs)
-        assert self._durations(backend, a, b) == [10]
+        assert self._durations(backend, a, b) == [0, 10, 10, 10, 10, 10]
 
-    def test_no_preferences_mean_no_clock(
+    def test_options_that_are_off_or_absent_are_the_same(
         self, backend: "DatabaseBackendProtocol"
     ) -> None:
-        """A challenge without preferences, or without a duration among
-        them, is for a game without a clock."""
+        """An option that is not given is off, and no duration means no
+        clock. What else the preferences hold does not make a type."""
         a, b, c = "chal-uniq-a", "chal-uniq-b", "chal-uniq-c"
         assert backend.challenges.add_unique_relation(a, b)
         assert not backend.challenges.add_unique_relation(a, b, {"duration": 0})
-        assert not backend.challenges.add_unique_relation(a, b, {"manual": True})
-        assert backend.challenges.add_unique_relation(a, c, {"fairplay": True})
-        assert not backend.challenges.add_unique_relation(a, c)
+        assert not backend.challenges.add_unique_relation(
+            a, b, {"manual": False, "fairplay": False}
+        )
+        assert not backend.challenges.add_unique_relation(a, b, {"newbag": True})
+        assert backend.challenges.add_unique_relation(
+            a, c, {"duration": 5, "fairplay": False, "newbag": True, "locale": "is_IS"}
+        )
+        assert not backend.challenges.add_unique_relation(
+            a, c, {"duration": 5, "locale": "is_IS"}
+        )
 
     def test_only_the_same_pair_and_direction_count(
         self, backend: "DatabaseBackendProtocol"

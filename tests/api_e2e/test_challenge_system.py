@@ -715,7 +715,8 @@ ALREADY_ISSUED = 23
 @pytest.mark.api_e2e
 class TestDuplicateChallenge:
     """A user can have one challenge of each type pending to another user.
-    The type is the duration of the game: no clock, or a clock of N minutes."""
+    The type is what kind of game the challenge is for: the duration (no
+    clock, or a clock of N minutes), the word check, fair play, the locale."""
 
     def test_identical_challenge_is_refused(
         self,
@@ -723,10 +724,10 @@ class TestDuplicateChallenge:
         auth: AuthHelper,
         mock_firebase: FirebaseMock,
     ) -> None:
-        """A second challenge of a type that is already pending is refused,
-        and the challenged user is not notified of it. Challenges of other
-        types are issued, and the type is free again when the pending
-        challenge has been answered."""
+        """A challenge identical to one that is already pending is refused,
+        and the challenged user is not notified of it. Challenges that
+        differ in duration or in another option are issued, and a type is
+        free again when its pending challenge has been answered."""
 
         def login_challenger() -> str:
             return auth.login_user(
@@ -769,6 +770,10 @@ class TestDuplicateChallenge:
         def durations(received: bool, userid: str) -> list[int]:
             return sorted(c["prefs"]["duration"] for c in pending(received, userid))
 
+        def plain(c: dict) -> bool:
+            """A challenge with neither manual word check nor fair play"""
+            return not c["prefs"]["manual"] and not c["prefs"]["fairplay"]
+
         login_challenger()
 
         # The first challenge is issued, and the recipient is notified
@@ -781,9 +786,7 @@ class TestDuplicateChallenge:
         mock_firebase.clear()
         assert issue() == ALREADY_ISSUED
         assert issue(duration=0) == ALREADY_ISSUED
-        # Options other than the duration do not make it another type
-        assert issue(manual=True) == ALREADY_ISSUED
-        assert issue(fairplay=True) == ALREADY_ISSUED
+        assert issue(manual=False, fairplay=False) == ALREADY_ISSUED
         assert mock_firebase.push_notifications == []
         assert mock_firebase.messages == []
         assert durations(False, recipient_id) == [0]
@@ -792,16 +795,29 @@ class TestDuplicateChallenge:
         assert issue(duration=10) == 0
         assert issue(duration=25) == 0
         assert issue(duration=10) == ALREADY_ISSUED
-        assert issue(duration=25, manual=True) == ALREADY_ISSUED
         assert len(mock_firebase.push_notifications) == 2
         assert durations(False, recipient_id) == [0, 10, 25]
+
+        # So are challenges with a manual word check or fair play: each
+        # combination of the options is an offer of its own, made once
+        mock_firebase.clear()
+        assert issue(manual=True) == 0
+        assert issue(fairplay=True) == 0
+        assert issue(duration=25, manual=True) == 0
+        assert issue(manual=True) == ALREADY_ISSUED
+        assert issue(fairplay=True) == ALREADY_ISSUED
+        assert issue(duration=25, manual=True) == ALREADY_ISSUED
+        assert len(mock_firebase.push_notifications) == 3
+        assert durations(False, recipient_id) == [0, 0, 0, 10, 25, 25]
         auth.logout()
 
-        # The recipient has the three, and declines the one without a clock
+        # The recipient has the six, and declines the plain one without a clock
         login_recipient()
-        assert durations(True, challenger_id) == [0, 10, 25]
+        assert durations(True, challenger_id) == [0, 0, 0, 10, 25, 25]
         untimed = next(
-            c for c in pending(True, challenger_id) if c["prefs"]["duration"] == 0
+            c
+            for c in pending(True, challenger_id)
+            if c["prefs"]["duration"] == 0 and plain(c)
         )
         response = client.post(
             "/challenge",
@@ -812,7 +828,7 @@ class TestDuplicateChallenge:
             },
         )
         assert response.get_json()["result"] == 0
-        assert durations(True, challenger_id) == [10, 25]
+        assert durations(True, challenger_id) == [0, 0, 10, 25, 25]
         # A challenge in the other direction is the recipient's own
         response = client.post(
             "/challenge",
@@ -821,13 +837,15 @@ class TestDuplicateChallenge:
         assert response.get_json()["result"] == 0
         auth.logout()
 
-        # Now the challenger can issue a challenge without a clock again,
-        # and retract and reissue one with a clock
+        # Now the challenger can issue a plain challenge without a clock
+        # again, and retract and reissue one with a clock
         login_challenger()
         assert issue() == 0
         assert issue() == ALREADY_ISSUED
         timed = next(
-            c for c in pending(False, recipient_id) if c["prefs"]["duration"] == 25
+            c
+            for c in pending(False, recipient_id)
+            if c["prefs"]["duration"] == 25 and plain(c)
         )
         response = client.post(
             "/challenge",
@@ -839,6 +857,6 @@ class TestDuplicateChallenge:
         )
         assert response.get_json()["result"] == 0
         assert issue(duration=25) == 0
-        assert durations(False, recipient_id) == [0, 10, 25]
+        assert durations(False, recipient_id) == [0, 0, 0, 10, 25, 25]
         auth.logout()
 

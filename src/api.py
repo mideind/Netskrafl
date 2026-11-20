@@ -771,10 +771,11 @@ def challenge_api() -> ResponseType:
             },
         )
         if not issued:
-            # The user already has a challenge of this type (this duration)
-            # pending to the destination user, who is to answer that one
-            # first. Nothing changed, so nobody is notified: in particular,
-            # the destination user gets no further push notification
+            # The user already has an identical challenge (the same duration
+            # and other options) pending to the destination user, who is to
+            # answer that one first. Nothing changed, so nobody is notified:
+            # in particular, the destination user gets no further push
+            # notification
             return jsonify(result=Error.CHALLENGE_ALREADY_ISSUED)
         # Notify the challenged user via a push notification,
         # once the challenge has been committed (see skrafldb.on_commit())

@@ -65,7 +65,7 @@ from ..protocols import (
     RatingInfo,
     RatingForLocale,
     StatsInfo,
-    challenge_duration,
+    challenge_type,
 )
 
 if TYPE_CHECKING:
@@ -1058,7 +1058,7 @@ class ChallengeRepository:
         self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
     ) -> bool:
         """Add a challenge, unless the source user already has a challenge
-        of the same type (see challenge_duration()) pending to the
+        of the same type (see challenge_type()) pending to the
         destination user. Returns True if the challenge was added."""
         # Two requests at the same moment (a double tap) must not both find
         # that there is no such challenge yet. The second one waits here
@@ -1073,7 +1073,7 @@ class ChallengeRepository:
                 )
             )
         )
-        duration = challenge_duration(prefs)
+        new_type = challenge_type(prefs)
         stmt = select(Challenge.prefs).where(
             and_(
                 Challenge.src_user_id == src_user_id,
@@ -1081,7 +1081,7 @@ class ChallengeRepository:
             )
         )
         for pending in self._session.execute(stmt).scalars():
-            if challenge_duration(pending) == duration:
+            if challenge_type(pending) == new_type:
                 return False
         self.add_relation(src_user_id, dest_user_id, prefs)
         return True
