@@ -100,6 +100,65 @@ class TestChallengeCRUD:
         assert backend.challenges.has_relation("chal-user-1", "chal-user-2")
         assert not backend.challenges.has_relation("chal-user-2", "chal-user-1")
 
+    def test_find_and_delete_by_key(self, backend: "DatabaseBackendProtocol") -> None:
+        """A challenge can be found and deleted by the key that the lists give."""
+        backend.challenges.add_relation(
+            "chal-user-2", "chal-user-1", prefs={"duration": 7}
+        )
+        keys = [
+            c.key
+            for c in backend.challenges.list_issued("chal-user-2")
+            if c.opp == "chal-user-1"
+        ]
+        assert len(keys) == 1
+
+        found, prefs = backend.challenges.find_relation(
+            "chal-user-2", "chal-user-1", key=keys[0]
+        )
+        assert found
+        assert prefs is not None and prefs.get("duration") == 7
+
+        found, prefs = backend.challenges.delete_relation(
+            "chal-user-2", "chal-user-1", key=keys[0]
+        )
+        assert found
+        assert prefs is not None and prefs.get("duration") == 7
+        assert not backend.challenges.has_relation("chal-user-2", "chal-user-1")
+
+    @pytest.mark.parametrize(
+        "foreign_key",
+        [
+            # The other backend's kind of key: an integer on Datastore, a
+            # UUID on PostgreSQL. A client can hold one from before a move
+            # between the two
+            "5629499534213120",
+            "0d0e3a52-6a55-5d0c-9b5c-6a3a1c1f0a11",
+            "not-a-key",
+        ],
+    )
+    def test_unknown_key_is_not_found(
+        self, backend: "DatabaseBackendProtocol", foreign_key: str
+    ) -> None:
+        """A key that is no challenge's key means 'not found', not an error,
+        and leaves the challenge between the two users in place."""
+        backend.challenges.add_relation("chal-user-3", "chal-user-2")
+
+        found, prefs = backend.challenges.find_relation(
+            "chal-user-3", "chal-user-2", key=foreign_key
+        )
+        assert not found
+        assert prefs is None
+
+        found, prefs = backend.challenges.delete_relation(
+            "chal-user-3", "chal-user-2", key=foreign_key
+        )
+        assert not found
+        assert prefs is None
+        assert backend.challenges.has_relation("chal-user-3", "chal-user-2")
+
+        # Clean up, so that the challenge does not leak into other tests
+        backend.challenges.delete_relation("chal-user-3", "chal-user-2")
+
 
 class TestChallengeLists:
     """Test Challenge listing operations."""
