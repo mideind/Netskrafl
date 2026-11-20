@@ -1171,11 +1171,14 @@ class User:
         """Returns (found, prefs)"""
         return ChallengeModel.find_relation(srcuser_id, self.id(), key)
 
-    def issue_challenge(self, destuser_id: str, prefs: Optional[PrefsDict]) -> None:
-        """Issue a challenge to the destuser"""
+    def issue_challenge(self, destuser_id: str, prefs: Optional[PrefsDict]) -> bool:
+        """Issue a challenge to the destuser. A user can have one challenge
+        of each type (a game without a clock, or with a clock of a given
+        duration) pending to another user: a further challenge of a type
+        that is already pending is not issued, and False is returned."""
         sid = self.id()
         assert sid is not None
-        ChallengeModel.add_relation(sid, destuser_id, prefs)
+        return ChallengeModel.add_unique_relation(sid, destuser_id, prefs)
 
     def retract_challenge(self, destuser_id: str, *, key: Optional[str] = None) -> None:
         """Retract a challenge previously issued to the destuser"""

@@ -1534,6 +1534,13 @@ class ChallengeModel:
         db.challenges.add_relation(src_id, dest_id, prefs)
 
     @classmethod
+    def add_unique_relation(
+        cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
+    ) -> bool:
+        db = _get_db()
+        return db.challenges.add_unique_relation(src_id, dest_id, prefs)
+
+    @classmethod
     def del_relation(
         cls, src_id: str, dest_id: str, key: Optional[str]
     ) -> Tuple[bool, Optional[PrefsDict]]:

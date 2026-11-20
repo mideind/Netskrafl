@@ -513,6 +513,15 @@ class ChallengeRepository:
             src_user_id, dest_user_id, cast(Any, prefs)
         )
 
+    def add_unique_relation(
+        self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
+    ) -> bool:
+        """Add a challenge, unless the source user already has a challenge
+        of the same type pending to the destination user."""
+        return skrafldb.ChallengeModel.add_unique_relation(
+            src_user_id, dest_user_id, cast(Any, prefs)
+        )
+
     def delete_relation(
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:

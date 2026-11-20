@@ -19,6 +19,7 @@ from typing import (
     Dict,
     Any,
     Iterator,
+    Mapping,
     NamedTuple,
     TypeVar,
     Generic,
@@ -79,6 +80,17 @@ class PrefsDict(TypedDict, total=False):
     ready_timed: bool
     audio: bool
     fanfare: bool
+
+
+def challenge_duration(prefs: Optional[Mapping[str, object]]) -> int:
+    """The duration of the game that a challenge with the given preferences
+    is for, in minutes per player; 0 means a game without a clock. This is
+    what the type of a challenge is taken to be: a user can have one
+    challenge of each type pending to another user, not more."""
+    if not prefs:
+        return 0
+    duration = prefs.get("duration")
+    return duration if isinstance(duration, int) else 0
 
 
 @dataclass
@@ -1031,6 +1043,14 @@ class ChallengeRepositoryProtocol(Protocol):
         self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
     ) -> None:
         """Add a challenge."""
+        ...
+
+    def add_unique_relation(
+        self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
+    ) -> bool:
+        """Add a challenge, unless the source user already has a challenge
+        of the same type (see challenge_duration()) pending to the
+        destination user. Returns True if the challenge was added."""
         ...
 
     def delete_relation(

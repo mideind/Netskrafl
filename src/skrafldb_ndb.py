@@ -121,6 +121,7 @@ from authmanager import auth_manager
 from db.protocols import (
     PrefsDict,
     ChallengeTuple,
+    challenge_duration,
     StatsDict,
     StatsResults,
     LiveGameDict,
@@ -1720,6 +1721,23 @@ class ChallengeModel(Model["ChallengeModel"]):
         cm.set_dest(dest_id)
         cm.prefs = PrefsDict() if prefs is None else prefs
         cm.put()
+
+    @classmethod
+    def add_unique_relation(
+        cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
+    ) -> bool:
+        """Add a challenge relation between the two users, unless the
+        source user already has a challenge of the same type pending to the
+        destination user. Returns True if the challenge was added."""
+        ks: Key[UserModel] = Key(UserModel, src_id)
+        kd: Key[UserModel] = Key(UserModel, dest_id)
+        duration = challenge_duration(prefs)
+        # An ancestor query, so it sees every challenge already written
+        q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
+        if any(challenge_duration(cm.prefs) == duration for cm in q.fetch()):
+            return False
+        cls.add_relation(src_id, dest_id, prefs)
+        return True
 
     @classmethod
     def del_relation(

@@ -65,6 +65,7 @@ from ..protocols import (
     RatingInfo,
     RatingForLocale,
     StatsInfo,
+    challenge_duration,
 )
 
 if TYPE_CHECKING:
@@ -1052,6 +1053,38 @@ class ChallengeRepository:
         )
         self._session.add(challenge)
         self._session.flush()
+
+    def add_unique_relation(
+        self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
+    ) -> bool:
+        """Add a challenge, unless the source user already has a challenge
+        of the same type (see challenge_duration()) pending to the
+        destination user. Returns True if the challenge was added."""
+        # Two requests at the same moment (a double tap) must not both find
+        # that there is no such challenge yet. The second one waits here
+        # until the transaction of the first has ended, and then sees its
+        # challenge. The lock is on this pair of users only.
+        self._session.execute(
+            select(
+                func.pg_advisory_xact_lock(
+                    func.hashtextextended(
+                        f"challenge:{src_user_id}:{dest_user_id}", 0
+                    )
+                )
+            )
+        )
+        duration = challenge_duration(prefs)
+        stmt = select(Challenge.prefs).where(
+            and_(
+                Challenge.src_user_id == src_user_id,
+                Challenge.dest_user_id == dest_user_id,
+            )
+        )
+        for pending in self._session.execute(stmt).scalars():
+            if challenge_duration(pending) == duration:
+                return False
+        self.add_relation(src_user_id, dest_user_id, prefs)
+        return True
 
     def delete_relation(
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None

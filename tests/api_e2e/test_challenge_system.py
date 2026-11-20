@@ -706,3 +706,139 @@ class TestChallengeWithKey:
         assert response2.status_code == 200
 
         auth.logout()
+
+
+# Error.CHALLENGE_ALREADY_ISSUED
+ALREADY_ISSUED = 23
+
+
+@pytest.mark.api_e2e
+class TestDuplicateChallenge:
+    """A user can have one challenge of each type pending to another user.
+    The type is the duration of the game: no clock, or a clock of N minutes."""
+
+    def test_identical_challenge_is_refused(
+        self,
+        client: FlaskClient,
+        auth: AuthHelper,
+        mock_firebase: FirebaseMock,
+    ) -> None:
+        """A second challenge of a type that is already pending is refused,
+        and the challenged user is not notified of it. Challenges of other
+        types are issued, and the type is free again when the pending
+        challenge has been answered."""
+
+        def login_challenger() -> str:
+            return auth.login_user(
+                sub="dup-challenger-001",
+                name="Dup Challenger",
+                email="dupchallenger@example.com",
+            )["user_id"]
+
+        def login_recipient() -> str:
+            return auth.login_user(
+                sub="dup-recipient-001",
+                name="Dup Recipient",
+                email="duprecipient@example.com",
+            )["user_id"]
+
+        challenger_id = login_challenger()
+        auth.logout()
+        recipient_id = login_recipient()
+        auth.logout()
+
+        def issue(**params: object) -> int:
+            """Issue a challenge to the recipient; returns the result code"""
+            response = client.post(
+                "/challenge",
+                json={"destuser": recipient_id, "action": "issue", **params},
+            )
+            assert response.status_code == 200
+            return response.get_json()["result"]
+
+        def pending(received: bool, userid: str) -> list[dict]:
+            """The logged-in user's challenges from or to the given user"""
+            response = client.post("/challengelist", json={})
+            assert response.status_code == 200
+            return [
+                c
+                for c in response.get_json()["challengelist"]
+                if c["received"] is received and c["userid"] == userid
+            ]
+
+        def durations(received: bool, userid: str) -> list[int]:
+            return sorted(c["prefs"]["duration"] for c in pending(received, userid))
+
+        login_challenger()
+
+        # The first challenge is issued, and the recipient is notified
+        assert issue() == 0
+        assert len(mock_firebase.push_notifications) == 1
+        mock_firebase.assert_push_sent_to(recipient_id)
+        mock_firebase.assert_challenge_notified(recipient_id)
+
+        # The same again is refused: no challenge, no notification of any kind
+        mock_firebase.clear()
+        assert issue() == ALREADY_ISSUED
+        assert issue(duration=0) == ALREADY_ISSUED
+        # Options other than the duration do not make it another type
+        assert issue(manual=True) == ALREADY_ISSUED
+        assert issue(fairplay=True) == ALREADY_ISSUED
+        assert mock_firebase.push_notifications == []
+        assert mock_firebase.messages == []
+        assert durations(False, recipient_id) == [0]
+
+        # Challenges with a clock are other types, one for each duration
+        assert issue(duration=10) == 0
+        assert issue(duration=25) == 0
+        assert issue(duration=10) == ALREADY_ISSUED
+        assert issue(duration=25, manual=True) == ALREADY_ISSUED
+        assert len(mock_firebase.push_notifications) == 2
+        assert durations(False, recipient_id) == [0, 10, 25]
+        auth.logout()
+
+        # The recipient has the three, and declines the one without a clock
+        login_recipient()
+        assert durations(True, challenger_id) == [0, 10, 25]
+        untimed = next(
+            c for c in pending(True, challenger_id) if c["prefs"]["duration"] == 0
+        )
+        response = client.post(
+            "/challenge",
+            json={
+                "destuser": challenger_id,
+                "action": "decline",
+                "key": untimed["key"],
+            },
+        )
+        assert response.get_json()["result"] == 0
+        assert durations(True, challenger_id) == [10, 25]
+        # A challenge in the other direction is the recipient's own
+        response = client.post(
+            "/challenge",
+            json={"destuser": challenger_id, "action": "issue", "duration": 10},
+        )
+        assert response.get_json()["result"] == 0
+        auth.logout()
+
+        # Now the challenger can issue a challenge without a clock again,
+        # and retract and reissue one with a clock
+        login_challenger()
+        assert issue() == 0
+        assert issue() == ALREADY_ISSUED
+        timed = next(
+            c for c in pending(False, recipient_id) if c["prefs"]["duration"] == 25
+        )
+        response = client.post(
+            "/challenge",
+            json={
+                "destuser": recipient_id,
+                "action": "retract",
+                "key": timed["key"],
+            },
+        )
+        assert response.get_json()["result"] == 0
+        assert issue(duration=25) == 0
+        assert durations(False, recipient_id) == [0, 10, 25]
+        auth.logout()
+

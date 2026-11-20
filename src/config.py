@@ -379,6 +379,7 @@ class Error:
     MOVE_NOT_CHALLENGEABLE = 20
     ONLY_PASS_OR_CHALLENGE = 21
     USER_MUST_BE_FRIEND = 22
+    CHALLENGE_ALREADY_ISSUED = 23
     # Insert new error codes above this line
     # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
     GAME_OVER = 99
@@ -416,6 +417,7 @@ class Error:
             "MOVE_NOT_CHALLENGEABLE",
             "ONLY_PASS_OR_CHALLENGE",
             "USER_MUST_BE_FRIEND",
+            "CHALLENGE_ALREADY_ISSUED",
         ][errcode]
 
 
