@@ -329,6 +329,13 @@ MAX_GAMES: int = 50
 # before becoming an established one
 ESTABLISHED_MARK: int = 10
 
+# A user can have one challenge of each type pending to another user (see
+# db.protocols.challenge_type()). A pending challenge that is older than
+# this is no longer in the way of a new one of its type: the new one
+# replaces it. Most challenges that old are never going to be answered,
+# and the issuing user may not even see them in the challenge list.
+CHALLENGE_REPLACE_AFTER = timedelta(days=30)
+
 # Prefix of anonymous account identifiers
 ANONYMOUS_PREFIX = "anon:"
 
@@ -379,6 +386,7 @@ class Error:
     MOVE_NOT_CHALLENGEABLE = 20
     ONLY_PASS_OR_CHALLENGE = 21
     USER_MUST_BE_FRIEND = 22
+    CHALLENGE_ALREADY_ISSUED = 23
     # Insert new error codes above this line
     # GAME_OVER is always last and with a fixed code (also used in netskrafl.js)
     GAME_OVER = 99
@@ -416,6 +424,7 @@ class Error:
             "MOVE_NOT_CHALLENGEABLE",
             "ONLY_PASS_OR_CHALLENGE",
             "USER_MUST_BE_FRIEND",
+            "CHALLENGE_ALREADY_ISSUED",
         ][errcode]
 
 
