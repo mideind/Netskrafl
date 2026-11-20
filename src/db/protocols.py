@@ -29,7 +29,7 @@ from typing import (
     TypedDict,
     runtime_checkable,
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 
@@ -1058,11 +1058,20 @@ class ChallengeRepositoryProtocol(Protocol):
         ...
 
     def add_unique_relation(
-        self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
+        self,
+        src_user_id: str,
+        dest_user_id: str,
+        prefs: Optional[PrefsDict] = None,
+        *,
+        replace_after: Optional[timedelta] = None,
     ) -> bool:
         """Add a challenge, unless the source user already has a challenge
         of the same type (see challenge_type()) pending to the
-        destination user. Returns True if the challenge was added."""
+        destination user. Returns True if the challenge was added.
+
+        If replace_after is given, pending challenges of the same type
+        that are all older than that are not in the way: they are deleted
+        and the new challenge takes their place."""
         ...
 
     def delete_relation(

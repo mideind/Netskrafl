@@ -860,3 +860,61 @@ class TestDuplicateChallenge:
         assert durations(False, recipient_id) == [0, 0, 0, 10, 25, 25]
         auth.logout()
 
+    def test_old_challenge_is_replaced(
+        self,
+        client: FlaskClient,
+        auth: AuthHelper,
+        mock_firebase: FirebaseMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A pending challenge that has grown old is not in the way of an
+        identical new one: the new one takes its place, and the challenged
+        user is notified as of any new challenge."""
+        from datetime import timedelta
+
+        recipient_id = auth.login_user(
+            sub="old-recipient-001",
+            name="Old Recipient",
+            email="oldrecipient@example.com",
+        )["user_id"]
+        auth.logout()
+        auth.login_user(
+            sub="old-challenger-001",
+            name="Old Challenger",
+            email="oldchallenger@example.com",
+        )
+
+        def issue() -> int:
+            response = client.post(
+                "/challenge",
+                json={"destuser": recipient_id, "action": "issue", "duration": 10},
+            )
+            assert response.status_code == 200
+            return response.get_json()["result"]
+
+        def keys() -> list[str]:
+            response = client.post("/challengelist", json={})
+            return [
+                c["key"]
+                for c in response.get_json()["challengelist"]
+                if not c["received"] and c["userid"] == recipient_id
+            ]
+
+        assert issue() == 0
+        first = keys()
+        assert len(first) == 1
+        assert issue() == ALREADY_ISSUED
+        assert keys() == first
+
+        # Now let every pending challenge count as old
+        monkeypatch.setattr("skrafluser.CHALLENGE_REPLACE_AFTER", timedelta(0))
+        mock_firebase.clear()
+        assert issue() == 0
+        second = keys()
+        assert len(second) == 1
+        assert second != first
+        mock_firebase.assert_push_sent_to(recipient_id)
+        mock_firebase.assert_challenge_notified(recipient_id)
+
+        auth.logout()
+

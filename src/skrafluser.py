@@ -50,6 +50,7 @@ from applog import log_fields as log_fields
 
 from config import (
     ANONYMOUS_PREFIX,
+    CHALLENGE_REPLACE_AFTER,
     TOKEN_SECRET,
     FIREBASE_API_KEY,
     DEFAULT_LOCALE,
@@ -1175,10 +1176,14 @@ class User:
         """Issue a challenge to the destuser. A user can have one challenge
         of each type (the same duration, word check, fair play setting and
         locale) pending to another user: a further challenge of a type
-        that is already pending is not issued, and False is returned."""
+        that is already pending is not issued, and False is returned.
+        A pending challenge older than CHALLENGE_REPLACE_AFTER is not in
+        the way, however: the new one replaces it."""
         sid = self.id()
         assert sid is not None
-        return ChallengeModel.add_unique_relation(sid, destuser_id, prefs)
+        return ChallengeModel.add_unique_relation(
+            sid, destuser_id, prefs, CHALLENGE_REPLACE_AFTER
+        )
 
     def retract_challenge(self, destuser_id: str, *, key: Optional[str] = None) -> None:
         """Retract a challenge previously issued to the destuser"""

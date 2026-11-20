@@ -329,6 +329,13 @@ MAX_GAMES: int = 50
 # before becoming an established one
 ESTABLISHED_MARK: int = 10
 
+# A user can have one challenge of each type pending to another user (see
+# db.protocols.challenge_type()). A pending challenge that is older than
+# this is no longer in the way of a new one of its type: the new one
+# replaces it. Most challenges that old are never going to be answered,
+# and the issuing user may not even see them in the challenge list.
+CHALLENGE_REPLACE_AFTER = timedelta(days=30)
+
 # Prefix of anonymous account identifiers
 ANONYMOUS_PREFIX = "anon:"
 

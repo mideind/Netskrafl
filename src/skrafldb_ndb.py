@@ -86,7 +86,7 @@ from typing import (
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from itertools import zip_longest
 import json
 
@@ -1724,19 +1724,31 @@ class ChallengeModel(Model["ChallengeModel"]):
 
     @classmethod
     def add_unique_relation(
-        cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
+        cls,
+        src_id: str,
+        dest_id: str,
+        prefs: Optional[PrefsDict],
+        replace_after: Optional[timedelta] = None,
     ) -> bool:
         """Add a challenge relation between the two users, unless the
         source user already has a challenge of the same type (see
         challenge_type()) pending to the destination user. Returns True
-        if the challenge was added."""
+        if the challenge was added. If replace_after is given, pending
+        challenges of that type that are all older than that are not in
+        the way: they are deleted and the new one takes their place."""
         ks: Key[UserModel] = Key(UserModel, src_id)
         kd: Key[UserModel] = Key(UserModel, dest_id)
         new_type = challenge_type(prefs)
         # An ancestor query, so it sees every challenge already written
         q = cls.query(ancestor=ks).filter(ChallengeModel.destuser == kd)
-        if any(challenge_type(cm.prefs) == new_type for cm in q.fetch()):
-            return False
+        same = [cm for cm in q.fetch() if challenge_type(cm.prefs) == new_type]
+        if same:
+            if replace_after is None:
+                return False
+            cutoff = datetime.now(UTC) - replace_after
+            if any(cm.timestamp > cutoff for cm in same):
+                return False
+            delete_multi(cm.key for cm in same)
         cls.add_relation(src_id, dest_id, prefs)
         return True
 

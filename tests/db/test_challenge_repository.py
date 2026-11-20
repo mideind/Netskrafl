@@ -8,6 +8,7 @@ Use --backend option to select which backend(s) to test.
 from __future__ import annotations
 
 import time
+from datetime import timedelta
 
 import pytest
 from typing import TYPE_CHECKING
@@ -496,6 +497,79 @@ class TestUniqueChallenge:
         backend.challenges.add_relation(a, b, {"duration": 5})
         assert self._durations(backend, a, b) == [5, 5]
         assert not backend.challenges.add_unique_relation(a, b, {"duration": 5})
+
+    # A pending challenge older than this is replaced by a new one of its type
+    MONTH = timedelta(days=30)
+    # With this, every pending challenge counts as old
+    NO_TIME = timedelta(0)
+
+    def _keys(
+        self, backend: "DatabaseBackendProtocol", src: str, dest: str, duration: int
+    ) -> list[str]:
+        """The keys of the challenges of a duration pending from src to dest"""
+        return sorted(
+            c.key
+            for c in backend.challenges.list_issued(src)
+            if c.opp == dest and (c.prefs or {}).get("duration", 0) == duration
+        )
+
+    def test_recent_challenge_is_not_replaced(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """A pending challenge that is not yet old stays, and is in the way."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        assert backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=self.MONTH
+        )
+        keys = self._keys(backend, a, b, 5)
+        assert not backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=self.MONTH
+        )
+        assert self._keys(backend, a, b, 5) == keys
+
+    def test_old_challenges_are_replaced(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """Pending challenges of the type that are all old give way to the
+        new one, however many they are. Those of other types stay."""
+        a, b, c = "chal-uniq-a", "chal-uniq-b", "chal-uniq-c"
+        for _ in range(3):
+            backend.challenges.add_relation(a, b, {"duration": 5})
+        backend.challenges.add_relation(a, b, {"duration": 10})
+        backend.challenges.add_relation(a, b, {"duration": 5, "manual": True})
+        backend.challenges.add_relation(a, c, {"duration": 5})
+        backend.challenges.add_relation(b, a, {"duration": 5})
+        old_keys = self._keys(backend, a, b, 5)
+        assert len(old_keys) == 4
+
+        assert backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=self.NO_TIME
+        )
+        # The three plain ones are gone and the new one is there instead,
+        # next to the one with a manual word check
+        new_keys = self._keys(backend, a, b, 5)
+        assert len(new_keys) == 2
+        assert len(set(new_keys) - set(old_keys)) == 1
+        assert self._durations(backend, a, b) == [5, 5, 10]
+        assert self._durations(backend, a, c) == [5]
+        assert self._durations(backend, b, a) == [5]
+
+    def test_one_recent_challenge_keeps_the_old_ones(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """If any pending challenge of the type is recent, nothing is
+        replaced and the new one is not added."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        backend.challenges.add_relation(a, b, {"duration": 5})
+        time.sleep(1.0)
+        backend.challenges.add_relation(a, b, {"duration": 5})
+        keys = self._keys(backend, a, b, 5)
+        assert len(keys) == 2
+        # The first one is older than half a second, the second one is not
+        assert not backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=timedelta(seconds=0.5)
+        )
+        assert self._keys(backend, a, b, 5) == keys
 
 
 class TestUniqueChallengeConcurrency:

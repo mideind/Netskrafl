@@ -40,7 +40,7 @@ from typing import (
 import logging
 import uuid
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 from itertools import zip_longest
 
@@ -1535,10 +1535,16 @@ class ChallengeModel:
 
     @classmethod
     def add_unique_relation(
-        cls, src_id: str, dest_id: str, prefs: Optional[PrefsDict]
+        cls,
+        src_id: str,
+        dest_id: str,
+        prefs: Optional[PrefsDict],
+        replace_after: Optional[timedelta] = None,
     ) -> bool:
         db = _get_db()
-        return db.challenges.add_unique_relation(src_id, dest_id, prefs)
+        return db.challenges.add_unique_relation(
+            src_id, dest_id, prefs, replace_after=replace_after
+        )
 
     @classmethod
     def del_relation(

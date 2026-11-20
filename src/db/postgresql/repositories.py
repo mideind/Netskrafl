@@ -21,7 +21,7 @@ from typing import (
     Type,
     cast,
 )
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from sqlalchemy import Select, select, delete, and_, or_, func, desc, asc, union_all
@@ -1055,11 +1055,20 @@ class ChallengeRepository:
         self._session.flush()
 
     def add_unique_relation(
-        self, src_user_id: str, dest_user_id: str, prefs: Optional[PrefsDict] = None
+        self,
+        src_user_id: str,
+        dest_user_id: str,
+        prefs: Optional[PrefsDict] = None,
+        *,
+        replace_after: Optional[timedelta] = None,
     ) -> bool:
         """Add a challenge, unless the source user already has a challenge
         of the same type (see challenge_type()) pending to the
-        destination user. Returns True if the challenge was added."""
+        destination user. Returns True if the challenge was added.
+
+        If replace_after is given, pending challenges of the same type
+        that are all older than that are not in the way: they are deleted
+        and the new challenge takes their place."""
         # Two requests at the same moment (a double tap) must not both find
         # that there is no such challenge yet. The second one waits here
         # until the transaction of the first has ended, and then sees its
@@ -1074,15 +1083,28 @@ class ChallengeRepository:
             )
         )
         new_type = challenge_type(prefs)
-        stmt = select(Challenge.prefs).where(
+        stmt = select(Challenge.id, Challenge.prefs, Challenge.timestamp).where(
             and_(
                 Challenge.src_user_id == src_user_id,
                 Challenge.dest_user_id == dest_user_id,
             )
         )
-        for pending in self._session.execute(stmt).scalars():
-            if challenge_type(pending) == new_type:
+        # The pending challenges of the same type: (id, timestamp)
+        same = [
+            (row.id, row.timestamp)
+            for row in self._session.execute(stmt)
+            if challenge_type(row.prefs) == new_type
+        ]
+        if same:
+            if replace_after is None:
                 return False
+            cutoff = datetime.now(UTC) - replace_after
+            if any(ts > cutoff for _, ts in same):
+                return False
+            # All of them are old: the new challenge takes their place
+            self._session.execute(
+                delete(Challenge).where(Challenge.id.in_([cid for cid, _ in same]))
+            )
         self.add_relation(src_user_id, dest_user_id, prefs)
         return True
 
