@@ -212,9 +212,21 @@ starts a new deployment. Do it on the staging app first.
 - **Monitors:** errors in the log; requests answered with 5xx; a scheduled
   job that failed; a nightly job that is two hours overdue with its report of
   success; a rating table that is not full or may be incomplete; a subscriber
-  refused at the paywall; a worker timeout; restarting workers; slow requests;
-  a start of the server (a deploy, or the platform restarting the container);
-  no requests logged for five minutes; the database not reachable.
+  refused at the paywall; a worker that died or timed out; slow requests;
+  a start of the server that was not part of a deploy (the platform
+  restarting the container); no requests logged for five minutes; the
+  database not reachable.
+
+The monitors notify a channel that is meant for alerts that someone has to
+act on, so normal operation must not set them off. A deploy is normal
+operation. It starts the server, which the monitor on server starts cannot
+tell from a restart by the platform, so that monitor is muted while a deploy
+is under way: `utils/datadog-setup.py --service <service> --mute-starts
+<minutes>`, which the `/deploy` skill runs before it starts a production
+deploy. Do the same before changing a production app's settings, which also
+starts a new container. Monitors must also not count entries where one
+entry would do: the platform sometimes delivers a container's log to the log
+service more than once, which multiplies every count.
 
 Run it without `--apply` to see the definitions, with `--validate` to have
 the service check the monitor definitions without creating anything, and with

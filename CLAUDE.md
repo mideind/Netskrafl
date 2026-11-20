@@ -185,21 +185,30 @@ multiple languages through separate DAWG files and tile sets.
   traffic to that version). It stays until the App Engine project is closed
 - Every production release (netskrafl or explo-live) gets a git tag named
   `nYYYYMMDD` or `eYYYYMMDD` (plus a letter for further releases on the same day),
-  on the deployed commit, pushed to GitHub once the release serves all users. On
-  App Engine (explo-live) the tag equals the App Engine version name; in the
-  container (netskrafl) it equals the `APP_VERSION` label in the app's spec. The
+  on the deployed commit, pushed to GitHub once the release serves all users. The
+  tag equals the `APP_VERSION` label in the spec of the app's container. The
   tag is also published as a GitHub release ("Version <tag>") with release notes
   that cover everything since the previous release tag. The `/deploy` skill does
   both as its last step; tag and publish by hand after any deploy made outside it
-- Deploying differs per platform, and the `/deploy` skill covers both: a netskrafl
-  release goes to the staging app first (the `do-deploy` branch, i.e. the Explo dev
-  backend) and, once it is seen to run well there, to production by a push to the
-  `do-netskrafl` branch; straight to production only when that is asked for
-  explicitly. There is no gradual rollout (the new container gets all the traffic
-  once it passes its health check), so the skill also describes what to do when a
-  release goes wrong, including rollback to the previous deployment. A release
+- Deploying is done with the `/deploy` skill, and works the same way for all three
+  backends, which are containers on Digital Ocean (netskrafl since 2026-11-13,
+  explo-live since 2026-11-20): a production release goes to the staging app first
+  (the `do-deploy` branch, i.e. the Explo dev backend), as a canary. There the
+  standard test `utils/staging-check.py` plays through the key operations with
+  test users that exist only on that backend. If the canary is clean, the same
+  commit goes to production by a push to the app's deploy branch (`do-netskrafl`
+  or `do-explo`); straight to production only when that is asked for explicitly.
+  The canary shows that the container starts and works, not how it behaves under
+  real traffic. There is no gradual rollout (the new container gets all the
+  traffic once it passes its health check), so production is watched through log
+  samples after the switch, with a rollback to the previous deployment kept
+  ready; the skill describes what to do when a release goes wrong. A release
   that contains a schema migration cannot be rolled back that way and must be
   fixed forward
+- The alerts of the production backends (`utils/datadog-setup.py`) go to a channel
+  that is only for conditions that someone has to act on. Normal operation,
+  deploys included, must not set them off: keep that in mind when adding or
+  changing a monitor, and see `doc/logging.md`
 - A project is underway to migrate from Google Cloud to a containerized deployment,
   probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
   current status are tracked in `doc/migration-strategy.md`
