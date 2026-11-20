@@ -187,3 +187,6 @@ CLAUDE.local.md
 
 # Claude Code local (personal) settings
 .claude/settings.local.json
+
+# The forwarding app's App Engine configuration with the backend's address filled in
+appspot-forward/app.deploy.yaml

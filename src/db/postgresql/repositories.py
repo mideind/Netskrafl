@@ -1005,12 +1005,24 @@ class ChallengeRepository:
         )
         return self._session.execute(stmt).scalars().first() is not None
 
+    @staticmethod
+    def _challenge_id(key: str) -> Optional[uuid.UUID]:
+        """The id of the challenge that a key from a client refers to, or
+        None if the key cannot be the key of any challenge in this database.
+        A client may hold a key that is not a UUID: a challenge list fetched
+        from the Datastore backend, where the keys were integers, outlives a
+        move to this one. Such a key means "not found", not an error."""
+        try:
+            return uuid.UUID(key)
+        except (ValueError, AttributeError, TypeError):
+            # ValueError: not a UUID; the others: not a string at all
+            # (the key is taken as it is from the request's JSON)
+            return None
+
     def find_relation(
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """Find a challenge relationship and its preferences."""
-        from uuid import UUID as PyUUID
-
         stmt = select(Challenge).where(
             and_(
                 Challenge.src_user_id == src_user_id,
@@ -1018,7 +1030,11 @@ class ChallengeRepository:
             )
         )
         if key:
-            stmt = stmt.where(Challenge.id == PyUUID(key))
+            challenge_id = self._challenge_id(key)
+            if challenge_id is None:
+                # Not the key of any challenge here
+                return False, None
+            stmt = stmt.where(Challenge.id == challenge_id)
 
         challenge = self._session.execute(stmt).scalars().first()
         if challenge:
@@ -1041,9 +1057,7 @@ class ChallengeRepository:
         self, src_user_id: str, dest_user_id: str, key: Optional[str] = None
     ) -> Tuple[bool, Optional[PrefsDict]]:
         """Delete a challenge and return its preferences."""
-        from uuid import UUID as PyUUID
-
-        # First find to get prefs
+        # First find to get prefs (not found if the key is not a valid one)
         found, prefs = self.find_relation(src_user_id, dest_user_id, key)
         if not found:
             return False, None
@@ -1055,7 +1069,7 @@ class ChallengeRepository:
             )
         )
         if key:
-            stmt = stmt.where(Challenge.id == PyUUID(key))
+            stmt = stmt.where(Challenge.id == self._challenge_id(key))
 
         self._session.execute(stmt)
         self._session.flush()

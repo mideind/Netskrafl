@@ -394,6 +394,82 @@ class TestDeclineChallenge:
 
         auth.logout()
 
+    @pytest.mark.parametrize("stale_key", ["5629499534213120", "not-a-key"])
+    def test_stale_challenge_key_is_refused_not_an_error(
+        self,
+        client: FlaskClient,
+        auth: AuthHelper,
+        stale_key: str,
+    ) -> None:
+        """A client that holds a challenge key from before a change of
+        database backend (an integer key from Datastore) gets an orderly
+        refusal when it accepts or declines with that key, and the challenge
+        stays in place, to be acted on with its current key."""
+        challenger = auth.login_user(
+            sub="stale-key-challenger-001",
+            name="Stale Key Challenger",
+            email="stalekeychallenger@example.com",
+        )
+        challenger_id = challenger["user_id"]
+        auth.logout()
+        recipient = auth.login_user(
+            sub="stale-key-recipient-001",
+            name="Stale Key Recipient",
+            email="stalekeyrecipient@example.com",
+        )
+        recipient_id = recipient["user_id"]
+        auth.logout()
+
+        auth.login_user(
+            sub="stale-key-challenger-001",
+            name="Stale Key Challenger",
+            email="stalekeychallenger@example.com",
+        )
+        client.post("/challenge", json={"destuser": recipient_id, "action": "issue"})
+        auth.logout()
+
+        auth.login_user(
+            sub="stale-key-recipient-001",
+            name="Stale Key Recipient",
+            email="stalekeyrecipient@example.com",
+        )
+
+        def received_keys() -> list[str]:
+            """The keys of the challenges the recipient has from the challenger"""
+            response = client.post("/challengelist", json={})
+            assert response.status_code == 200
+            return [
+                c["key"]
+                for c in response.get_json()["challengelist"]
+                if c["received"] and c["userid"] == challenger_id
+            ]
+
+        keys = received_keys()
+        assert len(keys) == 1
+
+        # Accepting with the stale key: refused, and no game is created
+        response = client.post("/initgame", json={"opp": challenger_id, "key": stale_key})
+        assert response.status_code == 200
+        assert response.get_json().get("ok") is False
+
+        # Declining with the stale key: answered, and nothing is deleted
+        response = client.post(
+            "/challenge",
+            json={"destuser": challenger_id, "action": "decline", "key": stale_key},
+        )
+        assert response.status_code == 200
+        assert received_keys() == keys
+
+        # With the current key the challenge can still be declined
+        response = client.post(
+            "/challenge",
+            json={"destuser": challenger_id, "action": "decline", "key": keys[0]},
+        )
+        assert response.status_code == 200
+        assert received_keys() == []
+
+        auth.logout()
+
 
 @pytest.mark.api_e2e
 class TestRetractChallenge:
