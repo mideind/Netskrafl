@@ -22,6 +22,7 @@
         venv/bin/python utils/datadog-setup.py --service SERVICE --notify HANDLE
             [--site datadoghq.eu] [--jobs stats,ratings,cleanup]
             [--no-monitors] [--validate | --apply]
+        venv/bin/python utils/datadog-setup.py --service SERVICE --mute-starts MINUTES
 
     Without --apply, the program only prints what it would send. With
     --validate, it asks the service to check each monitor definition,
@@ -30,7 +31,16 @@
     variables DD_API_KEY and DD_APP_KEY.
 
     The program can be run again after a change: metrics are found by their
-    name and monitors by their title, and are updated in place.
+    name and monitors by their title, and are updated in place. Monitors that
+    an earlier version of the program created and this one no longer defines
+    (RETIRED_MONITORS) are deleted.
+
+    The monitors are for conditions that someone has to act on, and nothing
+    else: what they report goes to a channel that people are expected to
+    read. Normal operation must not set them off. A deploy is normal
+    operation, and the one monitor that a deploy would set off (a start of
+    the server) is muted for its duration with --mute-starts, which the
+    /deploy skill runs before it starts a production deploy.
 
 """
 
@@ -42,12 +52,25 @@ import argparse
 import json
 import os
 import sys
+from datetime import UTC, datetime, timedelta
 
 import requests
 
 
 # Tag key of the monitors that watch for a nightly job's daily report
 NIGHTLY_TAG = "nightly-job"
+# The tag (with the service as its value) of the monitor on starts of the
+# server, which a deploy mutes for its duration (see --mute-starts)
+START_TAG = "server-start"
+# Monitors that this program created earlier and no longer defines: they are
+# deleted when the definitions are applied
+RETIRED_MONITORS = [
+    # Counted worker starts: set off by a deploy shortly after another, and by
+    # log entries that the platform delivered more than once
+    "Workers are restarting",
+    # Now part of "A worker died or timed out"
+    "A worker timed out",
+]
 
 
 def metric_prefix(service: str) -> str:
@@ -180,31 +203,37 @@ def monitors(service: str, notify: str, jobs: List[str]) -> List[Dict[str, Any]]
             "subscription state in the database is inconsistent (as after "
             "the login bug of November 2026). The entry names the user.",
         ),
+        # What gunicorn reports as an error is a worker that ended abnormally:
+        # one that it killed for not answering in time, one that was killed
+        # from outside (out of memory), one that exited with an error or did
+        # not start. A deploy stops and starts workers without any of these
+        # (its entries are informational), so it does not set this off.
         m(
-            "A worker timed out",
-            '@logger.name:gunicorn "WORKER TIMEOUT"',
+            "A worker died or timed out",
+            "@logger.name:gunicorn status:(error OR critical)",
             "15m", ">", 0,
-            "gunicorn killed a worker that did not answer in time. The "
-            "requests it was handling failed.",
-        ),
-        m(
-            "Workers are restarting",
-            '@logger.name:gunicorn "Booting worker"',
-            "15m", ">", 6,
-            "Workers were started more often than a deploy explains (a "
-            "deploy starts three).",
+            "gunicorn reported that a worker process ended abnormally: it "
+            "did not answer in time and was killed (WORKER TIMEOUT), it was "
+            "killed from outside (SIGKILL: probably out of memory), or it "
+            "exited with an error. The requests it was handling failed. See "
+            "the gunicorn entries, and the app's memory graph.",
         ),
         # A start of the server is a deploy, or the platform restarting the
         # container. The second kind is not recorded anywhere else, and while
         # the container is away its requests fail without reaching the log.
+        # A deploy is normal operation and must not alert: whoever deploys
+        # mutes this monitor for the duration (--mute-starts; the /deploy
+        # skill does), so that what it reports is a start that nobody ordered.
         m(
             "The server was started",
             '@logger.name:gunicorn "Starting gunicorn"',
             "5m", ">", 0,
-            "The web server started in a new container. After a deploy this "
-            "is expected. Otherwise the platform restarted the container: "
-            "requests were not served for about half a minute. Look at what "
-            "was logged just before, and at the app's memory graph.",
+            "The web server started in a new container, and not as part of "
+            "a deploy made with the usual procedure (which mutes this "
+            "monitor). If nobody deployed or changed the app's settings, the "
+            "platform restarted the container: requests were not served for "
+            "about half a minute. Look at what was logged just before, and "
+            "at the app's memory graph.",
         ),
         # The scheduler in the container makes a request every two minutes,
         # so silence means that the container, or the forwarding of its
@@ -226,6 +255,9 @@ def monitors(service: str, notify: str, jobs: List[str]) -> List[Dict[str, Any]]
             "requests waited out; 'down' means that requests are failing.",
         ),
     ]
+    for monitor in result:
+        if monitor["name"].endswith("The server was started"):
+            monitor["tags"].append(f"{START_TAG}:{service}")
     # Each nightly job must report success once a day. These monitors alert
     # from the moment they are created until the job has run once: they have
     # a tag of their own (NIGHTLY_TAG), so that they can be muted until then
@@ -317,14 +349,40 @@ class Api:
             return f"INVALID: {e}"
         return "valid"
 
+    def find_monitors(self, name: str) -> List[Dict[str, Any]]:
+        """The monitors with exactly this name"""
+        found: Any = self.call("GET", "/api/v1/monitor", params={"name": name})
+        return [f for f in found or [] if f.get("name") == name]
+
     def put_monitor(self, monitor: Dict[str, Any]) -> str:
-        found: Any = self.call("GET", "/api/v1/monitor", params={"name": monitor["name"]})
-        same = [f for f in found or [] if f.get("name") == monitor["name"]]
+        same = self.find_monitors(monitor["name"])
         if same:
             self.call("PUT", f"/api/v1/monitor/{same[0]['id']}", monitor)
             return "updated"
         self.call("POST", "/api/v1/monitor", monitor)
         return "created"
+
+    def delete_monitor(self, name: str) -> str:
+        same = self.find_monitors(name)
+        for f in same:
+            self.call("DELETE", f"/api/v1/monitor/{f['id']}")
+        return "deleted" if same else "not there"
+
+    def mute(self, tag: str, minutes: int, message: str) -> str:
+        """Hold back the alerts of the monitors with a tag, from now on
+        and for a number of minutes; returns the time when that ends"""
+        end = datetime.now(UTC) + timedelta(minutes=minutes)
+        attributes = {
+            "message": message,
+            "monitor_identifier": {"monitor_tags": [tag]},
+            "scope": "*",
+            "schedule": {"end": end.isoformat(timespec="seconds")},
+        }
+        self.call(
+            "POST", "/api/v2/downtime",
+            {"data": {"type": "downtime", "attributes": attributes}},
+        )
+        return end.strftime("%H:%M UTC")
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -336,8 +394,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Service name of the log entries: the deployment's PROJECT_ID",
     )
     parser.add_argument(
-        "--notify", required=True,
+        "--notify", default="",
         help="Whom the monitors notify, as written in a Datadog message (e.g. @team-handle)",
+    )
+    parser.add_argument(
+        "--mute-starts", type=int, metavar="MINUTES", default=0,
+        help="Before a deploy: hold back the alert on a start of the server for "
+        "this many minutes, from now on. Nothing else is done",
     )
     parser.add_argument("--site", default="datadoghq.eu", help="Datadog site")
     parser.add_argument(
@@ -357,6 +420,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--apply", action="store_true", help="Send the definitions (default: only print them)"
     )
     args = parser.parse_args(argv)
+
+    if args.mute_starts > 0:
+        api_key = os.environ.get("DD_API_KEY", "")
+        app_key = os.environ.get("DD_APP_KEY", "")
+        if not api_key or not app_key:
+            print("DD_API_KEY and DD_APP_KEY must be set in the environment", file=sys.stderr)
+            return 2
+        until = Api(args.site, api_key, app_key).mute(
+            f"{START_TAG}:{args.service}",
+            args.mute_starts,
+            f"{args.service}: a deploy is under way",
+        )
+        print(f"Starts of the {args.service} server will not alert until {until}")
+        return 0
+    if not args.notify and not args.no_monitors:
+        parser.error("--notify is required")
 
     all_metrics = metrics(args.service)
     jobs = [j.strip() for j in args.jobs.split(",") if j.strip()]
@@ -385,6 +464,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"metric {metric['id']}: {api.put_metric(metric)}")
     for monitor in all_monitors:
         print(f"monitor {monitor['name']}: {api.put_monitor(monitor)}")
+    if all_monitors:
+        for title in RETIRED_MONITORS:
+            name = f"[{args.service}] {title}"
+            print(f"retired monitor {name}: {api.delete_monitor(name)}")
     return 0
 
 
