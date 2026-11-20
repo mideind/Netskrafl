@@ -295,47 +295,39 @@ improvement; parts of the app also sort client-side via `Alphabet` in
 - `netskrafl_lint.py` is **not** a linter - it is a separate utility program.
   Do not invoke it for code quality checks. Only run it when specifically asked.
 
-## Digital Ocean deployment experiment (status as of 2026-09-11)
+## The staging app on Digital Ocean
 
-A container deployment test runs on DO App Platform as the app
-`netskrafl-staging` (region ams,
-`https://netskrafl-staging-fvmuj.ondigitalocean.app`). It was first stood up in
-January 2026 against the **NDB** backend, proving that hosting can be migrated
-independently of the database, and was revived and repointed on 2026-08-12. The
-app spec is checked in at `.do/app.yaml` as a reference copy; the live spec
-remains the source of truth, so edit it by round-tripping
-`doctl apps spec get` → edit → `doctl apps update` rather than applying the
+The Explo dev backend runs as a container on DO App Platform, and doubles as
+the staging app: the canary for both production apps (see the `/deploy`
+skill). It was first stood up in January 2026 against the **NDB** backend,
+proving that hosting can be migrated independently of the database, and has
+run on PostgreSQL since 2026-08-18. Its names, addresses and the whereabouts
+of its secrets are kept in private notes, not here.
+
+**The app spec.** `.do/app.yaml` is a reference copy of its spec (and
+`.do/app-netskrafl.yaml` and `.do/app-explo.yaml` of the production apps').
+The live spec remains the source of truth, so edit it by round-tripping
+`doctl apps spec get` → edit → `doctl apps update` rather than applying a
 checked-in file (which would overwrite encrypted secrets with placeholders).
 
-**Current configuration:** `PROJECT_ID=explo-dev` with the explo-dev service
-account, **`DATABASE_BACKEND=postgresql`** against the migrated `explo_dev`
-database on the managed cluster `db-postgresql-ams3-netskrafl-staging` (since
-2026-08-18; this is the live Explo dev backend), one `apps-s-1vcpu-1gb`
+**Configuration.** `PROJECT_ID=explo-dev` with that project's service account,
+`DATABASE_BACKEND=postgresql` against a managed PostgreSQL cluster, one small
 instance, auto-deploying on push to the dedicated `do-deploy` branch (a
 merge-commit branch: merge master into it, it is not fast-forwardable).
 Secrets come from encrypted env vars (`SECRETS_PROVIDER=env`); the Google
-service-account credential stays for the Firebase Admin SDK. Custom domains
-`api-dev.explowordgame.com` (primary) and `api-dev2.explowordgame.com`
-(alias, rehearsal-only redirect target) point at the app; DNS is on
-Cloudflare, DNS-only. The same cluster also holds the **`explo_live`**
-database produced by the 2026-09-10 migration rehearsal (kept as the
-cutover-shaped target; refresh it with a delta pass) and an empty
-`netskrafl` database. See `doc/migration-strategy.md` for the plan and
-`doc/client-switchover-plan.md` for the client/DNS side.
+service-account credential stays for the Firebase Admin SDK. `/health/ready`
+passes when the database and the cache are reachable, and a `health_check` on
+it gates deployments.
 
-**Redis/Valkey (since 2026-08-12):** the app uses Miðeind's shared Valkey
-cluster `db-redis-gsapi-staging`, **logical database 1** (`REDIS_URL` set to
-the cluster URI with a `/1` suffix; db 0 belongs to gsapi — see the Valkey
-notes in `.do/app.yaml` for the full tenant assignment, and note that
-`cache.py`'s `flush()` deliberately avoids `FLUSHDB` for this reason).
-`/health/ready` passes and a `health_check` on it gates deployments.
+**Cache.** The app uses one logical database of a Valkey cluster that it
+shares with other services (the assignment is noted in `.do/app.yaml`). This
+is why `cache.py`'s `flush()` deliberately avoids `FLUSHDB`.
 
-**Scheduled jobs:** `CRON_SECRET` is set (regenerated 2026-09-09, kept only
-in `~/.config/netskrafl-staging.env` on the dev box) and supercronic runs the
-crontab in the container; it also authenticates `/appversion` and
-`/cacheflush`. Note the instance has 1 GB against GAE production's 2 GB
-(`B4_1G`) with the same three gunicorn workers, so it is not a valid
-load-testing baseline as sized; the production app needs ≥2 GB.
+**Scheduled jobs.** supercronic runs the crontab in the container, and
+authenticates to the app with the `CRON_SECRET` environment variable, which
+also guards `/appversion` and `/cacheflush`. The instance has half the memory
+of a production instance with the same three gunicorn workers, so it is not a
+valid load-testing baseline.
 
 **Build gotcha - App Platform builds with kaniko, not BuildKit.** kaniko does
 not support heredocs in `RUN`: it passes only the first line and silently

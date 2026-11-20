@@ -5,7 +5,13 @@ user-invocable: true
 allowed-tools:
   - Read
   - Bash(date *)
-  - Bash(git *)
+  - Bash(git fetch *)
+  - Bash(git status*)
+  - Bash(git log *)
+  - Bash(git diff *)
+  - Bash(git tag -l*)
+  - Bash(git merge-base *)
+  - Bash(git rev-parse *)
   - Bash(gcloud app describe *)
   - Bash(gcloud logging read *)
   - Bash(doctl apps list*)
@@ -474,11 +480,13 @@ deploys there. What remains:
   steps: gate them on the user's confirmation as described in step 2. Production
   is pushed only after the same commit has run well on the staging app, unless
   the user asked for a release straight to production.
-- The `doctl` commands for reading (`list`, `get`, `logs`, `spec get`), the
-  standard test and the muting of the server-start alert are pre-approved for
-  this skill. `doctl apps update`, the pushes
-  and the rollback calls are not, on purpose: each one is confirmed when it is
-  made.
+- What is pre-approved for this skill only reads or cannot reach production:
+  the `git` and `doctl` commands for reading (`fetch`, `status`, `log`, `diff`;
+  `list`, `get`, `logs`, `spec get`), the standard test and the muting of the
+  server-start alert. Everything that changes something is left out on
+  purpose and is confirmed when it is made: a `git push` (to a deploy branch,
+  or of a tag), a merge into `do-deploy`, `doctl apps update` and the rollback
+  calls.
 - An alert that arrives during a deploy is information about the release:
   none is expected once the server-start alert is muted. Treat one as a bad
   sample (step 6).
