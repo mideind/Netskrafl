@@ -23,6 +23,7 @@
             [--site datadoghq.eu] [--jobs stats,ratings,cleanup]
             [--no-monitors] [--validate | --apply]
         venv/bin/python utils/datadog-setup.py --service SERVICE --mute-starts MINUTES
+        venv/bin/python utils/datadog-setup.py --service SERVICE --mute-nightly HOURS
 
     Without --apply, the program only prints what it would send. With
     --validate, it asks the service to check each monitor definition,
@@ -377,12 +378,17 @@ class Api:
             "monitor_identifier": {"monitor_tags": [tag]},
             "scope": "*",
             "schedule": {"end": end.isoformat(timespec="seconds")},
+            # By default a downtime holds back the alert but lets the first
+            # recovery through: a "recovered" message for an alert that
+            # nobody was shown. Hold that back too. A monitor that is still
+            # alerting when the downtime ends notifies then, as it should.
+            "mute_first_recovery_notification": True,
         }
         self.call(
             "POST", "/api/v2/downtime",
             {"data": {"type": "downtime", "attributes": attributes}},
         )
-        return end.strftime("%H:%M UTC")
+        return end.strftime("%Y-%m-%d %H:%M UTC")
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -401,6 +407,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--mute-starts", type=int, metavar="MINUTES", default=0,
         help="Before a deploy: hold back the alert on a start of the server for "
         "this many minutes, from now on. Nothing else is done",
+    )
+    parser.add_argument(
+        "--mute-nightly", type=int, metavar="HOURS", default=0,
+        help="Before creating the monitors of a backend whose nightly jobs have "
+        "not run yet: hold back the alerts on a missing report of a nightly job "
+        "for this many hours, from now on. Nothing else is done",
     )
     parser.add_argument("--site", default="datadoghq.eu", help="Datadog site")
     parser.add_argument(
@@ -421,18 +433,30 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.mute_starts > 0:
+    if args.mute_starts > 0 or args.mute_nightly > 0:
         api_key = os.environ.get("DD_API_KEY", "")
         app_key = os.environ.get("DD_APP_KEY", "")
         if not api_key or not app_key:
             print("DD_API_KEY and DD_APP_KEY must be set in the environment", file=sys.stderr)
             return 2
-        until = Api(args.site, api_key, app_key).mute(
-            f"{START_TAG}:{args.service}",
-            args.mute_starts,
-            f"{args.service}: a deploy is under way",
-        )
-        print(f"Starts of the {args.service} server will not alert until {until}")
+        api = Api(args.site, api_key, app_key)
+        if args.mute_starts > 0:
+            until = api.mute(
+                f"{START_TAG}:{args.service}",
+                args.mute_starts,
+                f"{args.service}: a deploy is under way",
+            )
+            print(f"Starts of the {args.service} server will not alert until {until}")
+        if args.mute_nightly > 0:
+            until = api.mute(
+                f"{NIGHTLY_TAG}:{args.service}",
+                args.mute_nightly * 60,
+                f"{args.service}: the nightly jobs have not run yet",
+            )
+            print(
+                f"Missing reports of the nightly jobs of {args.service} will not "
+                f"alert for {args.mute_nightly} hours (until {until})"
+            )
         return 0
     if not args.notify and not args.no_monitors:
         parser.error("--notify is required")
