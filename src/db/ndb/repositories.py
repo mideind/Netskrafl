@@ -19,7 +19,7 @@ from typing import (
     Any,
     cast,
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Import the NDB models directly from skrafldb_ndb to avoid circular
 # imports when DATABASE_BACKEND=postgresql (skrafldb would try to
@@ -511,6 +511,21 @@ class ChallengeRepository:
         """Add a challenge."""
         skrafldb.ChallengeModel.add_relation(
             src_user_id, dest_user_id, cast(Any, prefs)
+        )
+
+    def add_unique_relation(
+        self,
+        src_user_id: str,
+        dest_user_id: str,
+        prefs: Optional[PrefsDict] = None,
+        *,
+        replace_after: Optional[timedelta] = None,
+    ) -> bool:
+        """Add a challenge, unless the source user already has a challenge
+        of the same type pending to the destination user. Challenges of
+        that type that are all older than replace_after are replaced."""
+        return skrafldb.ChallengeModel.add_unique_relation(
+            src_user_id, dest_user_id, cast(Any, prefs), replace_after
         )
 
     def delete_relation(

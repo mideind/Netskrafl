@@ -8,6 +8,7 @@ Use --backend option to select which backend(s) to test.
 from __future__ import annotations
 
 import time
+from datetime import timedelta
 
 import pytest
 from typing import TYPE_CHECKING
@@ -344,3 +345,283 @@ class TestChallengeDeleteForUser:
         assert not backend.challenges.has_relation(
             "chal-del-target-2", "chal-delete-user"
         )
+
+
+class TestUniqueChallenge:
+    """A user can have one challenge of each type pending to another user.
+    The type is what kind of game the challenge is for: the duration (no
+    clock, or a clock of N minutes), the word check, fair play, the locale."""
+
+    USERS = [
+        ("chal-uniq-a", "test:chaluniqa", "ChalUniqA"),
+        ("chal-uniq-b", "test:chaluniqb", "ChalUniqB"),
+        ("chal-uniq-c", "test:chaluniqc", "ChalUniqC"),
+    ]
+
+    @staticmethod
+    def _create_users(db: "DatabaseBackendProtocol") -> None:
+        for user_id, account, nickname in TestUniqueChallenge.USERS:
+            if db.users.get_by_id(user_id) is None:
+                db.users.create(
+                    user_id=user_id,
+                    account=account,
+                    email=None,
+                    nickname=nickname,
+                    locale="is_IS",
+                )
+
+    @pytest.fixture(autouse=True)
+    def setup_users(self, backend: "DatabaseBackendProtocol") -> None:
+        """Create the test users, with no challenges between them."""
+        self._create_users(backend)
+        for user_id, _, _ in self.USERS:
+            # An earlier run may have left challenges behind
+            # (the Datastore backend keeps what the tests write)
+            backend.challenges.delete_for_user(user_id)
+
+    @staticmethod
+    def _durations(
+        backend: "DatabaseBackendProtocol", src: str, dest: str
+    ) -> list[int]:
+        """The durations of the challenges pending from src to dest"""
+        return sorted(
+            (c.prefs or {}).get("duration", 0)
+            for c in backend.challenges.list_issued(src)
+            if c.opp == dest
+        )
+
+    def test_same_type_is_added_once(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """A second challenge of a type that is pending is not added."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        assert backend.challenges.add_unique_relation(a, b, {"duration": 0})
+        assert not backend.challenges.add_unique_relation(a, b, {"duration": 0})
+        assert self._durations(backend, a, b) == [0]
+
+        assert backend.challenges.add_unique_relation(a, b, {"duration": 10})
+        assert not backend.challenges.add_unique_relation(a, b, {"duration": 10})
+        assert self._durations(backend, a, b) == [0, 10]
+
+    def test_distinct_types_are_all_added(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """Challenges of distinct types can be pending side by side."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        for duration in (0, 3, 10, 25):
+            assert backend.challenges.add_unique_relation(
+                a, b, {"duration": duration}
+            )
+        assert self._durations(backend, a, b) == [0, 3, 10, 25]
+
+    def test_each_option_makes_a_type(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """The word check, fair play and the locale tell challenges apart,
+        as the duration does: challenges that differ in any of them are
+        distinct offers. Each combination is added once."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        distinct = [
+            PrefsDict(duration=10, locale="is_IS"),
+            PrefsDict(duration=10, locale="is_IS", manual=True),
+            PrefsDict(duration=10, locale="is_IS", fairplay=True),
+            PrefsDict(duration=10, locale="is_IS", manual=True, fairplay=True),
+            PrefsDict(duration=10, locale="en_US"),
+            PrefsDict(duration=0, locale="is_IS", manual=True),
+        ]
+        for prefs in distinct:
+            assert backend.challenges.add_unique_relation(a, b, prefs)
+        for prefs in distinct:
+            assert not backend.challenges.add_unique_relation(a, b, prefs)
+        assert self._durations(backend, a, b) == [0, 10, 10, 10, 10, 10]
+
+    def test_options_that_are_off_or_absent_are_the_same(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """An option that is not given is off, and no duration means no
+        clock. What else the preferences hold does not make a type."""
+        a, b, c = "chal-uniq-a", "chal-uniq-b", "chal-uniq-c"
+        assert backend.challenges.add_unique_relation(a, b)
+        assert not backend.challenges.add_unique_relation(a, b, {"duration": 0})
+        assert not backend.challenges.add_unique_relation(
+            a, b, {"manual": False, "fairplay": False}
+        )
+        assert not backend.challenges.add_unique_relation(a, b, {"newbag": True})
+        assert backend.challenges.add_unique_relation(
+            a, c, {"duration": 5, "fairplay": False, "newbag": True, "locale": "is_IS"}
+        )
+        assert not backend.challenges.add_unique_relation(
+            a, c, {"duration": 5, "locale": "is_IS"}
+        )
+
+    def test_only_the_same_pair_and_direction_count(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """A challenge to somebody else, or in the other direction, is not
+        in the way."""
+        a, b, c = "chal-uniq-a", "chal-uniq-b", "chal-uniq-c"
+        assert backend.challenges.add_unique_relation(a, b, {"duration": 5})
+        assert backend.challenges.add_unique_relation(a, c, {"duration": 5})
+        assert backend.challenges.add_unique_relation(b, a, {"duration": 5})
+        assert backend.challenges.add_unique_relation(c, b, {"duration": 5})
+        assert not backend.challenges.add_unique_relation(a, b, {"duration": 5})
+
+    def test_can_be_added_again_once_answered(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """When the pending challenge is gone (accepted, declined or
+        retracted), a challenge of its type can be added again."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        assert backend.challenges.add_unique_relation(a, b, {"duration": 5})
+        assert backend.challenges.add_unique_relation(a, b, {"duration": 0})
+        key = next(
+            c.key
+            for c in backend.challenges.list_issued(a)
+            if c.opp == b and (c.prefs or {}).get("duration") == 5
+        )
+        found, _ = backend.challenges.delete_relation(a, b, key)
+        assert found
+        # The other one is still pending, and still in the way of its type
+        assert not backend.challenges.add_unique_relation(a, b, {"duration": 0})
+        assert backend.challenges.add_unique_relation(a, b, {"duration": 5})
+        assert self._durations(backend, a, b) == [0, 5]
+
+    def test_plain_add_is_not_restricted(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """add_relation() adds whatever it is given; such duplicates, as the
+        databases hold from before, are in the way of their type like any
+        other challenge."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        backend.challenges.add_relation(a, b, {"duration": 5})
+        backend.challenges.add_relation(a, b, {"duration": 5})
+        assert self._durations(backend, a, b) == [5, 5]
+        assert not backend.challenges.add_unique_relation(a, b, {"duration": 5})
+
+    # A pending challenge older than this is replaced by a new one of its type
+    MONTH = timedelta(days=30)
+    # With this, every pending challenge counts as old
+    NO_TIME = timedelta(0)
+
+    def _keys(
+        self, backend: "DatabaseBackendProtocol", src: str, dest: str, duration: int
+    ) -> list[str]:
+        """The keys of the challenges of a duration pending from src to dest"""
+        return sorted(
+            c.key
+            for c in backend.challenges.list_issued(src)
+            if c.opp == dest and (c.prefs or {}).get("duration", 0) == duration
+        )
+
+    def test_recent_challenge_is_not_replaced(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """A pending challenge that is not yet old stays, and is in the way."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        assert backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=self.MONTH
+        )
+        keys = self._keys(backend, a, b, 5)
+        assert not backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=self.MONTH
+        )
+        assert self._keys(backend, a, b, 5) == keys
+
+    def test_old_challenges_are_replaced(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """Pending challenges of the type that are all old give way to the
+        new one, however many they are. Those of other types stay."""
+        a, b, c = "chal-uniq-a", "chal-uniq-b", "chal-uniq-c"
+        for _ in range(3):
+            backend.challenges.add_relation(a, b, {"duration": 5})
+        backend.challenges.add_relation(a, b, {"duration": 10})
+        backend.challenges.add_relation(a, b, {"duration": 5, "manual": True})
+        backend.challenges.add_relation(a, c, {"duration": 5})
+        backend.challenges.add_relation(b, a, {"duration": 5})
+        old_keys = self._keys(backend, a, b, 5)
+        assert len(old_keys) == 4
+
+        assert backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=self.NO_TIME
+        )
+        # The three plain ones are gone and the new one is there instead,
+        # next to the one with a manual word check
+        new_keys = self._keys(backend, a, b, 5)
+        assert len(new_keys) == 2
+        assert len(set(new_keys) - set(old_keys)) == 1
+        assert self._durations(backend, a, b) == [5, 5, 10]
+        assert self._durations(backend, a, c) == [5]
+        assert self._durations(backend, b, a) == [5]
+
+    def test_one_recent_challenge_keeps_the_old_ones(
+        self, backend: "DatabaseBackendProtocol"
+    ) -> None:
+        """If any pending challenge of the type is recent, nothing is
+        replaced and the new one is not added."""
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        backend.challenges.add_relation(a, b, {"duration": 5})
+        time.sleep(1.0)
+        backend.challenges.add_relation(a, b, {"duration": 5})
+        keys = self._keys(backend, a, b, 5)
+        assert len(keys) == 2
+        # The first one is older than half a second, the second one is not
+        assert not backend.challenges.add_unique_relation(
+            a, b, {"duration": 5}, replace_after=timedelta(seconds=0.5)
+        )
+        assert self._keys(backend, a, b, 5) == keys
+
+
+class TestUniqueChallengeConcurrency:
+    """Two requests at the same moment must not both add the challenge."""
+
+    def test_simultaneous_requests_add_one(
+        self, pg_backend: "DatabaseBackendProtocol"
+    ) -> None:
+        import threading
+
+        from tests.db.conftest import _create_postgresql_backend
+
+        a, b = "chal-uniq-a", "chal-uniq-b"
+        first = pg_backend
+        TestUniqueChallenge._create_users(first)
+        first.challenges.delete_for_user(a)
+        # The users must be visible to the other session
+        first.commit()
+        second = _create_postgresql_backend()
+        results: dict[str, bool] = {}
+        first_has_added = threading.Event()
+
+        def first_request() -> None:
+            results["first"] = first.challenges.add_unique_relation(
+                a, b, {"duration": 15}
+            )
+            first_has_added.set()
+            # Give the other request ample time to look for the challenge
+            # before this one is committed: it has to wait instead
+            time.sleep(0.4)
+            first.commit()
+
+        def second_request() -> None:
+            first_has_added.wait(timeout=10)
+            results["second"] = second.challenges.add_unique_relation(
+                a, b, {"duration": 15}
+            )
+            second.commit()
+
+        threads = [
+            threading.Thread(target=first_request),
+            threading.Thread(target=second_request),
+        ]
+        try:
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=30)
+            assert results == {"first": True, "second": False}
+            assert len([c for c in second.challenges.list_issued(a) if c.opp == b]) == 1
+        finally:
+            first.challenges.delete_for_user(a)
+            first.commit()
+            second.close()
+
