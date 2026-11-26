@@ -21,8 +21,8 @@
 #      SECRETS_PROVIDER=env is configured, for Google Secret Manager)
 #
 # Note on collation: the postgres image below initializes the cluster
-# with ICU collation (und-x-icu), matching the production database
-# recommendation in doc/postgresql-plan.md.
+# with ICU collation (und-x-icu), matching the production databases
+# (see "PostgreSQL collation" in CLAUDE.md).
 
 services:
 
@@ -70,7 +70,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-netskrafl}
       POSTGRES_DB: netskrafl
       # ICU collation for multilingual text sorting (Unicode root locale),
-      # per doc/postgresql-plan.md
+      # as in the production databases
       POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=und --locale=C"
       # All timestamps are stored and served in UTC
       TZ: UTC

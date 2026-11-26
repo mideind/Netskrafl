@@ -4,8 +4,8 @@
 
     Copyright © 2026 Miðeind ehf.
 
-    Post-migration verification step (see doc/data-migration-design.md,
-    "Verification"). Every row of the users and games tables in a
+    Post-migration verification step (see doc/migration-2026.md; the
+    migrator's design is in this repository's history). Every row of the users and games tables in a
     PostgreSQL database is loaded through the real application loaders
     (User.load_if_exists, Game.load) on the PostgreSQL backend, and any
     row that raises or comes back as None is reported. This catches what

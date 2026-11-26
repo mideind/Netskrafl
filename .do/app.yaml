@@ -1,9 +1,9 @@
 # Digital Ocean App Platform spec for Netskrafl/Explo container deployment.
 #
-# This is the *reference* copy of the app spec, kept in git so the
-# configuration does not live only in the DO control panel. The live app is
-# `netskrafl-staging` (region ams3), used for container/PostgreSQL migration
-# testing - see doc/migration-strategy.md and doc/dockerization-plan.md.
+# This is the *reference* copy of the spec of the staging app (the Explo
+# development backend, which is the canary for both production apps), kept in
+# git so the configuration does not live only in the DO control panel. See
+# doc/operations.md for how the deployments run.
 #
 # ---------------------------------------------------------------------------
 # SECRETS: never commit real values
@@ -27,13 +27,14 @@
 
 name: netskrafl-staging
 region: ams
-# Vanity hostname for the dev-project backend (added 2026-09-09; see
-# doc/client-switchover-plan.md). DNS: a DNS-only CNAME at Cloudflare to the
-# app's default ingress hostname; App Platform issues the certificate.
+# Public hostname of the dev-project backend, which development builds of
+# the Explo app have built in (see doc/operations.md, "Explo apps and the
+# backend's address"). DNS: a DNS-only CNAME to the app's default ingress
+# hostname; App Platform issues the certificate.
 domains:
 - domain: api-dev.explowordgame.com
   type: PRIMARY
-# Second alias of the same app: the redirect target for lever-2 rehearsals
+# Second alias of the same app: a target for rehearsing endpoint overrides
 - domain: api-dev2.explowordgame.com
   type: ALIAS
 
@@ -66,9 +67,9 @@ services:
 
     http_port: 8080
     instance_count: 1
-    # The container runs 3 gunicorn workers, each loading ~14 MB of DAWG
-    # vocabularies. GAE production uses B4_1G (2 GB) per instance, so 1 GB here
-    # is the tighter constraint - watch memory before trusting a load test.
+    # Every gunicorn worker loads the DAWG vocabularies. The production apps
+    # have more memory than this one, so memory is the tighter constraint
+    # here: this app is not a load-testing baseline.
     instance_size_slug: apps-s-1vcpu-1gb
 
     # /health/ready reports Redis (and, on the PG backend, database)
@@ -147,7 +148,7 @@ services:
       # --- Application secrets ----------------------------------------------
       # SECRETS_PROVIDER=env selects EnvSecretProvider (src/secret_manager.py):
       # secrets come from env vars instead of GCP Secret Manager (decision
-      # 2026-08-14, see doc/migration-strategy.md, Open Decisions). Each secret
+      # 2026-08-14). Each secret
       # id is read from <SECRET_ID> or, base64-decoded, from <SECRET_ID>_BASE64.
       # The app needs three: SECRET_KEY_BIN (64 raw bytes, so _BASE64 form),
       # MOVES_AUTH_KEY (plain string), and the per-project client secret JSON
@@ -191,10 +192,11 @@ services:
       # --- GoSkrafl moves sidecar -------------------------------------------
       # When set, docker-entrypoint.sh starts the GoSkrafl server (built into
       # the image) on 127.0.0.1 at this port, and the Flask app forwards its
-      # /moves and /riddle traffic to it instead of the external GAE 'moves'
-      # service. /bestmoves move generation is also delegated to the sidecar
-      # (only when it is local; on GAE the in-process Python engine is used).
-      # Unset it to fall back to the GAE service (or set MOVES_SERVICE_URL
+      # /moves and /riddle traffic to it instead of the external 'moves'
+      # service on App Engine. Robot and /bestmoves move generation is also
+      # delegated to the sidecar (only when it is local; otherwise the
+      # in-process Python engine is used).
+      # Unset it to fall back to the external service (or set MOVES_SERVICE_URL
       # for an explicit target).
       - key: MOVES_SIDECAR_PORT
         scope: RUN_TIME
@@ -248,7 +250,7 @@ services:
 #
 # The staging PG cluster was provisioned 2026-08-14:
 # db-postgresql-ams3-netskrafl-staging (PG 18, ams3, db-s-1vcpu-2gb), with
-# ICU-`und` app databases `netskrafl` and `explo_dev`, owner netskrafl_app.
+# the ICU-`und` app database `explo_dev`, owner netskrafl_app.
 # Since 2026-08-18 the staging app is attached to it (binding name `pg`,
 # referenced by DATABASE_URL above) and runs against `explo_dev`, populated
 # by scripts/migrate_to_postgres.py from the explo-dev Datastore.

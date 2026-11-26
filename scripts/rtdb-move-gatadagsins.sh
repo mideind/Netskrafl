@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # One-off helper for moving the netskrafl project's Realtime Database from the
-# US default instance to an EU instance (europe-west1); see doc/rtdb-eu-move.md.
+# US default instance to an EU instance (europe-west1); see doc/migration-2026.md.
 #
 # Only the gatadagsins/ subtree is copied. game/, user/ and connection/ are
 # not: clients ignore the value they receive on first attach to those paths,

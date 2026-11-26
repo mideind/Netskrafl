@@ -14,21 +14,20 @@
 #     # edit, leaving every EV[1:...] value untouched
 #     doctl apps update <APP_ID> --spec live-spec.yaml
 #
-# See doc/migration-strategy.md for the cutover plan that this app is part of.
+# See doc/operations.md for how the deployments run.
 
 name: replace-me-app-name
 region: ams
 
-# No custom domain while the app is being prepared: it is reached at its
-# default hostname only. The public backend hostname is added at the cutover,
-# after the final data copy and a few minutes BEFORE its DNS record is
-# pointed at this app (see doc/migration-strategy.md, "The switch"): the app
-# then answers as soon as the record changes. Added after the record has
-# changed, App Platform answers 404 for the hostname in the meantime. The
-# certificate is issued about a minute after the record points here.
-# domains:
-# - domain: REPLACE_ME_public_backend_hostname
-#   type: PRIMARY
+# The live spec carries the backend's public hostname as its primary domain
+# (since the move from App Engine on 2026-11-13); it is the one address that
+# Netskrafl's web client calls. When a hostname is added to an app, add it to
+# the spec BEFORE its DNS record is pointed at the app: added after the
+# record has changed, App Platform answers 404 for the hostname in the
+# meantime. Then leave the spec alone until the domain is active.
+domains:
+- domain: REPLACE_ME_public_backend_hostname
+  type: PRIMARY
 
 alerts:
   - rule: DEPLOYMENT_FAILED
@@ -60,9 +59,8 @@ services:
 
     # One instance only: supercronic runs in every container (two instances
     # would run every scheduled job twice) and the entrypoint runs Alembic at
-    # every start. Scale by instance size, not count. App Engine served
-    # production with two 2 GB instances at about 300 MB each; the size
-    # below is generous on purpose and can be lowered once metrics are in.
+    # every start. Scale by instance size, not count. The size below was
+    # chosen generously and can be lowered once metrics justify it.
     instance_count: 1
     instance_size_slug: apps-d-2vcpu-4gb
 
@@ -116,7 +114,7 @@ services:
         scope: RUN_TIME
         value: https://malstadur.mideind.is/netskrafl
 
-      # The release name (same scheme as the App Engine version names):
+      # The release name (nYYYYMMDD or eYYYYMMDD, see the /deploy skill):
       # cache-busts the static files and names the git tag of the release.
       - key: APP_VERSION
         scope: RUN_AND_BUILD_TIME
@@ -137,10 +135,10 @@ services:
         type: SECRET
         value: REPLACE_ME_rediss_url_with_db_number
 
-      # The three application secrets must be byte-identical to the ones the
-      # App Engine app uses: sessions, the login tokens exchanged with the
-      # host site and the bearer tokens held by open browser tabs are all
-      # signed with them, and must stay valid across the cutover.
+      # The three application secrets. Sessions, the login tokens exchanged
+      # with the host site and the bearer tokens held by clients are all
+      # signed with them, so changing one signs everybody out: they kept
+      # their values through the move from App Engine for that reason.
       - key: SECRETS_PROVIDER
         scope: RUN_TIME
         value: env
@@ -160,20 +158,20 @@ services:
         type: SECRET
         value: REPLACE_ME_base64_client_secret_json
 
-      # Set explicitly, as app-netskrafl.yaml does: this overrides the
-      # FIREBASE_DB_URL inside the client secret, so the app cannot end up on
-      # another Realtime Database instance than App Engine is using.
+      # Set explicitly: this overrides the FIREBASE_DB_URL inside the client
+      # secret. It dates from when the secret still named a Realtime Database
+      # instance that has since been replaced, and is harmless now that the
+      # secret names the current one.
       - key: FIREBASE_DB_URL
         scope: RUN_TIME
         value: REPLACE_ME_realtime_database_url
 
-      # NOT set before the cutover. Without it supercronic does not start, so
-      # no scheduled job runs: until then App Engine runs the nightly jobs on
-      # Datastore, and a stats run here as well would leave a second set of
-      # rows for the same day once the last changes are copied over. Added on
-      # the night of the cutover, after App Engine's nightly jobs have run and
-      # before the write freeze (setting it restarts the app; /cacheflush
-      # needs it too).
+      # Set on the live app. Without it supercronic does not start, so no
+      # scheduled job runs, and /cacheflush cannot be called. It is commented
+      # out here so that an app created from this file starts without
+      # scheduled jobs: two backends must never run the nightly statistics
+      # job for the same day on data that is then merged. Setting it restarts
+      # the app.
       # - key: CRON_SECRET
       #   scope: RUN_TIME
       #   type: SECRET
@@ -191,8 +189,7 @@ services:
         scope: RUN_TIME
         value: ${pg.DATABASE_URL}
 
-# The production PostgreSQL cluster holds the database that the migrator
-# fills (scripts/migrate_to_postgres.py). Attaching it here provides the
+# The production PostgreSQL cluster. Attaching it here provides the
 # ${pg.DATABASE_URL} binding, but does NOT add the app to the cluster's
 # trusted sources: until that is done, the container cannot connect, the
 # entrypoint's Alembic step fails and so does the deployment. Right after
