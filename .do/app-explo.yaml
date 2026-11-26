@@ -112,10 +112,9 @@ services:
         scope: RUN_AND_BUILD_TIME
         value: explo-live
 
-      # The single-page web UI, as on App Engine (see app.yaml).
-      - key: SINGLE_PAGE
-        scope: RUN_TIME
-        value: "TRUE"
+      # No SINGLE_PAGE: the built-in web UI is a development client, served
+      # on the staging app and on local servers only (see src/web.py). No
+      # HOME_REDIRECT_URL either, so the root and greeting pages answer 404.
 
       # The release name (same scheme as the App Engine version names):
       # cache-busts the static files and names the git tag of the release.

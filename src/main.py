@@ -67,8 +67,6 @@ from config import (
     FIREBASE_APP_ID,
     FLASK_SESSION_KEY,
     AUTH_SECRET,
-    TRANSITION_KEY,
-    SKIP_TRANSITION,
 )
 from basics import (
     FlaskWithCaching,
@@ -288,11 +286,6 @@ def inject_into_context() -> Dict[str, Union[bool, str]]:
         firebase_db_url=FIREBASE_DB_URL,
         firebase_app_id=FIREBASE_APP_ID,
         measurement_id=MEASUREMENT_ID,
-        transition_key=TRANSITION_KEY,
-        # Suppress the transition-UI redirect when smoke testing the
-        # legacy web UI; explicit render_template() arguments (as used
-        # by the transition pages themselves) override this default
-        skip_transition_check=SKIP_TRANSITION,
     )
 
 

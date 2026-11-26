@@ -16,7 +16,8 @@ instead, and keep the specifics in private notes.
 
 Netskrafl is an Icelandic crossword game website and backend server built with:
 - **Backend**: Python 3.11 + Flask web server for Google App Engine
-- **Frontend**: HTML5/JavaScript/TypeScript client with Ajax communication
+- **Frontend**: the players' clients live in other repositories (see below); this
+  one keeps a single-page TypeScript web client as a development client
 - **Database**: Google Cloud NDB (schemaless NoSQL), but being migrated to PostgreSQL
 - **Build System**: Grunt for TypeScript/JavaScript/CSS compilation
 - **Testing**: pytest framework
@@ -105,7 +106,7 @@ If port 8080 is taken on the machine, add `SERVER_PORT=<free port>`: with
 
 ### Backend Structure (src/)
 - **main.py**: Flask app entry point and configuration
-- **web.py**: HTML page routes and responsive web content
+- **web.py**: the web routes: the built-in web UI and the login sequences
 - **api.py**: JSON API endpoints for client communication
 - **skraflgame.py**: Core Game class and game state management
 - **skrafluser.py**: User class and user management
@@ -122,8 +123,8 @@ If port 8080 is taken on the machine, add `SERVER_PORT=<free port>`: with
   - **page.ts**: Main page logic and UI management
   - **game.ts**: Game board and gameplay interactions
   - **model.ts**: Data models and state management
-- **js/**: Legacy JavaScript files
-- **built/**: Compiled JavaScript output (netskrafl.js, explo.js)
+- **lib/**: Vendored third-party JavaScript (credited in `README.md`)
+- **built/**: Compiled JavaScript output (explo.js)
 - **templates/**: Jinja2 HTML templates
 
 ### Key Data Files
@@ -143,8 +144,17 @@ multiple languages through separate DAWG files and tile sets.
   but a few differences in the backend APIs, for instance in player authentication
 - Currently, Netskrafl only supports Icelandic
 - Explo supports Icelandic, English, Polish, and Norwegian (bokmål and nynorsk)
-- Netskrafl is a web-based game with real-time multiplayer capabilities
-- The Netskrafl web frontend supports responsive UIs for desktop and mobile browsers
+- Netskrafl is a web-based game with real-time multiplayer capabilities. Its web
+  client is embedded in Málstaður and maintained there, not in this repository
+- The built-in web UI (`static/src/`, `templates/page.html`) is a development
+  client. It is served only where `SINGLE_PAGE=TRUE` is set: on the staging app
+  and on local servers (`runserver.sh` and the compose files set it), never on
+  the production apps. Without it the UI's routes answer 404 (`web_ui_route` in
+  `src/web.py`), and `/` and `/greet` redirect to `HOME_REDIRECT_URL` if that is
+  set (on Netskrafl: its home within Málstaður), else answer 404. The older
+  server-rendered jQuery UI was removed on 2026-11-26, with the help pages and
+  the admin page; the `url` field of the game lists keeps its `/board?game=…`
+  form because clients read the game id from it (`game_url` in `src/logic.py`)
 - Explo has a mobile app client (React Native app, implemented in the explo-front repository)
   that communicates with a separate instance of the Netskrafl/Explo game server
 - Real-time gameplay uses WebSocket-like communication via Firebase

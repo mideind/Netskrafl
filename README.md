@@ -13,8 +13,13 @@ on the web at [https://malstadur.mideind.is/netskrafl](https://malstadur.mideind
 The game backend is implemented in Python 3.11 for the
 [Google App Engine Standard Environment](https://cloud.google.com/appengine/docs/standard).
 
-The frontend is a tablet- and smartphone-friendly web client in HTML5
-and JavaScript connecting via Ajax to a Flask-based web server on the backend.
+This repository holds the backend, a Flask-based web server with a JSON API.
+The clients that players use are maintained elsewhere: Netskrafl's web client
+is embedded in Málstaður, and Explo is a mobile app. The repository also
+contains a tablet- and smartphone-friendly single-page web client in
+TypeScript (```static/src/```), which is kept as a development client: the
+server offers it only where the ```SINGLE_PAGE``` environment variable is set
+to ```TRUE``` (on the staging app and on local development servers).
 
 The game contains a robot crossword player written in Python. The algorithm is based
 on Appel & Jacobson's classic paper
@@ -62,8 +67,9 @@ The Netskrafl server supports three types of clients, each with its own authenti
 
 #### 1. Direct Web Access (Same-Origin)
 
-The classic Netskrafl web interface served directly from the server. Users authenticate
-via OAuth2 (Google, Facebook, or Apple), and the server maintains session state using
+The built-in single-page web client, served directly from the server where
+`SINGLE_PAGE=TRUE` is set (a development client; see above). Users authenticate
+via OAuth2 (Google), and the server maintains session state using
 secure HTTP-only cookies with `SameSite=Lax`.
 
 - **Auth mechanism**: Flask session cookies
@@ -377,13 +383,6 @@ which is licensed under the MIT license as follows:
 	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 	SOFTWARE.
-
-Netskrafl contains the *jQuery UI Touch Punch* library by David Furfero, which
-is licensed under the MIT license.
-
-	Copyright © 2011 David Furfero
-
-	The MIT license, as spelled out above, applies to this library.
 
 ### Trademarks
 

@@ -1,5 +1,5 @@
 
-{% extends "container.html" %}
+{% extends "container-base-explo.html" %}
 
 {% block opengraph %}
 
@@ -7,10 +7,6 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Netskrafl" />
 <meta property="og:description" content="Spilaðu skrafl á netinu" />
-<meta property="og:image" content="{{ url_for('web.static', filename='NetskraflFacebookImageSq.jpg', _external=True) | safe }}" />
-<meta property="og:image:type" content="image/jpeg" />
-<meta property="og:image:width" content="600" />
-<meta property="og:image:height" content="600" />
 
 {% endblock %}
 
@@ -24,7 +20,7 @@
 {% endblock %}
 
 {% block logo %}
-{% include 'logo.html' %}
+<!-- No logo -->
 {% endblock %}
 
 {% block content %}
@@ -40,7 +36,6 @@
       takist.
    </p>
    <div class="login-buttons">
-      <div class="get-help"><span class="glyphicon glyphicon-info-sign"></span>Fá hjálp</div>
       <div class="try-again"><span class="glyphicon glyphicon-refresh"></span>Reyna aftur</div>
    </div>
    <div class="login-padding"></div>
@@ -52,20 +47,13 @@
 
 <script>
 
-function initLoginError() {
-   $("div.try-again").click(
-      function() {
-         window.location.assign("{{ url_for('web.login') }}");
-      }
-   );
-   $("div.get-help").click(
-      function() {
-         window.location.assign("{{ url_for('web.page') }}/help#faq-31");
-      }
-   );
-}
-
-$(document).ready(initLoginError);
+// Offer to start the login sequence again
+document.querySelector("div.try-again").addEventListener(
+   "click",
+   function() {
+      window.location.assign("{{ url_for('web.login') }}");
+   }
+);
 
 </script>
 

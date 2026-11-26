@@ -108,12 +108,10 @@ services:
         scope: RUN_AND_BUILD_TIME
         value: 0.0.1
 
-      # Serve the single-page (SPA) web UI, matching the GAE Explo projects
-      # (app-explo*.yaml set the same). Without this, the legacy multi-page
-      # UI is served: it looks different (skrafl-curry skin, different board
-      # fonts) AND its client JS writes the unsegmented netskrafl-style
-      # Firebase presence path (connection/<uid>), which the Explo projects'
-      # locale-segmented Firebase rules reject with permission_denied.
+      # Serve the built-in single-page web UI. It is a development client,
+      # so this is set here, on the staging app, and on local development
+      # servers, but not on the production apps: without it the UI's routes
+      # answer 404 (see src/web.py).
       - key: SINGLE_PAGE
         scope: RUN_TIME
         value: "TRUE"
