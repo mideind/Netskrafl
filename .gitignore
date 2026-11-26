@@ -22,7 +22,6 @@ pydev_startup.py
 
 # Secret session key
 resources/secret_key.bin
-resources/salescloud_key.bin
 
 # Legacy client secret text files
 resources/client_secret*.txt
@@ -44,11 +43,6 @@ resources/diff*.txt
 
 # CSS files generated from Less
 static/skrafl-*.css
-
-# Concatenated JS
-static/netskrafl.js
-static/main.js
-static/wait.js
 
 # Minified JavaScript
 static/*.min.js

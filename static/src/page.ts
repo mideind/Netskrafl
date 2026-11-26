@@ -45,10 +45,7 @@ import { WaitDialog, AcceptDialog } from "wait";
 
 import { AnimatedExploLogo, NetskraflLogo } from "logo";
 
-import {
-  FriendPromoteDialog, FriendThanksDialog,
-  FriendCancelDialog, FriendCancelConfirmDialog
-} from "friend";
+import { FriendPromoteDialog } from "friend";
 
 import { logEvent } from "channel";
 
@@ -120,9 +117,6 @@ interface DialogViews extends Record<string, DialogFunc> {
   challenge: DialogFunc;
   promo: DialogFunc;
   friend: DialogFunc;
-  thanks: DialogFunc;
-  cancel: DialogFunc;
-  confirm: DialogFunc;
   wait: DialogFunc;
   accept: DialogFunc;
 }
@@ -155,12 +149,6 @@ class View {
       (view, args) => view.vwPromo(args),
     friend:
       (view, args) => view.vwFriend(args),
-    thanks:
-      (view, args) => view.vwThanks(args),
-    cancel:
-      (view, args) => view.vwCancel(args),
-    confirm:
-      (view, args) => view.vwConfirm(args),
     wait:
       (view, args) => view.vwWait(args),
     accept:
@@ -194,13 +182,6 @@ class View {
         break;
       case "review":
         views.push(this.vwReview());
-        break;
-      case "thanks":
-        // Display a thank-you dialog on top of the normal main screen
-        views.push(this.vwMain());
-        // Be careful to add the Thanks dialog only once to the stack
-        if (!this.dialogStack.length)
-          this.showThanks();
         break;
       case "help":
         // A route parameter of ?q=N goes directly to the FAQ number N
@@ -262,27 +243,6 @@ class View {
   stopSpinner() {
     if (this.model.spinners) {
       this.model.spinners--;
-    }
-  }
-
-  async cancelFriendship() {
-    // Initiate cancellation of the user's friendship
-    let spinner = true;
-    try {
-      this.startSpinner();
-      if (await this.model.cancelFriendship()) {
-        // Successfully cancelled the friendship
-        this.stopSpinner();
-        spinner = false;
-        // Show a confirmation of the cancellation
-        this.pushDialog("confirm", {});
-      }
-    } catch (e) {
-      // Simply display no confirmation in this case
-    }
-    finally {
-      if (spinner)
-        this.stopSpinner();
     }
   }
 
@@ -387,16 +347,6 @@ class View {
   showFriendPromo() {
     // Show a friendship promotion
     this.pushDialog("friend", { });
-  }
-
-  showThanks() {
-    // Show thanks for becoming a friend
-    this.pushDialog("thanks", { });
-  }
-
-  showFriendCancel() {
-    // Show a friendship cancellation dialog
-    this.pushDialog("cancel", { });
   }
 
   showAcceptDialog(oppId: string, oppNick: string, challengeKey: string) {
@@ -744,11 +694,9 @@ class View {
             },
             [glyph("log-out"), nbsp(), t("Skrá mig út")], 11),
           user.friend ?
-            this.vwDialogButton("user-unfriend", ts("Hætta sem vinur"),
-              (ev) => {
-                ev.preventDefault();
-                view.showFriendCancel()
-              },
+            // An indication only: a subscription is managed where it was made
+            this.vwDialogButton("user-unfriend", ts("Þú ert vinur Netskrafls!"),
+              (ev) => { ev.preventDefault(); },
               [glyph("coffee-cup"), nbsp(), nbsp(), ts("Þú ert vinur Netskrafls!")], 12
             )
             :
@@ -806,30 +754,6 @@ class View {
 
   vwFriend(_: {}): m.vnode {
     return m(FriendPromoteDialog,
-      {
-        view: this,
-      }
-    );
-  }
-
-  vwThanks(_: {}): m.vnode {
-    return m(FriendThanksDialog,
-      {
-        view: this,
-      }
-    );
-  }
-
-  vwCancel(_: {}): m.vnode {
-    return m(FriendCancelDialog,
-      {
-        view: this,
-      }
-    );
-  }
-
-  vwConfirm(_: {}): m.vnode {
-    return m(FriendCancelConfirmDialog,
       {
         view: this,
       }

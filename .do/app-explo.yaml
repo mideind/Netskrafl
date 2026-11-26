@@ -112,10 +112,13 @@ services:
         scope: RUN_AND_BUILD_TIME
         value: explo-live
 
-      # The single-page web UI, as on App Engine (see app.yaml).
-      - key: SINGLE_PAGE
+      # The backend serves no web UI of its own (no SINGLE_PAGE: the built-in
+      # UI is a development client, for the staging app and local servers).
+      # A browser that opens its root or greeting page is sent here instead,
+      # to Explo's website.
+      - key: HOME_REDIRECT_URL
         scope: RUN_TIME
-        value: "TRUE"
+        value: https://explowordgame.com
 
       # The release name (same scheme as the App Engine version names):
       # cache-busts the static files and names the git tag of the release.

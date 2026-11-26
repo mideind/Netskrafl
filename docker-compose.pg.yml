@@ -34,6 +34,8 @@ services:
       - "8080:8080"
     environment:
       PROJECT_ID: ${PROJECT_ID:-netskrafl}
+      # Serve the built-in web UI (a development client; see src/web.py)
+      SINGLE_PAGE: "TRUE"
       # PostgreSQL backend, served by the postgres service below
       DATABASE_BACKEND: postgresql
       DATABASE_URL: postgresql://netskrafl:${POSTGRES_PASSWORD:-netskrafl}@postgres:5432/netskrafl

@@ -213,6 +213,14 @@ class UserListDict(TypedDict):
 UserList = List[UserListDict]
 
 
+def game_url(uuid: str, *, zombie: bool = False) -> str:
+    """Return the 'url' field of a game in the game lists. The clients
+    still receive it and may read the game's id and zombie flag from it.
+    It has the form of the address of the game page in the former
+    server-rendered web UI, which no longer exists."""
+    return f"/board?game={uuid}" + ("&zombie=1" if zombie else "")
+
+
 class GameListDict(TypedDict):
     """The dictionary returned from gamelist()"""
 
@@ -1362,7 +1370,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
                     uuid=uuid,
                     locale=game_locale,
                     # Mark zombie state
-                    url=url_for("web.board", game=uuid, zombie="1"),
+                    url=game_url(uuid, zombie=True),
                     oppid=opp,
                     opp=nick,
                     fullname=u.full_name(),
@@ -1448,7 +1456,7 @@ def gamelist(cuid: str, include_zombies: bool = True) -> GameList:
             GameListDict(
                 uuid=uuid,
                 locale=game_locale,
-                url=url_for("web.board", game=uuid),
+                url=game_url(uuid),
                 oppid=opp,
                 opp=nick,
                 fullname=fullname,
@@ -1536,7 +1544,7 @@ def recentlist(cuid: Optional[str], versus: Optional[str], max_len: int) -> Rece
             RecentListDict(
                 uuid=uuid,
                 locale=locale,
-                url=url_for("web.board", game=uuid),
+                url=game_url(uuid),
                 oppid=opp,
                 opp=nick,
                 opp_is_robot=opp is None,

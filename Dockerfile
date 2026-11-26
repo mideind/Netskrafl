@@ -84,8 +84,9 @@ RUN echo "DAWG files to download:" && cat /tmp/dawgs.txt && \
 
 # =============================================================================
 # Stage 4: Build frontend assets (CSS and JS)
-# TEMPORARY: This stage can be removed once the web UI is fully migrated
-# to the separate React client (netskrafl-react).
+# These belong to the built-in web UI, a development client that is served
+# only where SINGLE_PAGE=TRUE (see src/web.py). The stage can go if that UI
+# is ever removed.
 # =============================================================================
 FROM node:20-alpine AS frontend-builder
 
@@ -100,15 +101,11 @@ RUN npm install -g less@4 typescript@5 uglify-js@3
 COPY static/ ./static/
 
 # Build CSS from LESS
-RUN lessc static/skrafl-explo.less static/skrafl-explo.css && \
-    lessc static/skrafl-curry.less static/skrafl-curry.css
+RUN lessc static/skrafl-explo.less static/skrafl-explo.css
 
-# Build JS: TypeScript → JS, concatenate legacy JS, minify
+# Build JS: TypeScript → JS, minify
 RUN cd static && tsc && \
-    mkdir -p built && \
-    cat js/*.js > built/netskrafl.js && \
-    uglifyjs built/explo.js -o built/explo.min.js --source-map && \
-    uglifyjs built/netskrafl.js -o built/netskrafl.min.js --source-map
+    uglifyjs built/explo.js -o built/explo.min.js --source-map
 
 # =============================================================================
 # Stage 5: Build the GoSkrafl 'moves' sidecar server

@@ -103,11 +103,18 @@ services:
 
     envs:
       # PROJECT_ID=netskrafl selects the Netskrafl configuration: Icelandic
-      # only, the legacy web UI next to the embedded client, and the rating
-      # tables (so no SINGLE_PAGE and no ENABLE_RATINGS here).
+      # only, and the rating tables (so no ENABLE_RATINGS here).
       - key: PROJECT_ID
         scope: RUN_AND_BUILD_TIME
         value: netskrafl
+
+      # The backend serves no web UI of its own (no SINGLE_PAGE: the built-in
+      # UI is a development client, for the staging app and local servers).
+      # A browser that opens its root or greeting page is sent here instead,
+      # to Netskrafl's home within Málstaður.
+      - key: HOME_REDIRECT_URL
+        scope: RUN_TIME
+        value: https://malstadur.mideind.is/netskrafl
 
       # The release name (same scheme as the App Engine version names):
       # cache-busts the static files and names the git tag of the release.
