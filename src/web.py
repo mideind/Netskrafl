@@ -89,7 +89,6 @@ from skrafluser import (
     verify_malstadur_token,
 )
 import firebase
-import billing
 from cache import memcache
 from languages import current_board_type
 
@@ -337,18 +336,6 @@ def promo() -> ResponseType:
     if key not in VALID_PROMOS:
         key = "error"
     return render_template("promo-" + key + ".html", user=user)
-
-
-@web.route("/billing", methods=["GET", "POST"])
-def handle_billing() -> ResponseType:
-    """Receive signup and billing confirmations.
-    Authentication not necessarily required."""
-    uid = ""
-    u = session_user()
-    if u is not None:
-        # This is called within a session: pass the user id to the billing module
-        uid = u.id() or ""
-    return billing.handle(request, uid)
 
 
 @web.route("/rawhelp")

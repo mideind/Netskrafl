@@ -198,9 +198,6 @@ function getSettings(): Settings {
     paths: Paths = [
       { name: "main", route: "/main", mustLogin: true },
       { name: "help", route: "/help", mustLogin: false },
-      { name: "thanks", route: "/thanks", mustLogin: true },
-      { name: "cancel", route: "/cancel", mustLogin: true },
-      { name: "confirm", route: "/confirm", mustLogin: true },
       { name: "game", route: "/game/:uuid", mustLogin: true },
       { name: "review", route: "/review/:uuid", mustLogin: true },
     ];
@@ -767,36 +764,6 @@ class Model {
     } catch(e) {
       // No need to do anything here - a future TODO is to indicate an error in the UI
     }
-  }
-
-  async cancelFriendship() {
-    // Cancel the current user as a friend
-    try {
-      const json: { ok: boolean; } = await m.request({
-        method: "POST",
-        url: "/cancelplan",
-        body: { }
-      });
-      if (json?.ok && this.user && this.state) {
-        // Successfully cancelled: immediately update the friend and hasPaid state
-        this.user.friend = false;
-        this.state.hasPaid = false;
-        this.state.plan = "";
-        // Log a friendship cancellation event
-        logEvent("cancel_plan",
-          {
-            userid: this.state.userId,
-            locale: this.state.locale,
-            // Add plan identifiers here
-            plan: "friend"
-          }
-        );
-        return true;
-      }
-    } catch(e) {
-      // No need to do anything here - a future TODO is to indicate an error in the UI
-    }
-    return false;
   }
 
   addChatMessage(game: string, from_userid: string, msg: string, ts: string): boolean {

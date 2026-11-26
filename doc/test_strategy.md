@@ -178,7 +178,7 @@ High-priority gaps to add:
 - Challenge lifecycle: `/challenge` (retract/decline/accept), timed flows: `/initwait`, `/waitcheck`, `/cancelwait`.
 - Ratings: `/rating` (non-locale table variants), manual/human kinds.
 - OAuth alternates: `/oauth_fb`, `/oauth_apple`, `/oauth_explo` (mocked success/failure paths).
-- `/submitword`, `/rchook`, `/cancelplan`, `/loaduserprefs`, `/saveuserprefs`, `/inituser` (where applicable and stable).
+- `/submitword`, `/rchook`, `/loaduserprefs`, `/saveuserprefs`, `/inituser` (where applicable and stable).
 
 ## Representative Test Design (examples)
 

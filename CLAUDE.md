@@ -151,10 +151,13 @@ multiple languages through separate DAWG files and tile sets.
   and on local servers (`runserver.sh` and the compose files set it), never on
   the production apps. Without it the UI's routes answer 404 (`web_ui_route` in
   `src/web.py`), and `/` and `/greet` redirect to `HOME_REDIRECT_URL` if that is
-  set (on Netskrafl: its home within Málstaður), else answer 404. The older
-  server-rendered jQuery UI was removed on 2026-11-26, with the help pages and
-  the admin page; the `url` field of the game lists keeps its `/board?game=…`
-  form because clients read the game id from it (`game_url` in `src/logic.py`)
+  set (on Netskrafl: its home within Málstaður; on Explo: its website), else
+  answer 404. The older server-rendered jQuery UI was removed on 2026-11-26,
+  with the help pages, the admin page and the SalesCloud billing integration
+  (`/billing`, `/cancelplan`): subscriptions come from Málstaður's login token
+  and from RevenueCat (`/rchook`). The `url` field of the game lists keeps its
+  `/board?game=…` form because clients read the game id from it (`game_url` in
+  `src/logic.py`)
 - Explo has a mobile app client (React Native app, implemented in the explo-front repository)
   that communicates with a separate instance of the Netskrafl/Explo game server
 - Real-time gameplay uses WebSocket-like communication via Firebase

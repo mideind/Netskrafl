@@ -22,7 +22,6 @@ pydev_startup.py
 
 # Secret session key
 resources/secret_key.bin
-resources/salescloud_key.bin
 
 # Legacy client secret text files
 resources/client_secret*.txt

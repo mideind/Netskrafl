@@ -46,6 +46,7 @@ REMOVED_PAGES = (
     "/transition-go",
     "/admin/main",
     "/service-worker.js",
+    "/billing",
 )
 
 
@@ -128,6 +129,15 @@ def test_removed_pages_are_gone(
     monkeypatch.setattr(web, "HOME_REDIRECT_URL", HOME)
     for path in REMOVED_PAGES:
         assert client.get(path).status_code == 404, path
+    # The former billing integration took POSTs. They are now answered
+    # like a POST to any other unknown path (405, since the route that
+    # serves files from the root takes GETs only), not by a handler.
+    unknown = client.post("/no-such-endpoint", json={})
+    assert unknown.status_code in (404, 405)
+    for path in ("/billing", "/cancelplan"):
+        resp = client.post(path, json={})
+        assert resp.status_code == unknown.status_code, path
+        assert not resp.is_json, path
 
 
 def test_ui_login_sequence_pages(client: CustomClient, ui_on: None) -> None:
@@ -181,12 +191,12 @@ def test_ui_pages_render_for_a_logged_in_user(
         # Links to the preferences are tokens that the client acts on
         assert "$$userprefs$$" in resp.get_data(as_text=True), locale
     # The friend promotion, likewise
-    resp = client.get("/friend?locale=is_IS")
-    assert resp.status_code == 200
-    assert "btn-promo-no" in resp.get_data(as_text=True)
-    resp = client.get("/friend?locale=pl_PL")
-    assert resp.status_code == 200
-    assert "btn-promo-no" in resp.get_data(as_text=True)
+    for locale in ("is_IS", "pl_PL"):
+        resp = client.get(f"/friend?locale={locale}")
+        assert resp.status_code == 200, locale
+        html = resp.get_data(as_text=True)
+        assert "btn-promo-no" in html, locale
+        assert "salescloud" not in html, locale
     # The promotion dialog's content
     resp = client.post("/promo", json={"key": "explo"})
     assert resp.status_code == 200

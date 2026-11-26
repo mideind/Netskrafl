@@ -16,7 +16,7 @@
 
 */
 
-export { addPinchZoom, registerSalesCloud };
+export { addPinchZoom };
 
 type ZoomFunc = () => void;
 
@@ -109,25 +109,4 @@ function remove_event(ev: PointerEvent) {
       break;
     }
   }
-}
-
-// SalesCloud stuff
-function doRegisterSalesCloud(i: any, s: any, o: any, g: any, r: any, a?:any, m?:any) {
-  i.SalesCloudObject=r;
-  i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments);};
-  i[r].l=1*(new Date() as any);
-  a=s.createElement(o);
-  m=s.getElementsByTagName(o)[0];
-  a.src=g;
-  m.parentNode.insertBefore(a,m);
-}
-
-function registerSalesCloud() {
-  doRegisterSalesCloud(
-     window,
-     document,
-     'script',
-     'https://cdn.salescloud.is/js/salescloud.min.js',
-     'salescloud'
-  );
 }

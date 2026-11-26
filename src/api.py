@@ -95,7 +95,6 @@ from skrafldb import (
     on_commit,
 )
 import firebase
-from billing import cancel_plan
 from movesservice import post_to_moves_service
 import auth
 from logic import (
@@ -1336,17 +1335,6 @@ def reportuser_api() -> ResponseType:
         ok = user.report(reported_id, code, text)
 
     return jsonify(ok=ok)
-
-
-@api_route("/cancelplan")
-@auth_required(allow_anonymous=False, result=Error.LOGIN_REQUIRED)
-def cancelplan_api() -> ResponseType:
-    """Cancel a user friendship"""
-    user = current_user()
-    if user is None:
-        return jsonify(ok=False)
-    result = cancel_plan(user)
-    return jsonify(ok=result)
 
 
 # RevenueCat event types that start or continue a subscription
