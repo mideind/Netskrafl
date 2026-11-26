@@ -95,5 +95,5 @@ Thumbs.db
 .claude/
 CLAUDE.md
 
-# Data migration tooling - runs outside the image (see doc/data-migration-design.md)
+# Data migration tooling - runs outside the image (see doc/migration-2026.md)
 scripts/

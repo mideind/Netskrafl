@@ -4,8 +4,7 @@ Admin operation end-to-end tests against the PostgreSQL backend.
 Admin routes are only registered when running_local is True - which is
 the case in this test environment. This mirrors the intended production
 setup, where admin operations run on a locally started instance that
-connects to the (remote) PostgreSQL database; see the admin-model
-decision in doc/migration-strategy.md (Blind Spot 10).
+connects to the (remote) PostgreSQL database.
 
 The deferred (background-thread) admin jobs are exercised with real
 threads, verifying that the PostgreSQL Client.get_context() shim

@@ -14,11 +14,14 @@ instead, and keep the specifics in private notes.
 
 ## Project Overview
 
-Netskrafl is an Icelandic crossword game website and backend server built with:
-- **Backend**: Python 3.11 + Flask web server for Google App Engine
+Netskrafl is the backend server of an Icelandic crossword game, built with:
+- **Backend**: Python 3.11 + Flask, run by gunicorn in a container
 - **Frontend**: the players' clients live in other repositories (see below); this
   one keeps a single-page TypeScript web client as a development client
-- **Database**: Google Cloud NDB (schemaless NoSQL), but being migrated to PostgreSQL
+- **Database**: PostgreSQL (SQLAlchemy 2.0, Alembic). The original Google Cloud
+  Datastore (NDB) backend is still in the code and is what runs when
+  `DATABASE_BACKEND` is not set, but no deployment uses it
+- **Real-time**: Firebase (Realtime Database, Cloud Messaging), on Google Cloud
 - **Build System**: Grunt for TypeScript/JavaScript/CSS compilation
 - **Testing**: pytest framework
 
@@ -26,16 +29,22 @@ It supports (1) Netskrafl, a web-based game currently offered in Icelandic only,
 and (2) is the backend for Explo, a multilingual mobile app client
 (React Native app, in a separate repository).
 
+Since November 2026 all three deployments (Netskrafl production, Explo
+production, and the Explo development backend, which is also the staging app)
+run as containers on Digital Ocean App Platform with managed PostgreSQL. How
+they run, what is left on Google Cloud and what is still to do is in
+`doc/operations.md`; what the move taught us is in `doc/migration-2026.md`.
+
 ## Common Development Commands
 
 ### Development Setup
 ```bash
-# Create the venv (CPython 3.11, the GAE runtime) and install everything:
-# runtime deps (requirements.txt, what GAE gets), PostgreSQL backend deps
-# (requirements-pg.txt, what the container gets) and dev tooling
-# (icegrams, pytest, pyright, type stubs). No pyproject.toml: GAE needs
-# requirements.txt and nothing consumes a pyproject, so the layered
-# requirements files are the single source of truth.
+# Create the venv (CPython 3.11, as in the container image) and install
+# everything: runtime deps (requirements.txt), PostgreSQL backend deps
+# (requirements-pg.txt, which includes the former and is what the image
+# gets) and dev tooling (icegrams, pytest, pyright, type stubs). There is no
+# pyproject.toml: the layered requirements files are the single source of
+# truth.
 uv venv --python 3.11 venv
 uv pip install --python venv/bin/python -r requirements-dev.txt
 
@@ -48,7 +57,8 @@ python utils/dawgbuilder.py all
 # Build frontend assets
 grunt make
 
-# Start development server
+# Start development server (explo-dev configuration; on the NDB backend
+# unless DATABASE_BACKEND=postgresql and DATABASE_URL are set)
 ./runserver.sh  # or runserver.bat on Windows
 
 # Watch for file changes during development
@@ -57,8 +67,9 @@ grunt  # runs grunt watch by default
 
 ### Testing
 
-Tests require Google Cloud credentials and environment variables. Use the appropriate
-configuration for each project:
+Tests require Google Cloud credentials (for Firebase and, on the NDB backend,
+Datastore) and environment variables. The suites and what each one shows are
+described in `doc/testing.md`. Use the explo-dev configuration:
 
 ```bash
 # Run tests for explo-dev (multi-locale, full test coverage)
@@ -69,15 +80,6 @@ RUNNING_LOCAL=true \
 REDISHOST=127.0.0.1 \
 REDISPORT=6379 \
 SINGLE_PAGE=TRUE \
-venv/bin/pytest test/ -v
-
-# Run tests for netskrafl (Icelandic only - some multi-locale tests will fail)
-PROJECT_ID=netskrafl \
-GOOGLE_APPLICATION_CREDENTIALS="credentials/netskrafl/service-account.json" \
-GOOGLE_CLOUD_PROJECT=netskrafl \
-RUNNING_LOCAL=true \
-REDISHOST=127.0.0.1 \
-REDISPORT=6379 \
 venv/bin/pytest test/ -v
 
 # Run specific test file
@@ -95,10 +97,14 @@ venv/bin/pyright src/
 
 ```
 
-Note: The explo-dev configuration should be used for full test coverage as it supports
-multiple locales. The netskrafl configuration only supports Icelandic (`is_IS`) and
-some tests that require other locales will fail. `FIREBASE_DB_URL` does not need to
-be set: it is read from the project's client secret at startup.
+Note: Always test with the explo-dev configuration. It supports all locales, and it is
+the only one that is safe: with a production project's configuration, test games would
+send notifications to that product's production Realtime Database and, on the NDB
+backend, write into its Datastore, which is kept as the archive of the data before the
+move. `FIREBASE_DB_URL` does not need to be set: it is read from the project's client
+secret at startup.
+The `test/` suite runs on the backend that `DATABASE_BACKEND` selects, which
+without it is NDB, i.e. the project's Datastore.
 If port 8080 is taken on the machine, add `SERVER_PORT=<free port>`: with
 `RUNNING_LOCAL=true` the app checks that its port is free at import time.
 
@@ -114,9 +120,22 @@ If port 8080 is taken on the machine, add `SERVER_PORT=<free port>`: with
 - **skraflplayer.py**: Robot player AI implementation using Appel & Jacobson algorithm
 - **dawgdictionary.py**: DAWG (Directed Acyclic Word Graph) navigation for word validation
 - **languages.py**: Language-specific tile sets, bags, and vocabularies
-- **skrafldb.py**: Database persistence layer using Google Cloud NDB
+- **skrafldb.py**: The persistence facade that application code imports; it
+  selects `skrafldb_pg.py` (PostgreSQL) or `skrafldb_ndb.py` (Datastore) by
+  `DATABASE_BACKEND`
+- **db/**: The database layer: typed protocols (`protocols.py`), the
+  PostgreSQL repositories and ORM models (`postgresql/`), the NDB adapter
+  (`ndb/`), and the request-scoped session (`session.py`). The schema is
+  owned by Alembic (`migrations/`)
 - **auth.py/authmanager.py**: Authentication and user session management
-- **secret_manager.py**: Google Cloud Secret Manager integration
+- **secret_manager.py**: Secrets, from environment variables (deployments) or
+  Google Secret Manager (local servers)
+- **movesservice.py**: Forwarding to the GoSkrafl engine (a sidecar process in
+  the container)
+- **appversion.py**: The client configuration record (minimum app version,
+  endpoint overrides) that `/inituser` hands to the Explo apps
+- **applog.py**, **maintenance.py**, **rtdb_cleanup.py**: structured logging,
+  maintenance mode, and the nightly Realtime Database clean-up
 
 ### Frontend Structure (static/)
 - **src/**: TypeScript source files
@@ -158,8 +177,11 @@ multiple languages through separate DAWG files and tile sets.
   and from RevenueCat (`/rchook`). The `url` field of the game lists keeps its
   `/board?game=…` form because clients read the game id from it (`game_url` in
   `src/logic.py`)
-- Explo has a mobile app client (React Native app, implemented in the explo-front repository)
-  that communicates with a separate instance of the Netskrafl/Explo game server
+- Explo has a mobile app client (React Native app, in a separate repository)
+  that communicates with a separate instance of the Netskrafl/Explo game server.
+  A released app keeps calling the backend address that is built into it, so
+  the server can tell an app to update or to use another address
+  (`src/appversion.py`; the mechanism and its use are in `doc/operations.md`)
 - Real-time gameplay uses WebSocket-like communication via Firebase
 - Firebase notifications (and any other side effect that makes a client re-read
   the database) must be registered with `skrafldb.on_commit()` rather than sent
@@ -167,7 +189,8 @@ multiple languages through separate DAWG files and tile sets.
   request on PostgreSQL, the writes are not committed until the function or
   request returns, and a client reacting to an early notification reads the old
   state (the 2026-09-11 stale-game-list bug in the Explo app)
-- Elo rating system tracks player performance
+- Elo rating system tracks player performance; the two products store and
+  show ratings differently (`doc/elo.md`)
 - Logging in the container is structured: one JSON entry per line, one entry
   per request with the user's id, and entries for refusals, logins and the
   results of scheduled jobs (`src/applog.py`; the entries, their fields and
@@ -177,25 +200,23 @@ multiple languages through separate DAWG files and tile sets.
   in the log if it is noted there
 - Maintenance mode: with the `MAINTENANCE` environment variable set, the server
   answers every request except the health endpoints with HTTP 503
-  (`src/maintenance.py`). A version built that way and deployed without traffic
-  is how the backend is frozen (by routing traffic to it) during a data migration
+  (`src/maintenance.py`). The clients treat a status of 500 or above as "the
+  server could not be reached" and offer a retry, which a 404 does not get.
+  This is how a backend is frozen during a data migration
 - Game list queries on PostgreSQL (`GameRepository._newest_games_stmt`) use one
   ordered, limited branch per player column, merged; an `OR` across the two
   player columns cannot use the per-player indexes and took seconds on the
   production-size database. Check new hot queries with `EXPLAIN` at that size
-- Google App Engine deployment across three projects: netskrafl, explo-live and
-  explo-dev (the explo-dev GAE default service was retired on 2026-10-15: its cron
-  jobs are gone and the version, which App Engine cannot stop under automatic
-  scaling, idles at zero instances; the Explo dev app runs on the Digital Ocean
-  container, and the explo-dev `moves` service still serves Netskrafl production
-  and Málstaður). The former netskrafl `demo` service was deleted on
-  2026-09-08 for lack of traffic; `app-demo.yaml` remains in case it is ever needed
-- Netskrafl's backend moved to the Digital Ocean container and PostgreSQL on
-  2026-11-13. What is left on App Engine in the netskrafl project is
-  `appspot-redirect/`, a dependency-free app that redirects browsers opening the
-  old App Engine address to Netskrafl's home within Málstaður and answers 503 to
-  everything else (`./deploy-netskrafl.sh redirect <version>`, then route the
-  traffic to that version). It stays until the App Engine project is closed
+- The three deployments are told apart by `PROJECT_ID`: `netskrafl`,
+  `explo-live` (Explo production) and `explo-dev` (the Explo development
+  backend and staging app). The code branches on it through the `NETSKRAFL`
+  flag in `src/config.py`
+- What still runs on App Engine is not this backend: a redirect app in the
+  netskrafl project (`appspot-redirect/`), a forwarding app in explo-live for
+  Explo apps that have the old address built in (`appspot-forward/`), and the
+  GoSkrafl `moves` services. The `app-*.yaml`, `cron.yaml`, `index*.yaml` and
+  `dispatch.yaml` files and the `default` targets of the `deploy-*.sh` scripts
+  are leftovers that no deployment uses (`doc/operations.md`)
 - Every production release (netskrafl or explo-live) gets a git tag named
   `nYYYYMMDD` or `eYYYYMMDD` (plus a letter for further releases on the same day),
   on the deployed commit, pushed to GitHub once the release serves all users. The
@@ -204,8 +225,7 @@ multiple languages through separate DAWG files and tile sets.
   that cover everything since the previous release tag. The `/deploy` skill does
   both as its last step; tag and publish by hand after any deploy made outside it
 - Deploying is done with the `/deploy` skill, and works the same way for all three
-  backends, which are containers on Digital Ocean (netskrafl since 2026-11-13,
-  explo-live since 2026-11-20): a production release goes to the staging app first
+  backends: a production release goes to the staging app first
   (the `do-deploy` branch, i.e. the Explo dev backend), as a canary. There the
   standard test `utils/staging-check.py` plays through the key operations with
   test users that exist only on that backend. If the canary is clean, the same
@@ -222,13 +242,15 @@ multiple languages through separate DAWG files and tile sets.
   that is only for conditions that someone has to act on. Normal operation,
   deploys included, must not set them off: keep that in mind when adding or
   changing a monitor, and see `doc/logging.md`
-- A project is underway to migrate from Google Cloud to a containerized deployment,
-  probably on Digital Ocean, with PostgreSQL replacing Google NDB; the plan and
-  current status are tracked in `doc/migration-strategy.md`
-- Vocabulary fixes must be propagated to four consumers (GAE, container/CDN,
-  GoSkrafl, Skrafl); the dependency map and runbook are in `doc/dictionary-update.md`
+- Vocabulary fixes must be propagated to every consumer (the CDN that the
+  container build reads, GoSkrafl in its three places, and Skrafl); the
+  dependency map and runbook are in `doc/dictionary-update.md`
+- Still to do after the move (details in `doc/operations.md`): riddle
+  generation into PostgreSQL (the Gáta dagsins stock ends 2027-01-15), moving
+  the remaining Explo traffic off App Engine, removing Redis from the
+  PostgreSQL backend, retiring the NDB backend
 
-### PostgreSQL collation (detail to attend to later)
+### PostgreSQL collation (a decision still open)
 
 The PostgreSQL database uses the neutral ICU root collation (`und`) as its
 default - the only coherent choice, since users of all locales share the same
@@ -239,47 +261,34 @@ end; Norwegian æ/ø/å after z), applied per query with
 `ORDER BY col COLLATE "is-x-icu"` (plus a collated index if the query is hot;
 app locale codes map trivially: `is_IS` → `is-IS`). **Deferred decision:**
 which server-side-sorted list/leaderboard endpoints should switch from neutral
-to locale-strict ordering after the PG cutover - a product-visible change, so
-it deserves a deliberate pass rather than a blanket swap. Note that NDB sorts
+to locale-strict ordering - a product-visible change, so
+it deserves a deliberate pass rather than a blanket swap. Note that NDB sorted
 strings by UTF-8 bytes (code-point order), so root ICU is already an
 improvement; parts of the app also sort client-side via `Alphabet` in
 `languages.py`. Ops note: after a managed-PG engine/ICU upgrade, watch for
 "collation version mismatch" warnings and `REINDEX` affected text indexes.
 
-### Scheduled jobs (GAE)
+### Scheduled jobs
 
-- `cron.yaml` defines four jobs: `/stats/run` (03:00), `/stats/ratings` (03:45),
-  `/connect/cleanup` (04:15, see below) and `/connect/update` ("Online users",
-  every 2 minutes). `cron.yaml` is deployed separately from the app
-  (`./deploy-<target>.sh cron`), so deploy it only once a version that serves
-  every listed URL has all the traffic. It is deployed on
-  explo-live, where the jobs run via
-  legacy App Engine cron, always targeting the promoted version. explo-dev
-  (since 2026-10-15) and netskrafl (since 2026-11-13) have an empty cron
-  configuration: their jobs run in the DO containers' supercronic, and
-  `deploy-explo.sh cron` and `deploy-netskrafl.sh cron` refuse to redeploy them. No per-version
-  scheduler updates are needed after deploys. (Consolidated 2026-08-07; before
-  that, netskrafl triggered `/connect/update` via a version-pinned Cloud
-  Scheduler job that had to be re-pinned after every promotion.)
-- `/connect/cleanup` (`src/rtdb_cleanup.py`) keeps the Firebase Realtime Database
-  from growing without limit, since it has no time-to-live of its own: it deletes
-  `game/{id}` notification nodes 30 days after the game was created (judged by the
-  version 1 UUID of the game id), presence entries under `connection/` older than
-  14 days (by their push id) or set to `false` (left by older clients), and Explo push tokens under `session/` not refreshed
-  for 60 days. `gatadagsins/` and `user/` are never touched. It deletes in batches,
-  oldest first, within a 3-minute budget per run, so a backlog carries over to the
-  next night. `utils/rtdb-cleanup.py` runs the same code from the command line
-  (`--dry-run`, other retention periods, no time budget, and `--wipe` to empty a
-  decommissioned instance).
-- The only remaining Cloud Scheduler job is `Clear-Redis` on netskrafl (yearly);
-  explo-dev also has a daily `clear-cache` job, paused. The container migration will
-  replace GAE cron with supercronic.
+- The jobs run inside each container: supercronic runs `crontab`, which calls
+  the app on its own port with the `X-Cron-Secret` header (the `CRON_SECRET`
+  environment variable; without it the scheduler does not start). They are
+  `/connect/update` ("online users", every 2 minutes), `/stats/run` (03:00
+  UTC), `/stats/ratings` (03:45) and `/connect/cleanup` (04:15). A new
+  scheduled job should end with `log_job()`
+- The App Engine cron configuration is empty in all three projects; never
+  deploy `cron.yaml`. A deploy stops the container and a job running in it,
+  so do not deploy between 02:55 and 04:30 UTC
 - `/stats/ratings` (and `/stats/ratings_backfill`) are no-ops outside the
-  netskrafl project (guarded by the `NETSKRAFL` config flag): the old-style,
-  locale-ignorant rating tables are only displayed on Netskrafl, while Explo
-  serves per-locale ratings live from `EloModel` via `/rating_locale`.
-  `/stats/run` remains essential in all projects (profile stats, 30-day Elo
-  history, `UserModel` Elo fallback fields).
+  netskrafl project (guarded by `RATINGS_ENABLED` in `src/config.py`): the
+  old-style, locale-ignorant rating tables are only displayed on Netskrafl,
+  while Explo serves per-locale ratings live from `EloModel` via
+  `/rating_locale`. `/stats/run` remains essential in all projects (profile
+  stats, 30-day Elo history, `UserModel` Elo fallback fields)
+- `/connect/cleanup` (`src/rtdb_cleanup.py`) keeps the Firebase Realtime
+  Database from growing without limit, since it has no time-to-live of its
+  own; what it deletes and when is in `doc/operations.md`.
+  `utils/rtdb-cleanup.py` runs the same code from the command line
 
 ## Coding Standards
 
@@ -299,48 +308,52 @@ improvement; parts of the app also sort client-side via `Alphabet` in
 
 ## Gotchas
 
-- When running locally in development, a separate local Redis instance is used for Cloud
-  Datastore caching. *This may cause cache incoherency* with the production environment.
-  Especially, if running local utility scripts that modify the production database,
-  the production cache may need to be cleared via Google Cloud Console.
-  *Please remind the user about this if you can, when you see that utility programs
-  are being run locally.* Also, adding comments to utility programs to this effect is useful.
+- A locally run program uses a local Redis instance, not the cache of a
+  deployed backend. If a local utility script modifies a production database,
+  the production backend may keep serving cached results (user search, rating
+  lists, the client configuration record) until they expire or until its
+  cache is emptied with `/cacheflush`. *Please remind the user about this if
+  you can, when you see that utility programs are being run locally.* Also,
+  adding comments to utility programs to this effect is useful.
+- A local server or test run without `DATABASE_BACKEND=postgresql` uses the
+  NDB backend, i.e. the Datastore of the project it is configured for, which
+  no deployed backend reads any more.
 - `netskrafl_lint.py` is **not** a linter - it is a separate utility program.
   Do not invoke it for code quality checks. Only run it when specifically asked.
 
-## The staging app on Digital Ocean
+## Hosting: what to know when changing the app or its build
 
-The Explo dev backend runs as a container on DO App Platform, and doubles as
-the staging app: the canary for both production apps (see the `/deploy`
-skill). It was first stood up in January 2026 against the **NDB** backend,
-proving that hosting can be migrated independently of the database, and has
-run on PostgreSQL since 2026-08-18. Its names, addresses and the whereabouts
-of its secrets are kept in private notes, not here.
+`doc/operations.md` describes the deployments. The rules that matter while
+working on the code:
 
-**The app spec.** `.do/app.yaml` is a reference copy of its spec (and
-`.do/app-netskrafl.yaml` and `.do/app-explo.yaml` of the production apps').
-The live spec remains the source of truth, so edit it by round-tripping
+**The staging app.** The Explo dev backend doubles as the staging app: the
+canary for both production apps (see the `/deploy` skill). It auto-deploys on
+push to the dedicated `do-deploy` branch (a merge-commit branch: merge master
+into it, it is not fast-forwardable). It serves the built-in web UI
+(`SINGLE_PAGE=TRUE`), which the production apps do not. It is smaller than
+the production apps and has little data, so it is neither a load-testing
+baseline nor a place to judge a query plan.
+
+**The app specs.** `.do/app.yaml` is a reference copy of the staging app's
+spec, and `.do/app-netskrafl.yaml` and `.do/app-explo.yaml` of the production
+apps'. The live spec remains the source of truth, so edit it by round-tripping
 `doctl apps spec get` → edit → `doctl apps update` rather than applying a
 checked-in file (which would overwrite encrypted secrets with placeholders).
+A copy of a live spec is a secret (`doc/logging.md`). Send one spec update at
+a time: an update sent while a deployment is in progress cancels it. A change
+of an environment variable restarts the container; adding a domain does not.
 
-**Configuration.** `PROJECT_ID=explo-dev` with that project's service account,
-`DATABASE_BACKEND=postgresql` against a managed PostgreSQL cluster, one small
-instance, auto-deploying on push to the dedicated `do-deploy` branch (a
-merge-commit branch: merge master into it, it is not fast-forwardable).
-Secrets come from encrypted env vars (`SECRETS_PROVIDER=env`); the Google
-service-account credential stays for the Firebase Admin SDK. `/health/ready`
-passes when the database and the cache are reachable, and a `health_check` on
-it gates deployments.
+**One instance per app.** The scheduler runs in every container and the
+entrypoint runs Alembic at every start, so the apps are scaled by instance
+size, never by count. A schema migration must work with the previous
+release's code, which keeps serving while the new container starts.
 
-**Cache.** The app uses one logical database of a Valkey cluster that it
-shares with other services (the assignment is noted in `.do/app.yaml`). This
-is why `cache.py`'s `flush()` deliberately avoids `FLUSHDB`.
+**Health.** `/health/ready` passes when the vocabularies are loaded and the
+cache is reachable, and gates every deployment.
 
-**Scheduled jobs.** supercronic runs the crontab in the container, and
-authenticates to the app with the `CRON_SECRET` environment variable, which
-also guards `/appversion` and `/cacheflush`. The instance has half the memory
-of a production instance with the same three gunicorn workers, so it is not a
-valid load-testing baseline.
+**Cache.** Each app uses one logical database of a Redis-compatible cluster
+that it shares with other services. This is why `cache.py`'s `flush()`
+deliberately avoids `FLUSHDB`.
 
 **Build gotcha - App Platform builds with kaniko, not BuildKit.** kaniko does
 not support heredocs in `RUN`: it passes only the first line and silently

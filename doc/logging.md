@@ -1,9 +1,10 @@
 # Logging
 
-This document describes what the backend writes to its log in the container
-deployment, how to read it, and how it reaches the log service. On App Engine
-(explo-live, until it moves) the platform's own request log and Cloud Logging
-apply instead; the application's log calls are the same.
+This document describes what the backend writes to its log, how to read it,
+and how it reaches the log service. It applies to all three deployments,
+which are containers (`operations.md`). The forwarding app that still
+answers on App Engine for older Explo apps has App Engine's own request log
+instead.
 
 ## Why it looks the way it does
 
