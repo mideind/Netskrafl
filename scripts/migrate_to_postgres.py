@@ -6,7 +6,7 @@
 
     Migrates all Netskrafl/Explo entities from Google Cloud Datastore
     to a PostgreSQL database with the schema owned by Alembic
-    (src/db/postgresql/models.py). Design: doc/data-migration-design.md.
+    (src/db/postgresql/models.py). What was learned: doc/migration-2026.md.
 
     Key properties:
 

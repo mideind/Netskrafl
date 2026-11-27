@@ -68,9 +68,11 @@ second.
 ## How a container deploy behaves
 
 - A push to the deploy branch starts a build and then a new container. The new
-  container must pass the health check on `/health/ready` (database and cache
-  reachable) before it gets traffic. If the build fails or the health check never
-  passes, **the old container keeps serving** and nothing has changed for users.
+  container must apply its schema migrations and then pass the health check on
+  `/health/ready` (vocabularies loaded, cache reachable) before it gets traffic.
+  If the build fails, the container cannot reach the database, or the health
+  check never passes, **the old container keeps serving** and nothing has
+  changed for users.
 - **There is no gradual rollout.** With one instance, all users are on the old
   version and then all on the new one.
 - The container applies database schema migrations when it starts
@@ -122,18 +124,19 @@ PREVIOUS_DEPLOYMENT=$(jq -r '.[0].active_deployment.id' <<<"$INFO")
   API key in plain text (the platform encrypts the `SECRET` environment
   variables, but not the key of a log destination).
 
-**Explo production is reached through a forwarder.** The Explo apps call the old
-App Engine address, where a forwarding app passes every request on to the
-container (`appspot-forward/`). So for `explo-live` there are two addresses to
-probe, the container's own (`HOST`) and the one the users use:
+**Explo production is reached in two ways.** Explo apps from version 1.5.1
+call the container directly, at its custom domain (`HOST`). Older apps call
+the old App Engine address, where a forwarding app passes every request on to
+the container (`appspot-forward/`). So for `explo-live` there are two addresses
+to probe, the container's own and the forwarder's:
 
 ```bash
 FORWARD_HOST=$(gcloud app describe --project=explo-live --format='value(defaultHostname)')
 ```
 
-and App Engine's request log shows what the users got (step 6). The forwarder
-is not part of a release: it stays as it is, and a deploy never touches App
-Engine (see "What is left on App Engine").
+and App Engine's request log shows what the users of older apps got (step 6).
+The forwarder is not part of a release: it stays as it is, and a deploy never
+touches App Engine (see "What is left on App Engine").
 
 ## 1. Confirm scope and name the release
 
@@ -338,9 +341,9 @@ curl -s -o /dev/null -m 10 -w "%{http_code} %{time_total}\n" "https://$HOST/heal
    done
    ```
 
-   For `explo-live`, also what the users got, from App Engine's request log of
-   the forwarder (status and latency per request; a 502 or 503 there means the
-   forwarder could not reach the container):
+   For `explo-live`, also what the users of older apps got, from App Engine's
+   request log of the forwarder (status and latency per request; a 502 or 503
+   there means the forwarder could not reach the container):
    ```bash
    gcloud logging read 'resource.type=gae_app AND resource.labels.module_id=default
        AND logName:"request_log" AND timestamp>="<start, UTC, ISO 8601>"' \
@@ -403,7 +406,7 @@ curl -s -o /dev/null -m 10 -w "%{http_code} %{time_total}\n" "https://$HOST/heal
 | New version `ACTIVE`, one feature misbehaves, the rest is fine | A contained bug. | Tell the user what is affected and offer both: roll back now, or fix forward. The user chooses. |
 | The release had a migration and the new version is bad | Rollback by redeploying is not available. | **Fix forward**: the fastest safe fix or revert of the *code* on master, keeping the migration, then deploy again. A schema downgrade is a decision for the user, never a reflex. |
 | Data was damaged | A rollback does not repair data. | Stop the damage first (roll back or fix forward), then tell the user exactly what was written wrongly and since when. Restoring from the managed database's backups is the user's decision. |
-| `explo-live`: the container's own address answers, the forwarder's does not | The fault is between the users and the container (the forwarder, or App Engine), not in the release. | Do not roll the release back for it. Report it, with what the forwarder's log shows. |
+| `explo-live`: the container's own address answers, the forwarder's does not | The fault is between the older apps and the container (the forwarder, or App Engine), not in the release. Apps that call the container directly are not affected. | Do not roll the release back for it. Report it, with what the forwarder's log shows. |
 | The platform itself is failing (no deployments, app unreachable, old and new alike) | Not caused by the release. | Do not push more changes. Report it and check the provider's status page. **App Engine is not a fallback** for either production app: its data stopped at the move. |
 
 ### Rollback
@@ -432,7 +435,8 @@ is `DEPLOYED` again). What to know:
 - **A rollback restores the earlier deployment's spec too**, not only its code:
   environment variables, domains, instance size. Before rolling back, make sure
   nothing in the spec was changed on purpose since `PREVIOUS_DEPLOYMENT` (the
-  version label does not matter).
+  version label does not matter). A custom domain added since then would be
+  taken away again, and with it the address that clients call.
 - **The app is pinned after a rollback**: no deployment starts, not even from a
   push to the deploy branch, until the rollback is committed or reverted:
   ```bash
@@ -445,7 +449,7 @@ is `DEPLOYED` again). What to know:
   forward.
 - **It does not undo schema migrations or data changes**, and it fails for a
   release that contained a migration (see the table).
-- As of 2026-11-20 the validation call has been used against both production
+- As of 2026-11-26 the validation call has been used against both production
   apps, but an actual rollback has not been carried out on any of the three.
   Until one has been rehearsed on the staging app, say so when recommending it,
   and watch the first one closely.
@@ -461,14 +465,18 @@ deploys there. What remains:
 
 - In the netskrafl project, a small app that redirects browsers to Netskrafl's
   new home (`appspot-redirect/`). In the explo-live project, the forwarder that
-  passes the Explo apps' requests on to the container (`appspot-forward/`). Each
-  is deployed with its project's deploy script and given traffic by hand. That
-  is rare, it is not a release in the sense of this skill, and each step of it
-  needs the user's explicit "yes".
-- The earlier backend versions, which served from Datastore, still exist in
-  both projects. **Never route traffic to one of them**, for any reason: their
-  data stopped at the move, so users would see an old state and what they wrote
-  would be lost. Do not delete or stop them unless the user asks.
+  passes the requests of older Explo apps on to the container
+  (`appspot-forward/`). Each is deployed with its project's deploy script and
+  given traffic by hand. That is rare, it is not a release in the sense of this
+  skill, and each step of it needs the user's explicit "yes".
+- The GoSkrafl `moves` services in the explo-live and explo-dev projects, which
+  the Explo apps and Netskrafl's web client still call directly for word
+  checks. They are deployed from the GoSkrafl repository, not from here.
+- In the explo-live project, the earlier backend versions, which served from
+  Datastore, still exist. **Never route traffic to one of them**, for any
+  reason: their data stopped at the move, so users would see an old state and
+  what they wrote would be lost. Do not delete or stop them unless the user
+  asks. The netskrafl project's earlier versions have been deleted.
 - The App Engine cron configuration is empty in all three projects: the jobs run
   in the containers. Do not deploy `cron.yaml`.
 

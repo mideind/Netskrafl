@@ -10,11 +10,18 @@ on the web at [https://malstadur.mideind.is/netskrafl](https://malstadur.mideind
 
 ![Screenshot from mobile UI](/resources/ScreencapMobile.PNG?raw=true "Screenshot from mobile UI")
 
-The game backend is implemented in Python 3.11 for the
-[Google App Engine Standard Environment](https://cloud.google.com/appengine/docs/standard).
+The game backend is implemented in Python 3.11 with Flask. It runs in a
+container, with a PostgreSQL database, and uses Firebase for real-time
+notifications. It ran on Google App Engine with Cloud Datastore until
+November 2026.
 
-The frontend is a tablet- and smartphone-friendly web client in HTML5
-and JavaScript connecting via Ajax to a Flask-based web server on the backend.
+This repository holds the backend, a Flask-based web server with a JSON API.
+The clients that players use are maintained elsewhere: Netskrafl's web client
+is embedded in Málstaður, and Explo is a mobile app. The repository also
+contains a tablet- and smartphone-friendly single-page web client in
+TypeScript (```static/src/```), which is kept as a development client: the
+server offers it only where the ```SINGLE_PAGE``` environment variable is set
+to ```TRUE``` (on the staging app and on local development servers).
 
 The game contains a robot crossword player written in Python. The algorithm is based
 on Appel & Jacobson's classic paper
@@ -49,7 +56,10 @@ Language-specific tile sets, bags and vocabularies are handled in ```languages.p
 
 The Game and User classes are found in ```skraflgame.py``` and ```skrafluser.py```, respectively.
 
-The persistence layer, using the schemaless App Engine NDB database, is in ```skrafldb.py```.
+The persistence layer is reached through ```skrafldb.py```, a facade over the
+database layer in ```src/db/```: PostgreSQL (SQLAlchemy, with the schema
+migrations in ```migrations/```) or, in the original implementation that is
+still in the code, Google Cloud Datastore (NDB).
 
 The various Flask HTML templates are found in ```templates/*.html```.
 
@@ -62,8 +72,9 @@ The Netskrafl server supports three types of clients, each with its own authenti
 
 #### 1. Direct Web Access (Same-Origin)
 
-The classic Netskrafl web interface served directly from the server. Users authenticate
-via OAuth2 (Google, Facebook, or Apple), and the server maintains session state using
+The built-in single-page web client, served directly from the server where
+`SINGLE_PAGE=TRUE` is set (a development client; see above). Users authenticate
+via OAuth2 (Google), and the server maintains session state using
 secure HTTP-only cookies with `SameSite=Lax`.
 
 - **Auth mechanism**: Flask session cookies
@@ -110,83 +121,65 @@ enabling cross-origin clients to authenticate without cookies.
 
 #### Follow these steps:
 
-0. Install [Python 3.11](https://www.python.org/downloads/release/python-3116/),
-preferably in a [virtualenv](https://pypi.python.org/pypi/virtualenv).
+0. Install [Python 3.11](https://www.python.org/downloads/release/python-3116/)
+and [uv](https://docs.astral.sh/uv/).
 
-1. Download the [Google App Engine SDK](https://cloud.google.com/appengine/downloads)
-(GAE) for Python and follow the installation instructions.
+1. ```git clone https://github.com/mideind/Netskrafl``` and enter the directory.
 
-2. ```git clone https://github.com/mideind/Netskrafl``` to your GAE application directory.
-
-3. Install the Python packages. For development, create a virtualenv with
-[uv](https://docs.astral.sh/uv/) and install the dev requirements, which
-include the runtime packages (`requirements.txt`, the ones deployed to GAE),
-the PostgreSQL backend packages (`requirements-pg.txt`, used by the container
-image) and the local tooling (icegrams, pytest, pyright):
+2. Create a virtualenv and install the dev requirements, which include the
+runtime packages (`requirements.txt`), the PostgreSQL backend packages
+(`requirements-pg.txt`, the set that the container image gets) and the local
+tooling (icegrams, pytest, pyright):
    ```
    uv venv --python 3.11 venv
    uv pip install --python venv/bin/python -r requirements-dev.txt
    ```
 
-4. Run ```python utils/dawgbuilder.py all``` to generate the DAWG ```*.bin.dawg``` files. This may
+3. Run ```python utils/dawgbuilder.py all``` to generate the DAWG ```*.bin.dawg``` files. This may
 take a couple of minutes.
 
-5. You will need a secret session key for Flask. The secret session key is stored in Google Cloud secret manager.
-For information on Flask sessions see [Flask Session documentation](https://flask.palletsprojects.com/en/3.0.x/quickstart/#sessions).
-For further details on secrets stored and used at runtime, see the
-[Google Cloud Secret Manager documentation](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets), and the source file ```src/secret_manager.py```.
+4. The server needs a few secrets (the Flask session key among them) and the
+credentials of a Google Cloud project, for Firebase. A local server reads the
+secrets from Google Cloud Secret Manager, or from environment variables if
+```SECRETS_PROVIDER=env``` is set; see ```src/secret_manager.py``` and
+```src/authmanager.py```. For Flask sessions, see the
+[Flask Session documentation](https://flask.palletsprojects.com/en/3.0.x/quickstart/#sessions).
 
-6. Install [Node.js](https://nodejs.org/en/download/) if you haven't already.
+5. Install [Node.js](https://nodejs.org/en/download/) if you haven't already.
 Run ```npm install``` to install Node dependencies. Run ```npm install grunt -g grunt-cli```
 to install Grunt and its command line interface globally.
 
-7. In a separate terminal window, but in the Netskrafl directory, run ```grunt make```.
+6. In a separate terminal window, but in the Netskrafl directory, run ```grunt make```.
 Then run ```grunt``` to start watching changes of js and css files.
 
-8. Run either ```runserver.bat``` or ```./runserver.sh```.
+7. Run either ```runserver.bat``` or ```./runserver.sh```. A local Redis server
+must be running. Without further settings the server uses the Datastore (NDB)
+backend of its Google Cloud project; set ```DATABASE_BACKEND=postgresql``` and
+```DATABASE_URL``` to use PostgreSQL.
 
-#### Or, alternatively:
+#### Or, in containers:
 
-Run ```./setup-dev.sh``` (tested on Debian based Linux and OS X).
+```docker compose -f docker-compose.pg.yml up --build``` runs the complete
+stack (the app on PostgreSQL, a PostgreSQL server and Redis) with no services
+installed on the host; the Google Cloud credentials are still needed. The
+other compose files and their uses are described at the top of each.
 
 
-### Deploying to Google App Engine
+### Deployment
 
-The project has multiple deployment targets, each with its own deploy script and
-App Engine configuration file. All deployments use the `--no-promote` flag, meaning
-the new version is deployed but does not receive traffic until manually promoted
-via the Google Cloud Console.
+The backend is built into a container image by the ```Dockerfile``` and runs
+as three deployments: Netskrafl production, Explo production, and a
+development backend that doubles as the staging app. Each deploys from its
+own git branch, and a production release goes to the staging app first.
+[doc/operations.md](doc/operations.md) describes how the deployments run and
+what is configured where; the release procedure is in
+```.claude/skills/deploy/SKILL.md```.
 
-**Prerequisites:**
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed and configured
-- Appropriate credentials in the `resources/` directory
-- Run tests before deploying (see CLAUDE.md for test configuration)
-
-**Deployment commands:**
-
-| Target | Script | Project | Description |
-|--------|--------|---------|-------------|
-| Netskrafl | `./deploy-netskrafl.sh default <version>` | netskrafl | Production Icelandic web game |
-| Netskrafl Demo | `./deploy-demo.sh default <version>` | netskrafl | Demo/staging environment |
-| Explo Dev | `./deploy-explo.sh default <version>` | explo-dev | Explo development/testing |
-| Explo Live | `./deploy-explo-live.sh default <version>` | explo-live | Explo production |
-
-Each script:
-1. Builds frontend assets via `grunt make`
-2. Deploys to Google App Engine with the specified version
-3. For Netskrafl, optionally updates the `update_online_status` Cloud Scheduler job
-
-**Example:**
-```bash
-# Deploy version "v42" to Netskrafl production
-./deploy-netskrafl.sh default v42
-
-# Deploy to Explo development
-./deploy-explo.sh default v42
-```
-
-After deployment, promote the new version to receive traffic in the
-[Google Cloud Console](https://console.cloud.google.com/appengine/versions).
+Further documentation in ```doc/```: [logging](doc/logging.md),
+[testing](doc/testing.md), [Elo ratings](doc/elo.md),
+[vocabulary updates across the consuming projects](doc/dictionary-update.md),
+[the Firebase tree of Gáta dagsins](doc/firebase-tree.md), and
+[what the 2026 migration from App Engine taught us](doc/migration-2026.md).
 
 
 ### Generating a new vocabulary file
@@ -377,13 +370,6 @@ which is licensed under the MIT license as follows:
 	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 	SOFTWARE.
-
-Netskrafl contains the *jQuery UI Touch Punch* library by David Furfero, which
-is licensed under the MIT license.
-
-	Copyright © 2011 David Furfero
-
-	The MIT license, as spelled out above, applies to this library.
 
 ### Trademarks
 

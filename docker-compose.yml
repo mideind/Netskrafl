@@ -29,6 +29,8 @@ services:
     environment:
       # Project ID - override with: PROJECT_ID=explo-dev docker compose up
       PROJECT_ID: ${PROJECT_ID:-netskrafl}
+      # Serve the built-in web UI (a development client; see src/web.py)
+      SINGLE_PAGE: "TRUE"
       # Redis connection (uses service name as hostname)
       REDIS_URL: redis://redis:6379
       # Not "local" in the GAE sense - use production-like settings

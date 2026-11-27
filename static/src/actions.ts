@@ -115,20 +115,6 @@ class Actions {
         model.loadHelp();
         const locale = model.state?.locale || "[unknown]";
         logEvent("help", { locale });
-      } else if (routeName == "thanks") {
-        // Log a conversion event
-        const userid = model.state?.userId;
-        if (userid) {
-          const locale = model.state?.locale || "[unknown]";
-          logEvent("init_plan",
-            {
-              userid,
-              locale,
-              // TODO: Add plan identifiers here
-              plan: "friend"
-            }
-          );
-        }
       } else if (routeName == "main") {
         // Force reload of lists
         // TODO: This may not be necessary,

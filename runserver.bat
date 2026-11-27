@@ -1,5 +1,7 @@
 set GOOGLE_APPLICATION_CREDENTIALS=credentials\explo-dev\service-account.json
 set PROJECT_ID=explo-dev
+rem Serve the built-in web UI (a development client; see src/web.py)
+set SINGLE_PAGE=TRUE
 set SERVER_SOFTWARE=Development
 set OAUTHLIB_INSECURE_TRANSPORT=1
 set SERVER_HOST=0.0.0.0

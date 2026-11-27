@@ -15,22 +15,22 @@
 #     # edit, leaving every EV[1:...] value untouched
 #     doctl apps update <APP_ID> --spec live-spec.yaml
 #
-# See doc/migration-strategy.md for the cutover plan that this app is part of.
+# See doc/operations.md for how the deployments run.
 
 name: replace-me-app-name
 region: ams
 
-# No custom domain at the cutover. The Explo apps call the App Engine
-# address, so the backend is opened to them by routing App Engine's traffic
-# to the forwarding app (appspot-forward/), which passes every request on to
-# this app's default hostname. The public backend hostname is added
-# afterwards, a few minutes BEFORE its DNS record is pointed at this app:
-# added after the record has changed, App Platform answers 404 for the
-# hostname in the meantime. The certificate is issued about a minute after
-# the record points here.
-# domains:
-# - domain: REPLACE_ME_public_backend_hostname
-#   type: PRIMARY
+# The live spec carries the backend's public API hostname as its primary
+# domain (since 2026-11-26): Explo apps from version 1.5.1 have that hostname
+# built in and reach this app directly. Older apps call the App Engine
+# address, where the forwarding app (appspot-forward/) passes every request
+# on to this app's default hostname. When a hostname is added to an app, add
+# it to the spec BEFORE its DNS record is pointed at the app: added after the
+# record has changed, App Platform answers 404 for the hostname in the
+# meantime. Then leave the spec alone until the domain is active.
+domains:
+- domain: REPLACE_ME_public_api_hostname
+  type: PRIMARY
 
 alerts:
   - rule: DEPLOYMENT_FAILED
@@ -62,9 +62,8 @@ services:
 
     # One instance only: supercronic runs in every container (two instances
     # would run every scheduled job twice) and the entrypoint runs Alembic at
-    # every start. Scale by instance size, not count. The size below is
-    # the one Netskrafl started on; it is generous on purpose and can be
-    # lowered once metrics are in.
+    # every start. Scale by instance size, not count. The size below was
+    # chosen generously and can be lowered once metrics justify it.
     instance_count: 1
     instance_size_slug: apps-d-2vcpu-4gb
 
@@ -112,12 +111,15 @@ services:
         scope: RUN_AND_BUILD_TIME
         value: explo-live
 
-      # The single-page web UI, as on App Engine (see app.yaml).
-      - key: SINGLE_PAGE
+      # The backend serves no web UI of its own (no SINGLE_PAGE: the built-in
+      # UI is a development client, for the staging app and local servers).
+      # A browser that opens its root or greeting page is sent here instead,
+      # to Explo's website.
+      - key: HOME_REDIRECT_URL
         scope: RUN_TIME
-        value: "TRUE"
+        value: https://explowordgame.com
 
-      # The release name (same scheme as the App Engine version names):
+      # The release name (nYYYYMMDD or eYYYYMMDD, see the /deploy skill):
       # cache-busts the static files and names the git tag of the release.
       - key: APP_VERSION
         scope: RUN_AND_BUILD_TIME
@@ -144,10 +146,10 @@ services:
         type: SECRET
         value: REPLACE_ME_rediss_url_with_db_number
 
-      # The three application secrets must be byte-identical to the ones the
-      # App Engine app uses: sessions, the login tokens exchanged with the
-      # host site and the bearer tokens held by open browser tabs are all
-      # signed with them, and must stay valid across the cutover.
+      # The three application secrets. Sessions, the login tokens exchanged
+      # with the host site and the bearer tokens held by clients are all
+      # signed with them, so changing one signs everybody out: they kept
+      # their values through the move from App Engine for that reason.
       - key: SECRETS_PROVIDER
         scope: RUN_TIME
         value: env
@@ -167,19 +169,14 @@ services:
         type: SECRET
         value: REPLACE_ME_base64_client_secret_json
 
-      # FIREBASE_DB_URL is not set: it is read from the client secret, which
-      # is the one App Engine uses, so both are on the same Realtime Database
-      # instance. (Netskrafl sets it explicitly because its client secret
-      # named an instance that had been replaced.)
+      # FIREBASE_DB_URL is not set: it is read from the client secret.
 
-      # NOT set before the cutover. Without it supercronic does not start, so
-      # no scheduled job runs: until then App Engine runs the nightly jobs on
-      # Datastore, and a stats run here as well would leave a second set of
-      # rows for the same day once the last changes are copied over. Added on
-      # the night of the cutover, after App Engine's nightly jobs have run and
-      # before the write freeze (setting it restarts the app; /cacheflush and
-      # /appversion need it too). App Engine's cron keeps calling its own
-      # address afterwards; the forwarding app does not pass those calls on.
+      # Set on the live app. Without it supercronic does not start, so no
+      # scheduled job runs, and /cacheflush and /appversion cannot be called.
+      # It is commented out here so that an app created from this file starts
+      # without scheduled jobs: two backends must never run the nightly
+      # statistics job for the same day on data that is then merged. Setting
+      # it restarts the app.
       # - key: CRON_SECRET
       #   scope: RUN_TIME
       #   type: SECRET
@@ -197,8 +194,7 @@ services:
         scope: RUN_TIME
         value: ${pg.DATABASE_URL}
 
-# The production PostgreSQL cluster holds the database that the migrator
-# fills (scripts/migrate_to_postgres.py). Attaching it here provides the
+# The production PostgreSQL cluster. Attaching it here provides the
 # ${pg.DATABASE_URL} binding, but does NOT add the app to the cluster's
 # trusted sources: until that is done, the container cannot connect, the
 # entrypoint's Alembic step fails and so does the deployment. Right after

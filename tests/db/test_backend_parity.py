@@ -2,7 +2,8 @@
 Cross-backend parity regression tests.
 
 These lock in fixes for divergences found in the NDB<->PostgreSQL parity audit
-(see DB_PARITY_AUDIT.md). Two layers:
+of June 2026 (see doc/migration-2026.md, "Keeping two backends the same").
+Two layers:
 
 1. Per-fix regression tests (the `backend` fixture) run on BOTH backends via
    --backend=both and assert the SAME correct behavior, so a regression on
